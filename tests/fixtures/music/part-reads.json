@@ -1,0 +1,1763 @@
+{
+ "recorded": "plexav PMS 1.43.4, 2026-11-01",
+ "parts": [
+  {
+   "file": "01 - One More Time.mp3",
+   "container": "mp3",
+   "audioCodec": "mp3",
+   "size": 1081655,
+   "guid": "plex://track/5d07cdc4403c640290f653c2",
+   "addedAt": 1793451821,
+   "updatedAt": 1793452370,
+   "reads": [
+    {
+     "method": "GET",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ea8d0a3b65f1487a391fee2d24d82908408d0707\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:50 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "1081468"
+      ],
+      [
+       "Content-Type",
+       "audio/mpeg"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 1081468
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ea8d0a3b65f1487a391fee2d24d82908408d0707\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:50 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/1081468"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/mpeg"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=100-",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ea8d0a3b65f1487a391fee2d24d82908408d0707\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:50 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 100-1081467/1081468"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "1081368"
+      ],
+      [
+       "Content-Type",
+       "audio/mpeg"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 1081368
+    },
+    {
+     "method": "HEAD",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ea8d0a3b65f1487a391fee2d24d82908408d0707\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:50 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "1081468"
+      ],
+      [
+       "Content-Type",
+       "audio/mpeg"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 0
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ea8d0a3b65f1487a391fee2d24d82908408d0707\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:50 GMT"
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"01 - One More Time.mp3\"; filename*=UTF-8''01%20-%20One%20More%20Time%2Emp3"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "1081468"
+      ],
+      [
+       "Content-Type",
+       "audio/mpeg"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 1081468
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ea8d0a3b65f1487a391fee2d24d82908408d0707\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:50 GMT"
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"01 - One More Time.mp3\"; filename*=UTF-8''01%20-%20One%20More%20Time%2Emp3"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/1081468"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/mpeg"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    }
+   ]
+  },
+  {
+   "file": "01 - 15 Step.flac",
+   "container": "flac",
+   "audioCodec": "flac",
+   "size": 565825,
+   "guid": "plex://track/5d07d499403c64029080d0b7",
+   "addedAt": 1793451813,
+   "updatedAt": 1793452371,
+   "reads": [
+    {
+     "method": "GET",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"a1cd12939c1f21daa0eb09620452965fc9184459\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:51 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "565825"
+      ],
+      [
+       "Content-Type",
+       "audio/flac"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 565825
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"a1cd12939c1f21daa0eb09620452965fc9184459\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:51 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/565825"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/flac"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=100-",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"a1cd12939c1f21daa0eb09620452965fc9184459\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:51 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 100-565824/565825"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "565725"
+      ],
+      [
+       "Content-Type",
+       "audio/flac"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 565725
+    },
+    {
+     "method": "HEAD",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"a1cd12939c1f21daa0eb09620452965fc9184459\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:51 GMT"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "565825"
+      ],
+      [
+       "Content-Type",
+       "audio/flac"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 0
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"a1cd12939c1f21daa0eb09620452965fc9184459\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:51 GMT"
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"01 - 15 Step.flac\"; filename*=UTF-8''01%20-%2015%20Step%2Eflac"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "565825"
+      ],
+      [
+       "Content-Type",
+       "audio/flac"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 565825
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"a1cd12939c1f21daa0eb09620452965fc9184459\""
+      ],
+      [
+       "Last-Modified",
+       "Sat, 31 Oct 2026 13:12:51 GMT"
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"01 - 15 Step.flac\"; filename*=UTF-8''01%20-%2015%20Step%2Eflac"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/565825"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/flac"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    }
+   ]
+  },
+  {
+   "file": "01 - Opus Tone.opus",
+   "container": "ogg",
+   "audioCodec": "opus",
+   "size": 244863,
+   "guid": "local://68",
+   "addedAt": 1793470605,
+   "updatedAt": null,
+   "reads": [
+    {
+     "method": "GET",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ed17fc385fb7e47d1b46d1b3348a0d31e583e45d\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "244863"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 244863
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ed17fc385fb7e47d1b46d1b3348a0d31e583e45d\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/244863"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=100-",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ed17fc385fb7e47d1b46d1b3348a0d31e583e45d\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 100-244862/244863"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "244763"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 244763
+    },
+    {
+     "method": "HEAD",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ed17fc385fb7e47d1b46d1b3348a0d31e583e45d\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "244863"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 0
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ed17fc385fb7e47d1b46d1b3348a0d31e583e45d\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"01 - Opus Tone.opus\"; filename*=UTF-8''01%20-%20Opus%20Tone%2Eopus"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "244863"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 244863
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"ed17fc385fb7e47d1b46d1b3348a0d31e583e45d\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"01 - Opus Tone.opus\"; filename*=UTF-8''01%20-%20Opus%20Tone%2Eopus"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/244863"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    }
+   ]
+  },
+  {
+   "file": "02 - Vorbis Tone.ogg",
+   "container": "ogg",
+   "audioCodec": "vorbis",
+   "size": 57169,
+   "guid": "local://69",
+   "addedAt": 1793470605,
+   "updatedAt": null,
+   "reads": [
+    {
+     "method": "GET",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"57169e218ed0180eedab028939022237a467b61bd34fa\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "57169"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 57169
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"57169e218ed0180eedab028939022237a467b61bd34fa\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/57169"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=100-",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"57169e218ed0180eedab028939022237a467b61bd34fa\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 100-57168/57169"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "57069"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 57069
+    },
+    {
+     "method": "HEAD",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"57169e218ed0180eedab028939022237a467b61bd34fa\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "57169"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 0
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"57169e218ed0180eedab028939022237a467b61bd34fa\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"02 - Vorbis Tone.ogg\"; filename*=UTF-8''02%20-%20Vorbis%20Tone%2Eogg"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "57169"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 57169
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"57169e218ed0180eedab028939022237a467b61bd34fa\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"02 - Vorbis Tone.ogg\"; filename*=UTF-8''02%20-%20Vorbis%20Tone%2Eogg"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/57169"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "application/octet-stream"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    }
+   ]
+  },
+  {
+   "file": "03 - ALAC Tone.m4a",
+   "container": "mp4",
+   "audioCodec": "alac",
+   "size": 338646,
+   "guid": "local://70",
+   "addedAt": 1793470605,
+   "updatedAt": null,
+   "reads": [
+    {
+     "method": "GET",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"fbc81080e7958a87f1a80ea9cc84e4d78a2e0068\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "338646"
+      ],
+      [
+       "Content-Type",
+       "audio/mp4"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 338646
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"fbc81080e7958a87f1a80ea9cc84e4d78a2e0068\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/338646"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/mp4"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=100-",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"fbc81080e7958a87f1a80ea9cc84e4d78a2e0068\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 100-338645/338646"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "338546"
+      ],
+      [
+       "Content-Type",
+       "audio/mp4"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 338546
+    },
+    {
+     "method": "HEAD",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"fbc81080e7958a87f1a80ea9cc84e4d78a2e0068\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "338646"
+      ],
+      [
+       "Content-Type",
+       "audio/mp4"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 0
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"fbc81080e7958a87f1a80ea9cc84e4d78a2e0068\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"03 - ALAC Tone.m4a\"; filename*=UTF-8''03%20-%20ALAC%20Tone%2Em4a"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "338646"
+      ],
+      [
+       "Content-Type",
+       "audio/mp4"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 338646
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"fbc81080e7958a87f1a80ea9cc84e4d78a2e0068\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"03 - ALAC Tone.m4a\"; filename*=UTF-8''03%20-%20ALAC%20Tone%2Em4a"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/338646"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/mp4"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    }
+   ]
+  },
+  {
+   "file": "04 - WAV Tone.wav",
+   "container": "wav",
+   "audioCodec": "pcm",
+   "size": 3528180,
+   "guid": "local://71",
+   "addedAt": 1793470605,
+   "updatedAt": null,
+   "reads": [
+    {
+     "method": "GET",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"2a2d9b2ee014a962a260e169f673bb11c1a68290\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "3528180"
+      ],
+      [
+       "Content-Type",
+       "audio/wav"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 3528180
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"2a2d9b2ee014a962a260e169f673bb11c1a68290\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/3528180"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/wav"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    },
+    {
+     "method": "GET",
+     "query": "",
+     "range": "bytes=100-",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"2a2d9b2ee014a962a260e169f673bb11c1a68290\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 100-3528179/3528180"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "3528080"
+      ],
+      [
+       "Content-Type",
+       "audio/wav"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 3528080
+    },
+    {
+     "method": "HEAD",
+     "query": "",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"2a2d9b2ee014a962a260e169f673bb11c1a68290\""
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "3528180"
+      ],
+      [
+       "Content-Type",
+       "audio/wav"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 0
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": null,
+     "status": 200,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"2a2d9b2ee014a962a260e169f673bb11c1a68290\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"04 - WAV Tone.wav\"; filename*=UTF-8''04%20-%20WAV%20Tone%2Ewav"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "3528180"
+      ],
+      [
+       "Content-Type",
+       "audio/wav"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 3528180
+    },
+    {
+     "method": "GET",
+     "query": "download=1",
+     "range": "bytes=0-99",
+     "status": 206,
+     "headers": [
+      [
+       "X-Plex-Protocol",
+       "1.0"
+      ],
+      [
+       "ETag",
+       "\"2a2d9b2ee014a962a260e169f673bb11c1a68290\""
+      ],
+      [
+       "Content-Disposition",
+       "attachment; filename=\"04 - WAV Tone.wav\"; filename*=UTF-8''04%20-%20WAV%20Tone%2Ewav"
+      ],
+      [
+       "Accept-Ranges",
+       "bytes"
+      ],
+      [
+       "Content-Range",
+       "bytes 0-99/3528180"
+      ],
+      [
+       "Connection",
+       "Keep-Alive"
+      ],
+      [
+       "Keep-Alive",
+       "timeout=20"
+      ],
+      [
+       "Content-Length",
+       "100"
+      ],
+      [
+       "Content-Type",
+       "audio/wav"
+      ],
+      [
+       "Date",
+       ""
+      ]
+     ],
+     "length": 100
+    }
+   ]
+  }
+ ],
+ "video": {
+  "file": "Firefly - S01E04 - Episode 4.ts",
+  "addedAt": 1793458042,
+  "updatedAt": 1793458044,
+  "status": 206,
+  "headers": [
+   [
+    "X-Plex-Protocol",
+    "1.0"
+   ],
+   [
+    "ETag",
+    "\"01c29b7772169442c9941bba54b156f57c09029a\""
+   ],
+   [
+    "Last-Modified",
+    "Sat, 31 Oct 2026 14:47:24 GMT"
+   ],
+   [
+    "Accept-Ranges",
+    "bytes"
+   ],
+   [
+    "Content-Range",
+    "bytes 0-99/433696072"
+   ],
+   [
+    "Connection",
+    "Keep-Alive"
+   ],
+   [
+    "Keep-Alive",
+    "timeout=20"
+   ],
+   [
+    "Content-Length",
+    "100"
+   ],
+   [
+    "Content-Type",
+    "video/MP2T"
+   ],
+   [
+    "Date",
+    ""
+   ]
+  ]
+ }
+}
