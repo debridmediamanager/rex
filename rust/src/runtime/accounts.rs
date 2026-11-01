@@ -385,7 +385,20 @@ impl Runtime {
             .is_some_and(|keys| {
                 keys.split(',').all(|key| self.catalog.get(key).is_none() && !self.collections.contains_key(key))
             });
-        if admin_only(method, path) && !missing_row {
+        // Live TV is the share's `allowTuners` (plexav 1.43.4 with a DVR,
+        // `tests/fixtures/livetv/shared_tuners_s1434.json`): at 1 the DVR's and sessions' reads, the
+        // provider's and the tune answer as the owner's; at 0 each is 403 but What's On, which
+        // still lists its hubs. ponytail: a share's other writes under `/livetv/` (DVR edits,
+        // prefs, reloadGuide, a session's DELETE) were not measured and stay the owner's; nor were
+        // the provider's other keys at 0 (What's On's shelves, metadata), refused with the rest, or a
+        // share at 1 on a server with no DVR, which gets the owner's tunerless answers.
+        let tuners = path.starts_with(super::livetv::PREFIX)
+            || path.starts_with("/livetv/")
+                && (matches!(method, "GET" | "HEAD") || method == "POST" && path.starts_with("/livetv/dvrs/") && path.ends_with("/tune"));
+        if tuners && !self.viewer.allow_tuners && path != format!("{}/hubs/discover", super::livetv::PREFIX) {
+            return Some(Response::error(403, "rex: the owner's route"));
+        }
+        if admin_only(method, path) && !missing_row && !tuners {
             return Some(Response::error(403, "rex: the owner's route"));
         }
         // The download queue: the owner's list is 403 to everyone else, and a queue of its own

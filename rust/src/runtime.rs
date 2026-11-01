@@ -4089,7 +4089,8 @@ impl Runtime {
             "protocols": "stream,download",
             "Feature": features,
         })];
-        providers.extend(self.livetv_provider());
+        // Measured: a share without Live TV (`allowTuners=0`) is listed the library alone.
+        providers.extend(self.livetv_provider().filter(|_| self.viewer.allow_tuners));
         body.insert("size".to_string(), json!(providers.len()));
         body.insert("MediaProvider".to_string(), Value::Array(providers));
         json!({"MediaContainer": body})

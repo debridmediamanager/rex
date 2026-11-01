@@ -14942,6 +14942,29 @@ read by hand first, with the same answers.
   search hit's `genre=` id is rex's own, numbered in the order the categories first air; the
   replay opens each hit by the key rex's search gives it.
 
+### A shared user's Live TV is the share's `allowTuners` (2026-11-01)
+
+plexav was asked by its owner and by a managed Home user it shared every library with the twelve
+Live TV requests Plex Web and Plex for Android make (`/media/providers`, `/livetv/dvrs`,
+`/livetv/dvrs/2`, `/livetv/sessions`, the provider's `/sections`, `/lineups/dvr/channels`,
+`/grid`, `/hubs/discover`, `/watchnow`, `/hubs/search`, `/library/search` and `POST
+/livetv/dvrs/2/channels/2.1/tune`), once with the share's `allowTuners` 1 and once 0
+(`tests/fixtures/livetv/shared_tuners_s1434.json`, `probes/record_livetv_shared.py`).
+
+- **`allowTuners=1`** (plex.tv's default for a new share): the shared user is answered as the
+  owner, 200 for each, `/media/providers` listing the library and the epg provider, and the tune
+  starts a session.
+- **`allowTuners=0`**: `/media/providers` lists `com.plexapp.plugins.library` alone and every
+  request is 403 **but What's On** (`/hubs/discover`), which still answers 200 with the owner's
+  hubs and sizes but `today.upcomingfavorites`, empty, as it is for the shared user at 1 too.
+- rex refused `/livetv/dvrs`, `/livetv/sessions` and the tune to every share (the owner's routes,
+  measured on plexlab, which has no DVR and whose share is `allowTuners=0`) and served the
+  provider to every share, so a share with Live TV could not watch and one without it saw the
+  guide. It now keys all of them on the share's `allowTuners` (`accounts::share_refusal`,
+  `tests/test_livetv_shared.py`). Not measured for a share: the other writes under `/livetv/`
+  (DVR edits, prefs, `reloadGuide`, a session's DELETE), which stay the owner's, and a share at 1
+  on a server with no DVR.
+
 ## Music: conversion, lyrics, loudness and bitrate, measured on plexav (2026-10-31)
 
 Measured on plexav (PMS 1.43.4) by replaying its clients' own recorded requests, after adding six

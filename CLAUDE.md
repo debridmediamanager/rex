@@ -626,6 +626,8 @@ python3 tests/test_livetv.py                # Live TV, a DVR of a source's live 
                                             # 1.43.4 PMS with an HDHomeRun and XMLTV): guide, What's On, pages, search, listings, the DVR,
                                             # Plex Web's and Android's tune played to decoded segments; no channel leaves the
                                             # tunerless answers; needs ffmpeg
+python3 tests/test_livetv_shared.py         # a shared user's Live TV with the share's allowTuners 1 and 0, as plexav answered
+                                            # it: the provider listed, reads and the tune, all 403 at 0 but What's On
 python3 tests/test_download_queue.py        # offline downloads: Plex for Android's queue flow, each item converted to one mp4
                                             # and served by Range, as a claimed 1.42.2 PMS answered it; needs ffmpeg
 python3 tests/test_feed.py                  # the feed API against a stub source: no gate, upsert, late ids, held
