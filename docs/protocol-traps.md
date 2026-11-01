@@ -1610,6 +1610,11 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   200. rex has no encoder, so its answer once a decision exists is its own 404 -- recorded,
   not modelled, because the reference's own `start.mpd` is a 404 there while its `start.m3u8`
   is a 200.
+- **A conversion's playlist lists segments to the CONTAINER's duration, and the picture may stop
+  short of it.** A converted run that ends with its picture leaves the last listed segments unmade,
+  and a player waiting on them never ends (Plex Web held at 42:22 of 42:25, rex-fun 2026-11-01).
+  rex holds the last frame to the duration and stops the run there (findings, "An episode in two
+  files").
 - **A decision row keeps its `summary`**, whatever the row type. The rule that dropped it for
   movies was fitted to the one copy row whose summary is the EMPTY STRING.
 - **A list's `/unmatch` really writes**: a collection's `guid` becomes `local://{rk}`, its
@@ -2121,7 +2126,8 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   is their sum, and every Part owns its own file on zurg. `partIndex=0/1` projects that Part,
   out-of-range is 400 and `-1` is the 4005 all-parts conversion refusal. A show library stacks
   `- ptN` the same way, and `PUT /library/parts/{id}?…StreamID=&allParts=1` carries the pick to
-  the Media's other Parts by stream index, not id (findings, "An episode in two files").
+  the Media's other Parts by stream index, not id; without `allParts` a pick is its own Part's. A
+  stacked Media's `bitrate` is its last Part's (findings, "An episode in two files").
 - **A clip is not an ordinary library row.** It publishes no librarySection triple; the parent owns
   `primaryExtraKey` and inline `Extras`; item and section `/extras/all` use different projections;
   the clip borrows the parent's `art` attribute but its own `/art` route is 404.
