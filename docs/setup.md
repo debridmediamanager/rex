@@ -591,8 +591,8 @@ Deleting a source, file version or library retires its unreferenced analysis art
 Deleting preview thumbnails leaves chapter images and markers intact.
 
 The blurred backgrounds and colours the Plex apps draw behind a title are worked out from its
-poster and background the first time a listing shows it, and kept in `blur_cache.json` beside
-`rex.db`. `REX_ARTWORK_ANALYSIS=off` turns that off.
+poster and background the first time a listing shows it, and kept in `rex.db`.
+`REX_ARTWORK_ANALYSIS=off` turns that off.
 
 ### Apps downloading straight from the source
 
