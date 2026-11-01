@@ -245,6 +245,15 @@ def main():
               (row.get("parentIndex"), row.get("index")) == (4, 12) and media(row) == [files]
               and server.keys() == {PART1["id"]: key, PART2["id"]: key} and not episodes(server, key, 13),
               ((row.get("parentIndex"), row.get("index")), media(row), server.keys()))
+        # The source takes part 2's placement back (`kind: "unplaced"`): it leaves the Media for an
+        # unmatched row of its own, and the episode keeps part 1.
+        unplaced = {k: v for k, v in PART2.items() if k not in ("season", "episode", "tmdb_episode", "part")}
+        server.feed("POST", "items", {"items": [dict(unplaced, kind="unplaced")]})
+        row = server.row(key)
+        alone = server.keys().get(PART2["id"])
+        check("a part pushed as unplaced leaves the Media, the episode keeping part 1",
+              media(row) == [files[:1]] and alone and alone != key and media(server.row(alone)) == [files[1:]],
+              (media(row), alone))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
