@@ -102,6 +102,9 @@ pub(super) struct Item {
     /// The Live TV channel a live item is (`channel`, `livetv::channel_field`): `None` when it
     /// sent none, which keeps what the row has; `Some(None)` for `null`, which ends it.
     channel: Option<Option<Value>>,
+    /// Which part of its episode the file is (`part`, 1-based), kept as `_part`: the parts of one
+    /// release's episode are one Media of several Parts (`join_parts`). `None` is the whole episode.
+    part: Option<i64>,
 }
 
 /// One entry of an item's `subtitles`: a subtitle file under the source's url, which becomes
@@ -395,6 +398,7 @@ impl Item {
             loudness,
             lyrics,
             channel,
+            part: (text("kind").as_deref() == Some("episode")).then(|| number("part", 1)).flatten(),
             collections,
             subtitles: subtitle_entries(&source.name, &id, value.get("subtitles")),
             placed,
@@ -451,6 +455,7 @@ impl Item {
             ]
             .into_iter()
             .chain(self.folder.as_ref().map(|folder| ("_folder".to_string(), json!(folder))))
+            .chain(self.part.map(|part| ("_part".to_string(), json!(part))))
             .chain(self.placed.as_ref().map(|placed| ("_placed".to_string(), placed.clone())))
             .chain(self.display.as_ref().map(|display| ("_display".to_string(), Value::Object(display.clone()))))
             .chain(self.channel.clone().flatten().map(|channel| ("_channel".to_string(), channel)))
@@ -1013,6 +1018,15 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                         && here != Some(numbers)
                         && !guard.matched_by_hand(row)
                 });
+                if leaves && guard.drop_version(key, &source.name, &item.id) {
+                    guard.dirty = true;
+                    existing = None;
+                }
+            }
+            // A Part its source now numbers otherwise leaves its Media the same way, and the fold
+            // places it again: with its new part, as a version, or on a row of its own.
+            if let (Some((key, _)), false, true) = (&existing, retry, item.media_info.is_some()) {
+                let leaves = guard.catalog.get(key).is_some_and(|row| part_leaves(row, &source.name, &item) && !guard.matched_by_hand(row));
                 if leaves && guard.drop_version(key, &source.name, &item.id) {
                     guard.dirty = true;
                     existing = None;
@@ -1627,6 +1641,10 @@ fn pushed_item(row: &Value) -> Option<(String, Value)> {
     if let Some(edition) = row.get("_editionTitle").filter(|edition| edition.is_string()) {
         item["edition_title"] = edition.clone();
     }
+    // The first Part of an episode sent in parts: without its number a retry made it the whole episode.
+    if let Some(part) = row.get("_part").filter(|part| part.is_i64()) {
+        item["part"] = part.clone();
+    }
     Some((text("_source")?.to_string(), item))
 }
 
@@ -1758,7 +1776,7 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
     let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
     if media.iter().all(|media| media.get("_sid").is_none()) {
         if let Some(first) = media.first_mut().and_then(Value::as_object_mut) {
-            for field in ["_source", "_sid", "_path", "_folder", "_release", "_group", "_ids", "_placed", "_editionTitle", "_hash"] {
+            for field in ["_source", "_sid", "_path", "_part", "_folder", "_release", "_group", "_ids", "_placed", "_editionTitle", "_hash"] {
                 if let Some(value) = row.get(field) {
                     first.insert(field.to_string(), value.clone());
                 }
@@ -1766,6 +1784,137 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
         }
     }
     media
+}
+
+/// `value` as `field` of `object`, or `field` removed for `None`.
+fn write(object: &mut Map<String, Value>, field: &str, value: &Option<Value>) {
+    match value {
+        Some(value) => object.insert(field.to_string(), value.clone()),
+        None => object.shift_remove(field),
+    };
+}
+
+/// Where a source's item `sid` is on a row: its Media and Part (`catalog::releases`).
+fn item_at(row: &Value, source: &str, sid: &str) -> Option<(usize, usize)> {
+    crate::catalog::releases(row).into_iter().find(|(of, id, _, _)| of == source && id == sid).map(|(_, _, media, part)| (media, part))
+}
+
+/// What each Part of a Media its source pushed in parts carries of its own item, the Media
+/// holding its first Part's.
+const PART_FIELDS: [&str; 5] = ["_source", "_sid", "_path", "_part", "_probe"];
+
+/// Each Part's `_part`: a Part's own on a Media of several, else the Media's.
+fn part_numbers(media: &Value) -> Vec<Option<i64>> {
+    let parts = media.get("Part").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default();
+    parts.iter().map(|part| part.get("_part").or_else(|| (parts.len() == 1).then(|| media.get("_part")).flatten()).and_then(Value::as_i64)).collect()
+}
+
+/// A Media of several Parts as its first Part makes it: the first Part's item fields its own,
+/// and its `duration` the sum of its Parts', as a real PMS sums a stacked pair's (findings,
+/// "partIndex on a MULTI-PART Media").
+fn sync_parts(media: &mut Map<String, Value>) {
+    let Some(parts) = media.get("Part").and_then(Value::as_array).cloned() else { return };
+    let Some(first) = parts.first().filter(|part| part.get("_sid").is_some()) else { return };
+    for field in PART_FIELDS {
+        match first.get(field) {
+            Some(value) => media.insert(field.to_string(), value.clone()),
+            None => media.shift_remove(field),
+        };
+    }
+    let durations: Option<Vec<i64>> = parts.iter().map(|part| part.get("duration").and_then(Value::as_i64)).collect();
+    if let Some(durations) = durations {
+        media.insert("duration".to_string(), json!(durations.iter().sum::<i64>()));
+    }
+    // Its `bitrate` is its LAST Part's, as a real PMS gives a stacked pair (parts of 2137 and 415
+    // kbps make a Media of 415, `tests/fixtures/parts_stack_s1434.json`). Plex Web plays the
+    // version of the highest bitrate where all else ties, so a Media of both halves holding
+    // part 1's lost to the lone part 2 beside it (rex-fun's Monk S01E01, 2026-11-01).
+    let last = parts.last().unwrap_or(first);
+    let rate = last.get("_bitrate").and_then(Value::as_i64).or_else(|| {
+        let (size, duration) = (last.get("size")?.as_i64()?, last.get("duration")?.as_i64()?);
+        (duration > 0).then(|| size * 8 / duration)
+    });
+    if let Some(rate) = rate {
+        media.insert("bitrate".to_string(), json!(rate));
+    }
+}
+
+/// Where a Media sorts among its row's versions: one of several Parts, then a whole file, then a
+/// lone first part, then a lone later part. Plex Web plays the first of versions that tie on
+/// everything it ranks them by, and Monk S01E01's lone part 2 played as the episode and overran
+/// into S01E02 (rex-fun, 2026-11-01).
+fn completeness(media: &Value) -> u8 {
+    match part_numbers(media).as_slice() {
+        [_, _, ..] => 0,
+        [None] | [] => 1,
+        [Some(1)] => 2,
+        _ => 3,
+    }
+}
+
+/// `theirs`, one Media of a row folding into `media`, joined to the Media of the same source and
+/// release it is other parts of (`_part`) as Parts of one Media in part order, whatever ids they
+/// came under: Lost's S04E13 and E14 files are TMDB's and Plex's one S4E13. Each Part keeps its own
+/// item's fields, so it streams, updates, leaves and is deleted as its own file. Answers whether
+/// it joined; files of one release with no `part` stay rows of their own (`release_files`).
+fn join_parts(media: &mut [Value], theirs: &[Value]) -> bool {
+    let [theirs] = theirs else { return false };
+    let numbers = part_numbers(theirs);
+    let numbered = |numbers: &[Option<i64>]| !numbers.is_empty() && numbers.iter().all(Option::is_some);
+    if !numbered(&numbers) || theirs.get("_group").is_none() {
+        return false;
+    }
+    let sids = |media: &Value| -> Vec<Value> {
+        let parts = media.get("Part").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default();
+        parts.iter().filter_map(|part| part.get("_sid").or_else(|| (parts.len() == 1).then(|| media.get("_sid")).flatten()).cloned()).collect()
+    };
+    let Some(ours) = media.iter_mut().find(|ours| {
+        let held = part_numbers(ours);
+        ours.get("_source") == theirs.get("_source")
+            && ours.get("_group") == theirs.get("_group")
+            && numbered(&held)
+            && !held.iter().any(|number| numbers.contains(number))
+    }) else {
+        // A save stopped between the survivor's write and the others' deletes brings a joined
+        // row back: its parts are already here.
+        let mine = sids(theirs);
+        return !mine.is_empty()
+            && media.iter().any(|ours| ours.get("_source") == theirs.get("_source") && mine.iter().all(|sid| sids(ours).contains(sid)));
+    };
+    // A single-file Media's item fields are the Media's: each Part takes its own before they mix.
+    let tagged = |media: &Value| -> Vec<Value> {
+        let mut parts = media.get("Part").and_then(Value::as_array).cloned().unwrap_or_default();
+        if let [part] = parts.as_mut_slice() {
+            if let Some(part) = part.as_object_mut().filter(|part| part.get("_sid").is_none()) {
+                for field in PART_FIELDS {
+                    if let Some(value) = media.get(field) {
+                        part.insert(field.to_string(), value.clone());
+                    }
+                }
+                if let Some(rate) = media.get("bitrate") {
+                    part.insert("_bitrate".to_string(), rate.clone());
+                }
+            }
+        }
+        parts
+    };
+    let first = |media: &Value| part_numbers(media).into_iter().flatten().min();
+    // The Media holding the first part is the one the others join, its id and release fields kept.
+    let (mut base, other) = if first(theirs) < first(ours) { (theirs.clone(), ours.clone()) } else { (ours.clone(), theirs.clone()) };
+    let mut parts = tagged(&base);
+    parts.extend(tagged(&other));
+    parts.sort_by_key(|part| part.get("_part").and_then(Value::as_i64));
+    let Some(object) = base.as_object_mut() else { return false };
+    object.insert("Part".to_string(), Value::Array(parts));
+    // Analysis is kept per Part id, on the Media holding the Part.
+    if let Some(records) = other.get("_analysis").and_then(Value::as_object) {
+        let mut held = object.get("_analysis").and_then(Value::as_object).cloned().unwrap_or_default();
+        held.extend(records.clone());
+        object.insert("_analysis".to_string(), Value::Object(held));
+    }
+    sync_parts(object);
+    *ours = base;
+    true
 }
 
 /// Which title a row a source pushed is, for folding: a film's section, agent guid and edition;
@@ -1913,7 +2062,7 @@ fn name_by_release(row: &mut Map<String, Value>, media: &Value) {
         }
     }
     // The row's folder and placement are its release's, or none: another release's would number it.
-    for field in ["_folder", "_group", "_placed", "_editionTitle", "_hash"] {
+    for field in ["_folder", "_group", "_part", "_placed", "_editionTitle", "_hash"] {
         match media.get(field) {
             Some(value) => row.insert(field.to_string(), value.clone()),
             None => row.shift_remove(field),
@@ -1951,8 +2100,8 @@ impl Runtime {
             .hot()
             .lazy()
             .filter_map(|row| {
-                let all = versions(row.body());
-                let mine: Vec<String> = all.iter().filter(|(of, _, _)| of == source).map(|(_, sid, _)| sid.clone()).collect();
+                let all = crate::catalog::releases(row.body());
+                let mine: Vec<String> = all.iter().filter(|(of, _, _, _)| of == source).map(|(_, sid, _, _)| sid.clone()).collect();
                 let whole = mine.len() == all.len();
                 Some((key_of(&row)?, mine, whole)).filter(|(_, mine, _)| !mine.is_empty())
             })
@@ -2199,7 +2348,7 @@ impl Runtime {
                 .catalog
                 .rows_by(crate::catalog::By::Release, &key)
                 .into_iter()
-                .filter(|row| versions(row).iter().any(|(of, id, _)| of == source && id == sid))
+                .filter(|row| item_at(row, source, sid).is_some())
                 .next_back()?;
             Some((sid.to_string(), key_of(row)?))
         })
@@ -2433,7 +2582,11 @@ impl Runtime {
             info!("FEED {source} adopted {key} for {}", item.id);
             changed = true;
         }
-        let index = versions(&row).into_iter().find(|(of, sid, _)| of == source && *sid == item.id).map_or(0, |(_, _, index)| index);
+        let (index, part_at) = item_at(&row, source, &item.id).unwrap_or((0, 0));
+        // On a Media of several Parts the item's own fields are its Part's (`PART_FIELDS`); the
+        // Media and the row hold the first Part's.
+        let own_part = row.pointer(&format!("/Media/{index}/Part/{part_at}/_sid")).is_some();
+        let first = part_at == 0;
         if let Some(hash) = &item.hash {
             let previous = row.pointer(&format!("/Media/{index}/_hash")).or_else(|| row.get("_hash").filter(|_| index == 0));
             if previous.and_then(Value::as_str) != Some(hash.as_str()) {
@@ -2446,27 +2599,52 @@ impl Runtime {
                 changed = true;
             }
         }
-        if let (Some(probe), Some(_)) = (&item.probe, &item.media_info) {
-            if row.pointer(&format!("/Media/{index}/_probe")).and_then(Value::as_str) != Some(probe.as_str()) {
-                if let Some(media) = self.catalog.get_mut(key).and_then(|row| row.get_mut("Media")).and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
-                    media.insert("_probe".to_string(), json!(probe));
-                    changed = true;
-                }
-            }
-        }
         let tagged = row.pointer(&format!("/Media/{index}/_sid")).is_some();
-        let path = if tagged { row.pointer(&format!("/Media/{index}/_path")) } else { row.get("_path") };
-        if path.and_then(Value::as_str) != Some(item.path.as_str()) {
-            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                if tagged {
-                    if let Some(media) = object.get_mut("Media").and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
-                        media.insert("_path".to_string(), json!(item.path));
+        // The item's own field written where it is kept: its Part's, and the Media's and the row's
+        // when they hold this item's (`None` removes it).
+        let own = |field: &str| {
+            if own_part {
+                row.pointer(&format!("/Media/{index}/Part/{part_at}/{field}"))
+            } else if tagged || field == "_probe" {
+                row.pointer(&format!("/Media/{index}/{field}"))
+            } else {
+                row.get(field)
+            }
+        };
+        let put = |runtime: &mut Self, field: &str, value: Option<Value>| {
+            let Some(object) = runtime.catalog.get_mut(key).and_then(Value::as_object_mut) else { return };
+            if let Some(media) = object.get_mut("Media").and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                if own_part {
+                    if let Some(part) = media.get_mut("Part").and_then(|parts| parts.get_mut(part_at)).and_then(Value::as_object_mut) {
+                        write(part, field, &value);
                     }
                 }
-                if index == 0 {
-                    object.insert("_path".to_string(), json!(item.path));
+                if first && (tagged || field == "_probe") {
+                    write(media, field, &value);
                 }
             }
+            if !first {
+                return;
+            }
+            if index == 0 && field != "_probe" {
+                write(object, field, &value);
+            }
+        };
+        if let (Some(probe), Some(_)) = (&item.probe, &item.media_info) {
+            if own("_probe").and_then(Value::as_str) != Some(probe.as_str()) {
+                put(self, "_probe", Some(json!(probe)));
+                changed = true;
+            }
+        }
+        if own("_path").and_then(Value::as_str) != Some(item.path.as_str()) {
+            put(self, "_path", Some(json!(item.path)));
+            changed = true;
+        }
+        // A new part number moves its version among the row's (`order_versions`), last: what
+        // follows writes to this item's Media and Part by their places now.
+        let reorder = own("_part").and_then(Value::as_i64) != item.part;
+        if reorder {
+            put(self, "_part", item.part.map(|part| json!(part)));
             changed = true;
         }
         // The folder the source names now, on the version and, for the first, the row: rows
@@ -2526,7 +2704,7 @@ impl Runtime {
             changed = true;
         }
         let part = |row: &Value| -> Option<Value> {
-            row.get("Media")?.as_array()?.get(index)?.get("Part")?.as_array()?.first().cloned()
+            row.get("Media")?.as_array()?.get(index)?.get("Part")?.as_array()?.get(part_at).cloned()
         };
         let current = part(&row).unwrap_or_default();
         let moved = current.get("file").and_then(Value::as_str) != Some(item.file.as_str());
@@ -2540,7 +2718,7 @@ impl Runtime {
                 .and_then(|media| media.get_mut(index))
                 .and_then(|media| media.get_mut("Part"))
                 .and_then(Value::as_array_mut)
-                .and_then(|parts| parts.first_mut())
+                .and_then(|parts| parts.get_mut(part_at))
                 .and_then(Value::as_object_mut)
             {
                 if moved {
@@ -2555,7 +2733,9 @@ impl Runtime {
         // Repeated snapshots must enrich existing releases too, not just new or
         // probe-pending rows. Update only this version; preserve its streams,
         // selected tracks, playback state and other versions' chapter timings.
-        if let Some(probe) = &item.media_info {
+        // ponytail: a Media of several Parts keeps its first Part's chapters; the others' would
+        // need offsetting by the Parts before them, and no source sends them yet.
+        if let (Some(probe), true) = (&item.media_info, first) {
             if probe.get("chapters").is_some_and(Value::is_array) {
                 let chapters = mediainfo::build_chapters(probe,
                     current.get("id").and_then(Value::as_i64).unwrap_or(0));
@@ -2613,14 +2793,26 @@ impl Runtime {
                 }
             }
         }
+        // A Media of several Parts is made again from its Parts on each push of one: one joined
+        // before its bitrate was its last Part's (rex-fun's Monk S01E01) takes it then.
+        if own_part {
+            if let Some(media) = self.catalog.get_mut(key).and_then(|row| row.get_mut("Media")).and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                let before = media.clone();
+                sync_parts(media);
+                changed |= *media != before;
+            }
+        }
+        if reorder {
+            self.order_versions(key);
+        }
         changed
     }
 
     /// The Part a source's item `id` is on row `key` (its version's), as a JSON pointer.
     pub(super) fn item_part(&self, key: &str, source: &str, id: &str) -> Option<String> {
         let row = self.catalog.get(key)?;
-        let index = versions(row).into_iter().find(|(of, sid, _)| of == source && sid == id)?.2;
-        row.pointer(&format!("/Media/{index}/Part/0")).map(|_| format!("/Media/{index}/Part/0"))
+        let (index, part) = item_at(row, source, id)?;
+        row.pointer(&format!("/Media/{index}/Part/{part}")).map(|_| format!("/Media/{index}/Part/{part}"))
     }
 
     /// The streams of the Part a source's item `id` is on row `key`.
@@ -3186,6 +3378,16 @@ impl Runtime {
                     row.insert(field.clone(), value.clone());
                 }
             }
+            // The row's own source fields stay its first Media's, as the Media stayed: re-identified
+            // by an episode's second Part, the row read that Part's id and path beside the first's file.
+            if let Some(first) = row.get("Media").and_then(|media| media.get(0)).filter(|media| media.get("_sid").is_some()).cloned() {
+                for field in ["_source", "_sid", "_path", "_part"] {
+                    match first.get(field) {
+                        Some(value) => row.insert(field.to_string(), value.clone()),
+                        None => row.shift_remove(field),
+                    };
+                }
+            }
         }
         for parent in [season, show].into_iter().flatten() {
             self.drop_if_empty(&parent);
@@ -3283,23 +3485,28 @@ impl Runtime {
             let mut releases = release_files(&first);
             let mut media = if revived { Vec::new() } else { tagged_media(&first) };
             let mut emptied = false;
+            let mut joined = false;
             for (_, trashed, _, other) in &rows[1..] {
                 let Some(row) = self.catalog.get(other).cloned() else {
                     continue;
                 };
                 let theirs = release_files(&row);
-                if theirs.iter().any(|(release, file)| releases.iter().any(|(held, name)| held == release && name != file)) {
+                if !trashed && join_parts(&mut media, &tagged_media(&row)) {
+                    joined = true;
+                    info!("FEED folded {other} into {survivor} as another part");
+                } else if theirs.iter().any(|(release, file)| releases.iter().any(|(held, name)| held == release && name != file)) {
                     continue;
+                } else {
+                    // A save stopped between the survivor's write and the others' deletes
+                    // brings an absorbed row back: its release is already a Media here.
+                    let held: HashSet<(String, String)> = media.iter().filter_map(media_release).collect();
+                    if !trashed {
+                        media.extend(tagged_media(&row).into_iter().filter(|version| media_release(version).is_none_or(|release| !held.contains(&release))));
+                    }
+                    emptied |= *trashed;
+                    info!("FEED folded {other} into {survivor} as another version");
                 }
                 releases.extend(theirs);
-                // A save stopped between the survivor's write and the others' deletes
-                // brings an absorbed row back: its release is already a Media here.
-                let held: HashSet<(String, String)> = media.iter().filter_map(media_release).collect();
-                if !trashed {
-                    media.extend(tagged_media(&row).into_iter().filter(|version| media_release(version).is_none_or(|release| !held.contains(&release))));
-                }
-                emptied |= *trashed;
-                info!("FEED folded {other} into {survivor} as another version");
                 folded.insert(other.clone());
                 gone.push(row);
             }
@@ -3309,7 +3516,7 @@ impl Runtime {
             // release of them coming later would have been a row beside them.
             if !(revived && media.is_empty()) {
                 if let Some(object) = self.catalog.get_mut(&survivor).and_then(Value::as_object_mut) {
-                    if revived {
+                    if revived || joined {
                         take_release(object, &media[0]);
                         if let Some(duration) = media[0].get("duration") {
                             object.insert("duration".to_string(), duration.clone());
@@ -3321,6 +3528,7 @@ impl Runtime {
                     untrash.push(survivor.clone());
                 }
             }
+            self.order_versions(&survivor);
             if let Some(row) = self.catalog.get(&survivor).cloned() {
                 self.push_timeline_entry(&row, 5, None, None, None, None);
             }
@@ -3354,6 +3562,35 @@ impl Runtime {
         let Some(row) = self.catalog.get(key) else {
             return false;
         };
+        // One Part of a Media of several: that Part goes, its Media the rest of the episode.
+        if let Some((index, part)) = item_at(row, source, sid).filter(|(index, _)| {
+            row.pointer(&format!("/Media/{index}/Part")).and_then(Value::as_array).is_some_and(|parts| parts.len() > 1)
+        }) {
+            if let Some(id) = row.pointer(&format!("/Media/{index}/Part/{part}/id")).map(string_value) {
+                self.remove_part_analysis(key, &id);
+            }
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                if let Some(media) = object.get_mut("Media").and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                    if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {
+                        parts.remove(part);
+                    }
+                    sync_parts(media);
+                }
+                let first = object.get("Media").and_then(|media| media.get(0)).cloned().unwrap_or_default();
+                if index == 0 {
+                    name_by_release(object, &first);
+                    if let Some(duration) = first.get("duration") {
+                        object.insert("duration".to_string(), duration.clone());
+                    }
+                }
+            }
+            self.order_versions(key);
+            if let Some(row) = self.catalog.get(key).cloned() {
+                self.push_timeline_entry(&row, 5, None, None, None, None);
+            }
+            info!("FEED {source} dropped part {sid} from {key}");
+            return true;
+        }
         let all = versions(row);
         let Some(index) = all.iter().find(|(of, id, _)| of == source && id == sid).map(|(_, _, index)| *index).filter(|_| all.len() > 1) else {
             return false;
@@ -3369,10 +3606,30 @@ impl Runtime {
                 object.insert("duration".to_string(), duration.clone());
             }
         }
+        self.order_versions(key);
         if let Some(row) = self.catalog.get(key).cloned() {
             self.push_timeline_entry(&row, 5, None, None, None, None);
         }
         info!("FEED {source} dropped {sid} from {key}");
+        true
+    }
+
+    /// A row's versions in `completeness` order, each class as it was; the row's own source
+    /// fields and duration its new first Media's. Answers whether they moved.
+    pub(super) fn order_versions(&mut self, key: &str) -> bool {
+        let Some(row) = self.catalog.get(key) else { return false };
+        let mut media = tagged_media(row);
+        if media.windows(2).all(|pair| completeness(&pair[0]) <= completeness(&pair[1])) {
+            return false;
+        }
+        media.sort_by_key(completeness);
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            take_release(object, &media[0]);
+            if let Some(duration) = media[0].get("duration") {
+                object.insert("duration".to_string(), duration.clone());
+            }
+            object.insert("Media".to_string(), Value::Array(media));
+        }
         true
     }
 
@@ -3397,6 +3654,26 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_media_of_parts_takes_its_last_parts_bitrate_and_sorts_first() {
+        // As a real PMS's stacked pair (`parts_stack_s1434.json`): parts of 2137 and 415 kbps, a Media of 415.
+        let tagged = |sid: &str, part: i64, rate: Option<i64>| {
+            let mut part = json!({"_source": "s", "_sid": sid, "_path": sid, "_part": part, "duration": 10_000, "size": 1_000_000});
+            if let Some(rate) = rate { part["_bitrate"] = json!(rate); }
+            part
+        };
+        let mut media = json!({"bitrate": 2137, "Part": [tagged("one", 1, Some(2137)), tagged("two", 2, Some(415))]});
+        sync_parts(media.as_object_mut().unwrap());
+        assert_eq!((media["bitrate"].clone(), media["duration"].clone(), media["_sid"].clone()), (json!(415), json!(20_000), json!("one")));
+        // Joined before Parts kept their own: the last Part's size over its duration (rex-fun's Monk S01E01).
+        let mut media = json!({"bitrate": 23599, "Part": [tagged("one", 1, None), tagged("two", 2, None)]});
+        sync_parts(media.as_object_mut().unwrap());
+        assert_eq!(media["bitrate"], json!(800));
+        let lone = |part: Option<i64>| json!({"_part": part, "Part": [{"file": "f"}]});
+        let order: Vec<u8> = [lone(Some(2)), lone(Some(1)), lone(None), media].iter().map(completeness).collect();
+        assert_eq!(order, vec![3, 2, 1, 0]);
+    }
 
     #[test]
     fn an_item_sent_without_its_size_takes_the_one_ffprobe_read() {
@@ -4030,15 +4307,28 @@ fn stream_layout(media: &Value) -> Vec<(i64, String, Option<String>)> {
 /// row of its own -- an extra out of a title, or a version leaving a row of several for other
 /// numbers (`upsert`), which a person's match prevents -- which needs it.
 fn probe_kept(row: &Value, source: &str, item: &Item, probe: &str) -> (bool, bool) {
-    let index = versions(row).into_iter().find(|(of, sid, _)| of == source && *sid == item.id).map(|(_, _, index)| index);
-    let same = index.is_some_and(|index| {
+    let at = item_at(row, source, &item.id);
+    let same = at.is_some_and(|(index, part)| {
+        let own = row.pointer(&format!("/Media/{index}/Part/{part}")).filter(|part| part.get("_sid").is_some());
         !row.get("_probePending").is_some_and(truthy)
-            && row.pointer(&format!("/Media/{index}/_probe")).and_then(Value::as_str) == Some(probe)
+            && own.map_or_else(|| row.pointer(&format!("/Media/{index}/_probe")), |part| part.get("_probe")).and_then(Value::as_str) == Some(probe)
     });
     let titled = matches!(row.get("type").and_then(Value::as_str), Some("episode" | "movie"));
     let here = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64));
     let leaves = super::scan::placed_numbers(item.placed.as_ref()).is_some_and(|numbers| {
         row.get("type").and_then(Value::as_str) == Some("episode") && versions(row).len() > 1 && here != Some(numbers)
     });
-    (same, item.extra.is_some() && titled || leaves)
+    (same, item.extra.is_some() && titled || leaves || part_leaves(row, source, item))
+}
+
+/// Whether `item`, a Part of a Media of several on `row`, leaves it to be placed on its own: its
+/// source numbers it another part or none, or places it elsewhere than the Media was placed (a
+/// push with no placement leaves it where it is). The fold joins it again where it belongs.
+fn part_leaves(row: &Value, source: &str, item: &Item) -> bool {
+    let Some((index, part)) = item_at(row, source, &item.id) else { return false };
+    let Some(parts) = row.pointer(&format!("/Media/{index}/Part")).and_then(Value::as_array).filter(|parts| parts.len() > 1) else {
+        return false;
+    };
+    parts[part].get("_part").and_then(Value::as_i64) != item.part
+        || item.placed.is_some() && version_placed(row, index) != item.placed.as_ref()
 }

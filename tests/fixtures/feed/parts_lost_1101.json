@@ -1,0 +1,90 @@
+{
+ "about": "Lost's two-part finales as a source pushes them once its placement knows TMDB's numbering. TMDB (and Plex's agent) list S4E13 'There's No Place Like Home (2)' as one 85-minute episode, id 334007, and S1E24 'Exodus (2)' as one 87-minute episode, id 333947 (TMDB's API, 2026-11-01); TVDB and the release split each into two files, S04E13+S04E14 and S01E24+S01E25. The file names are the HiQVE release's; s01e24_no_part is a rex user's library of 2026-11-01, where the E25 file was renamed Lost.S01E24.Part.2... so its placement put it on S1E24 without a part, and Plex Web drew two 'Exodus (2)' tiles. The HiQVE files' durations and sizes are set by hand to an episode's length; every probe is tests/fixtures/zurg/entries.json's episode probe carrying the item's `duration`.",
+ "other_release": {
+  "about": "A production rex's S4E13 (2026-11-01): the NOGRP release's one file of both halves, placed on E13 alone, whole; its path, size and duration as that rex holds them.",
+  "duration": "5041.067",
+  "episode": 13,
+  "id": "shows/Lost.S04.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]/Lost.S04E13E14.Theres.No.Place.Like.Home.2.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP.mkv",
+  "ids": {
+   "imdb": "tt0411008",
+   "tmdb": 4607
+  },
+  "kind": "episode",
+  "name": "Lost.S04.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]",
+  "path": "shows/Lost.S04.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]/Lost.S04E13E14.Theres.No.Place.Like.Home.2.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP.mkv",
+  "release": "shows/Lost.S04.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]",
+  "season": 4,
+  "size": 15698590209,
+  "tmdb_episode": 334007
+ },
+ "parts": [
+  {
+   "duration": "2581.247",
+   "episode": 13,
+   "id": "shows/Lost.S04.1080p.Bluray.x265-HiQVE/Lost.S04E13.1080p.Bluray.x265-HiQVE.mkv",
+   "ids": {
+    "imdb": "tt0411008",
+    "tmdb": 4607
+   },
+   "kind": "episode",
+   "name": "Lost.S04.1080p.Bluray.x265-HiQVE",
+   "part": 1,
+   "path": "shows/Lost.S04.1080p.Bluray.x265-HiQVE/Lost.S04E13.1080p.Bluray.x265-HiQVE.mkv",
+   "release": "shows/Lost.S04.1080p.Bluray.x265-HiQVE",
+   "season": 4,
+   "size": 1437462837,
+   "tmdb_episode": 334007
+  },
+  {
+   "duration": "2522.105",
+   "episode": 13,
+   "id": "shows/Lost.S04.1080p.Bluray.x265-HiQVE/Lost.S04E14.1080p.Bluray.x265-HiQVE.mkv",
+   "ids": {
+    "imdb": "tt0411008",
+    "tmdb": 4607
+   },
+   "kind": "episode",
+   "name": "Lost.S04.1080p.Bluray.x265-HiQVE",
+   "part": 2,
+   "path": "shows/Lost.S04.1080p.Bluray.x265-HiQVE/Lost.S04E14.1080p.Bluray.x265-HiQVE.mkv",
+   "release": "shows/Lost.S04.1080p.Bluray.x265-HiQVE",
+   "season": 4,
+   "size": 1402115873,
+   "tmdb_episode": 334007
+  }
+ ],
+ "s01e24_no_part": [
+  {
+   "duration": "2604.096",
+   "episode": 24,
+   "id": "shows/Lost.S01.1080p.Bluray.x265-HiQVE/Lost.S01E24.1080p.Bluray.x265-HiQVE.mkv",
+   "ids": {
+    "imdb": "tt0411008",
+    "tmdb": 4607
+   },
+   "kind": "episode",
+   "name": "Lost.S01.1080p.Bluray.x265-HiQVE",
+   "path": "shows/Lost.S01.1080p.Bluray.x265-HiQVE/Lost.S01E24.1080p.Bluray.x265-HiQVE.mkv",
+   "release": "shows/Lost.S01.1080p.Bluray.x265-HiQVE",
+   "season": 1,
+   "size": 1452930012,
+   "tmdb_episode": 333947
+  },
+  {
+   "duration": "2604.512",
+   "episode": 24,
+   "id": "shows/Lost.S01.1080p.Bluray.x265-HiQVE/Lost.S01E24.Part.2.1080p.Bluray.x265-HiQVE.mkv",
+   "ids": {
+    "imdb": "tt0411008",
+    "tmdb": 4607
+   },
+   "kind": "episode",
+   "name": "Lost.S01.1080p.Bluray.x265-HiQVE",
+   "path": "shows/Lost.S01.1080p.Bluray.x265-HiQVE/Lost.S01E24.Part.2.1080p.Bluray.x265-HiQVE.mkv",
+   "release": "shows/Lost.S01.1080p.Bluray.x265-HiQVE",
+   "season": 1,
+   "size": 1449114377,
+   "tmdb_episode": 333947
+  }
+ ]
+}

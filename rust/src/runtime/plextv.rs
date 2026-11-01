@@ -1495,6 +1495,11 @@ pub(crate) fn with_lan(url: &str) -> String {
     super::with_lan_url(Some(url), lan.as_deref()).unwrap_or_default()
 }
 
+/// The address of that LAN connection, read now, when it is RFC 1918 IPv4.
+pub(crate) fn lan_ipv4() -> Option<std::net::Ipv4Addr> {
+    LAN.get().and_then(|(host, _)| super::lan_ipv4(host, &super::local_interface_address().unwrap_or_default()))
+}
+
 /// `heartbeat.announce`: one registration PUT, byte-shaped like a real PMS's
 /// (`tests/fixtures/outbound-announce.json`). `url` is a comma-separated list: a server
 /// with several connections sends one `Connection[][uri]` pair each, in a row

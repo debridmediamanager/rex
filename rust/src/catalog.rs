@@ -145,7 +145,7 @@ impl By {
                     .filter_map(|file| file.rsplit_once('/').map(|(directory, _)| directory))
                     .map(hash),
             ),
-            By::Release => into.extend(versions(item).iter().map(|(source, sid, _)| hash(&release_key(source, sid)))),
+            By::Release => into.extend(releases(item).iter().map(|(source, sid, _, _)| hash(&release_key(source, sid)))),
             By::Channel => into.extend(item.get("_channel").filter(|channel| channel.is_object()).map(|_| hash(""))),
             By::Upload => into.extend(
                 parts()
@@ -1166,6 +1166,32 @@ pub fn versions(row: &Value) -> Vec<(String, String, usize)> {
         (Some(source), Some(sid)) => vec![(source, sid, 0)],
         _ => Vec::new(),
     }
+}
+
+/// Every file a source pushed on a row as (source, source id, Media index, Part index): each
+/// version's (`versions`), and on a Media of several Parts -- an episode its source sent in
+/// `part`s -- each Part's own, which carries its `_source`, `_sid` and `_path`.
+pub fn releases(row: &Value) -> Vec<(String, String, usize, usize)> {
+    let mut all = Vec::new();
+    for (source, sid, index) in versions(row) {
+        let parts: Vec<_> = row
+            .pointer(&format!("/Media/{index}/Part"))
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .enumerate()
+            .filter_map(|(at, part)| {
+                let of = part.get("_source").and_then(Value::as_str).unwrap_or(&source).to_string();
+                Some((of, part.get("_sid")?.as_str()?.to_string(), index, at))
+            })
+            .collect();
+        if parts.is_empty() {
+            all.push((source, sid, index, 0));
+        } else {
+            all.extend(parts);
+        }
+    }
+    all
 }
 
 fn key_value(item: &Value) -> Option<String> {

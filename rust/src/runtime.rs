@@ -21739,6 +21739,21 @@ impl Runtime {
             }
         }
         let all_parts = query.get("allParts").is_some_and(|value| value == "1");
+        // Measured on plexscratch (`tests/fixtures/parts_stack_s1434.json`): `allParts=1` carries
+        // the pick to the other Parts of the picked Part's Media by stream INDEX -- French at
+        // index 2 of a stacked pair's first Part picked index 2 of the second, its English -- never
+        // by id, which no other Part's stream has. rex matched ids on every Part of every Media,
+        // which took the selected track off each other Part.
+        let stream_id = |stream: &Value| stream.get("id").map(string_value).unwrap_or_default();
+        let picked = owner.get("Media").and_then(Value::as_array).into_iter().flatten().enumerate().find_map(|(index, media)| {
+            let part = media.get("Part").and_then(Value::as_array)?.iter().find(|part| part.get("id").map(string_value).as_deref() == Some(part_id))?;
+            Some((index, part.get("Stream").and_then(Value::as_array).cloned().unwrap_or_default()))
+        });
+        let carried = |stream_type: i64, chosen: &str| -> Option<i64> {
+            picked.as_ref()?.1.iter()
+                .find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(stream_type) && stream_id(stream) == chosen)?
+                .get("index")?.as_i64()
+        };
         // `get_mut`, not `items_mut`: the latter marks every row changed, and the save
         // that follows then re-diffed fun's whole library under the lock (19-45 s a PUT).
         if let Some(media_rows) = self
@@ -21751,16 +21766,20 @@ impl Runtime {
             })
             .and_then(Value::as_array_mut)
         {
-            for media in media_rows {
+            for (media_index, media) in media_rows.iter_mut().enumerate() {
                 for part in media
                     .get_mut("Part")
                     .and_then(Value::as_array_mut)
                     .into_iter()
                     .flatten()
                 {
-                    if part.get("id").map(string_value).as_deref() != Some(part_id) && !all_parts {
+                    let own = part.get("id").map(string_value).as_deref() == Some(part_id);
+                    if !own && !(all_parts && picked.as_ref().is_some_and(|(index, _)| *index == media_index)) {
                         continue;
                     }
+                    let held: Vec<(i64, i64)> = crate::catalog::part_streams(part).iter()
+                        .filter_map(|stream| Some((stream.get("streamType")?.as_i64()?, stream.get("index")?.as_i64()?)))
+                        .collect();
                     // Chosen by hand: the account's settings never re-select over it.
                     if let Some(object) = part.as_object_mut() {
                         object.insert("_trackChosen".to_string(), json!(true));
@@ -21779,9 +21798,17 @@ impl Runtime {
                         else {
                             continue;
                         };
-                        let id = stream.get("id").map(string_value).unwrap_or_default();
+                        let selected = if own || chosen == "0" {
+                            stream_id(stream) == *chosen
+                        } else {
+                            // A Part with no track at that index keeps its own pick.
+                            match carried(stream_type, chosen).filter(|index| held.contains(&(stream_type, *index))) {
+                                Some(index) => stream.get("index").and_then(Value::as_i64) == Some(index),
+                                None => continue,
+                            }
+                        };
                         if let Some(object) = stream.as_object_mut() {
-                            if &id == chosen {
+                            if selected {
                                 object.insert("selected".to_string(), json!(true));
                             } else {
                                 object.shift_remove("selected");
@@ -22073,9 +22100,11 @@ impl Runtime {
     fn part_sources(&self, row: &Value, file: &str) -> Vec<(Arc<source::Source>, String)> {
         let mut found = Vec::new();
         for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
-            let reads = media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| part.get("file").and_then(Value::as_str) == Some(file));
-            let tags = (media.get("_source").and_then(Value::as_str), media.get("_path").and_then(Value::as_str));
-            if let (true, (Some(name), Some(path))) = (reads, tags) {
+            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Value::as_str) == Some(file));
+            // A Part of an episode sent in parts is its own item: its own source and path.
+            let tags = part.filter(|part| part.get("_sid").is_some()).unwrap_or(media);
+            let tags = (tags.get("_source").and_then(Value::as_str), tags.get("_path").and_then(Value::as_str));
+            if let (true, (Some(name), Some(path))) = (part.is_some(), tags) {
                 if let Some(source) = self.sources.iter().find(|source| source.name == name) {
                     found.push((Arc::clone(source), path.to_string()));
                 }
@@ -22091,11 +22120,12 @@ impl Runtime {
     /// from (its own tags on a row holding several, else the row's when the Part is the
     /// one the feed made it with), else the source whose mount holds the file.
     fn part_source(&self, row: &Value, file: &str) -> Option<(Arc<source::Source>, String)> {
-        let holder = row.get("Media").and_then(Value::as_array).into_iter().flatten().find(|media| {
-            media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| part.get("file").and_then(Value::as_str) == Some(file))
-        });
+        let (holder, part) = row.get("Media").and_then(Value::as_array).into_iter().flatten().find_map(|media| {
+            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Value::as_str) == Some(file))?;
+            Some((media, part))
+        }).unzip();
         let own = scan::row_files(row).into_iter().next().is_some_and(|first| first == file);
-        let tags = holder.filter(|media| media.get("_sid").is_some()).or(own.then_some(row));
+        let tags = part.filter(|part| part.get("_sid").is_some()).or(holder.filter(|media| media.get("_sid").is_some())).or(own.then_some(row));
         if let Some((tags, name)) = tags.and_then(|tags| Some((tags, tags.get("_source").and_then(Value::as_str)?))) {
             let path = tags.get("_path").and_then(Value::as_str)?;
             let source = self.sources.iter().find(|source| source.name == name)?;
@@ -23019,19 +23049,27 @@ fn placeholder_machine(machine: &str) -> bool {
 /// when it binds every one. None but a private address: not loopback, which no other device
 /// reaches, nor a public or VPN one a default route through a tunnel picks.
 fn lan_url(host: &str, private: &str, port: u16) -> Option<String> {
-    let bound = host.parse::<std::net::IpAddr>().ok();
-    let address = match bound {
-        Some(ip) if ip.is_unspecified() => private.parse::<std::net::IpAddr>().ok()?,
-        Some(ip) => ip,
-        None => return None,
-    };
-    if !private_address(address) {
-        return None;
-    }
-    Some(match address {
+    Some(match lan_address(host, private)? {
         std::net::IpAddr::V6(v6) => format!("http://[{v6}]:{port}"),
         v4 => format!("http://{v4}:{port}"),
     })
+}
+
+fn lan_address(host: &str, private: &str) -> Option<std::net::IpAddr> {
+    let address = match host.parse::<std::net::IpAddr>().ok()? {
+        ip if ip.is_unspecified() => private.parse::<std::net::IpAddr>().ok()?,
+        ip => ip,
+    };
+    private_address(address).then_some(address)
+}
+
+/// That LAN connection's address when it is RFC 1918 IPv4: what rex-direct's provider may
+/// point a LAN name at (docs/rex-direct-api.md, `lanIp`). A ULA is no A record.
+fn lan_ipv4(host: &str, private: &str) -> Option<std::net::Ipv4Addr> {
+    match lan_address(host, private)?.to_canonical() {
+        std::net::IpAddr::V4(v4) => Some(v4),
+        std::net::IpAddr::V6(_) => None,
+    }
 }
 
 /// `--announce-url`'s list with the LAN connection added unless it already names it.
@@ -29140,6 +29178,27 @@ mod announce_tests {
         assert_eq!(lan_url("0.0.0.0", "100.101.1.2", 32400), None);
         assert_eq!(lan_url("0.0.0.0", "203.0.113.7", 32400), None);
         assert_eq!(with_lan_url(None, None), None);
+    }
+
+    #[test]
+    fn rex_direct_is_given_only_an_rfc_1918_ipv4_lan_address() {
+        let ip = |host, private| lan_ipv4(host, private).map(|ip| ip.to_string());
+        assert_eq!(ip("0.0.0.0", "192.168.1.20").as_deref(), Some("192.168.1.20"));
+        assert_eq!(ip("0.0.0.0", "172.31.255.1").as_deref(), Some("172.31.255.1"));
+        assert_eq!(ip("10.0.0.5", "192.168.1.20").as_deref(), Some("10.0.0.5"));
+        assert_eq!(ip("::ffff:192.168.1.5", "").as_deref(), Some("192.168.1.5"));
+        for (host, private) in [
+            ("127.0.0.1", "192.168.1.20"),
+            ("0.0.0.0", "0.0.0.0"),
+            ("0.0.0.0", "100.101.1.2"),
+            ("0.0.0.0", "172.32.0.1"),
+            ("0.0.0.0", "203.0.113.7"),
+            ("0.0.0.0", "fd00::5"),
+            ("fd00::5", "192.168.1.20"),
+            ("rex.example", "192.168.1.20"),
+        ] {
+            assert_eq!(ip(host, private), None, "{host} / {private}");
+        }
     }
 }
 

@@ -18,7 +18,7 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 | 1 GB of RAM | with 4,062 movies and 656 shows (34,678 episodes) rex used under 500 MB while it started and about 730 MB while the library was browsed; converting video takes more |
 | rex nightly 2026.10.25 or newer | download it ([step 1](#1-get-it)), run the [Docker image](#docker) on Linux, or build it with Rust 1.89 or newer (rustup) |
 | One or more sources | anything that serves the files over HTTP and pushes them to rex's feed: [rex-stremio](https://github.com/debridmediamanager/rex-stremio) for Stremio addons, [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer for a debrid account or Usenet (zurg v1.0.0 has no rex feed), or your own |
-| An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
+| An HTTPS address | only for use outside your LAN: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
 ### 1. Get it
@@ -258,28 +258,29 @@ simplest address is rex-direct, DMM's own plex.direct. Your own hostname works t
 way rex terminates TLS itself, on the same port as plain HTTP.
 
 - **rex-direct**, on by default: forward rex's port (32400) on your router to the rex
-  machine. Nothing to restart: once claimed (step 5) rex gets the name
-  `<hash>.rex-direct.debridmediamanager.com` from DMM, pointed at your public IP, and a
-  certificate for it, the first one in a few minutes (rex logs that it is being issued), and
-  announces it. The log says `rex-direct: https://<name>:32400 -> <ip>`. A new public IP and a
+  machine for use away from home. Nothing to restart: once claimed (step 5) rex gets two names
+  from DMM, `<hash>.rex-direct.debridmediamanager.com` pointed at your public IP and
+  `lan.<hash>.rex-direct.debridmediamanager.com` pointed at rex's LAN IP, and a certificate
+  for both, the first one in a few minutes (rex logs that it is being issued), and
+  announces them. The log says `rex-direct: https://<name>:32400 -> <ip>` and
+  `rex-direct: https://lan.<name>:32400 -> <rex's LAN IP> (LAN)`. A new public IP and a
   renewed certificate are picked up without a restart. Keep copies of `rex-direct.json`
   private: it holds the certificate's key. One Plex account can hold up to ten
-  rex-direct names. Behind CGNAT it cannot work. At home, Plex apps can pick that name over
-  the LAN address, and app.plex.tv has no other address it can use unless you announce an
-  HTTPS address of your own. So at home either the router loops the connection back to rex
-  or your network's DNS points the name at rex's LAN IP (below). If your router
-  forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>`.
+  rex-direct names. Behind CGNAT the public name cannot work. At home, Plex apps, app.plex.tv
+  included, can reach rex over HTTPS at the `lan.` name, straight over your network and with
+  no port forward. The first time, Chrome asks whether app.plex.tv may access devices on your
+  local network: allow it, or app.plex.tv falls back to the public name, which needs the port
+  forward. If your router forwards another outside port to rex, set
+  `REX_DIRECT_PORT=<that port>`.
   `REX_DIRECT_URL=off` turns rex-direct off.
 - **Your own hostname**: `--tls-cert host.crt --tls-key host.key`. The key can be PKCS#8,
   RSA or EC (`BEGIN EC PRIVATE KEY`, which `tailscale cert` and many ACME clients write). A
   `tailscale cert` hostname works for apps on your tailnet, and works beside rex-direct.
 
-Check rex-direct from both sides with the address from the `rex-direct: https://...` log line:
-`curl -s https://<name>:<port>/identity` (curl refuses a bad certificate) should answer on a
-machine at home, and the same address with `/identity` should open in a phone's browser on
-mobile data with no certificate warning. If only the phone gets it, the router does not loop
-connections back: point the name at rex's LAN IP in your network's DNS (allow it in DNS rebind
-protection) and rex answers it with the same certificate. If the phone fails too, the port is not forwarded, the connection is behind CGNAT,
+Check rex-direct from both sides with the addresses from the `rex-direct: https://...` log lines:
+`curl -s https://lan.<name>:32400/identity` (curl refuses a bad certificate) should answer on a
+machine at home, and `https://<name>:<port>/identity` should open in a phone's browser on
+mobile data with no certificate warning. If the phone fails, the port is not forwarded, the connection is behind CGNAT,
 or the certificate is still being issued.
 
 Do not put a Cloudflare tunnel in front. Every byte would pass through your host and then
@@ -489,8 +490,9 @@ NVIDIA card needs the NVIDIA container toolkit and `gpus: all` instead; untested
 | A source pushed but the library stays empty | Items are held until their source probes them (step 6) |
 | A directory a source declared (`directories`; zurg's `rex_shows`/`rex_movies`) has no library | The source did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), the source or rex skipped a mistyped entry (its log says why), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`): add it again with Add Library (step 3) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
-| The server is not in the Plex apps | Not claimed (step 5), or, in app.plex.tv and outside your home, no HTTPS address reachable from the internet (step 7) |
+| The server is not in the Plex apps | Not claimed (step 5), or, outside your home, no HTTPS address reachable from the internet (step 7) |
 | A device at home cannot connect, and rex's `heartbeat ... ->` line shows no LAN address or the wrong one | rex announces the private address of the network it reaches the internet through; behind a VPN or a Tailscale exit node that is not your home network. Add `--announce-url http://<rex's LAN IP>:32400` |
+| At home app.plex.tv does not reach rex, and `https://lan.<name>:32400/identity` does not answer | Some routers and DNS filters block a public name that points at a home address (DNS rebind protection): allow `rex-direct.debridmediamanager.com` there, as Plex users allow `plex.direct` |
 | The log says `waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |
 | The log says `rex-direct: registration failed: HTTP 401` or `403` | The provider could not confirm the claim with plex.tv: the server was removed from its Plex account, or claim it again (step 5) |
 | The log says `rex-direct: registration failed: HTTP 429` | That Plex account already holds ten rex-direct names: claim this rex with another account, or use your own hostname (step 7) |

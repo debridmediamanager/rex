@@ -15095,3 +15095,74 @@ post-play Up Next carried the still's colours. rex now adds the field only to an
 row (the rows plexav lists with colours that carry no fixed palette) and replaces it, without hashes,
 on every nested row that already carries it.
 
+## An episode in two files: `part` (2026-11-01)
+
+TMDB and Plex's agent merge some two-part episodes that TVDB and the releases list as two: Lost's
+S4E13 "There's No Place Like Home (2)" is TMDB's one 85-minute episode (id 334007) and Plex's one
+S4E13, where a release has `S04E13` and `S04E14` files; S1E24 "Exodus (2)" (333947, 87 minutes) is
+`S01E24` and `S01E25` (TMDB's API, 2026-11-01). A source placing both files on S4E13 made two rows
+on one number, as two files of one release without a part still are (a rex user's Lost S01E24 and
+its renamed `S01E24.Part.2`: Plex Web drew two "Exodus (2)" tiles, 2026-11-01). The feed's `part`
+(`docs/feed-api.md`) is the source saying the files are one episode; the parts become one Media of
+several Parts (`feed::join_parts`), each Part keeping its own item's `_source`, `_sid`, `_path`,
+`_part` and `_probe`, so byte reads, conversions, subtitles, analysis, deletes and a source's
+removal reach each file by itself (`tests/test_feed_parts.py`, `fixtures/feed/parts_lost_1101.json`).
+
+What a real PMS makes of `Lost - s04e13 - pt1.mkv` and `- pt2.mkv` in a show library, measured on
+plexscratch 1.43.4 with a probe library under its writable `/config` (each file h264, two AAC
+tracks and one SRT; pt1 10 s at about 2 Mbps with `eng` then `fre`, pt2 12 s at about 300 kbps
+with `fre` then `eng`; `tests/fixtures/parts_stack_s1434.json`, `probes/record_parts_stack.py`):
+
+- **One episode row, one Media, two Parts in `ptN` order.** The Media's and the row's `duration`
+  is the Parts' sum (10023 + 12023 = 22046), each Part keeps its own `duration`, `file`, `size`,
+  `key` and streams. This is cycle 37's `- cdN` stack on a show library, with the TV scanner's
+  `ptN` spelling.
+- **The Media's `bitrate` is its LAST Part's**: parts of 2137 and 415 kbps make a Media of 415, not
+  the most (2137) or the whole's (about 1198).
+- **`allParts=1` carries a track pick to the other Parts by stream index**, never by id or
+  language: French at index 2 of pt1 left pt2's index 2 (English) selected, and English at index 1
+  of pt1 selected pt2's index 1 (French). Plex Web sends `allParts=1` with every pre-play pick and
+  in the player whenever `partIndex > 0`. rex matched the picked stream's id on every Part of every
+  Media, which no other Part's stream has, so each pick took the selected track off the other
+  Parts (and off every other version); it now carries the pick by index to the Parts of the picked
+  Part's Media alone, and a Part with no track at that index keeps its own.
+- **Without `allParts` a pick is its Part's alone**: subtitles off on pt1 (`subtitleStreamID=0`)
+  left pt2's subtitle selected, and French on pt1 left pt2's English. Plex Web's player sends
+  `allParts` only while a later Part plays, so turning subtitles off during part 1 leaves part 2's
+  on, on a real PMS as on rex.
+- The decision's `partIndex` grammar is cycle 37's. This probe's decisions were 400s for its own
+  reason: an MDE decision with `directPlay=1` on a Part with a selected subtitle refuses
+  `subtitles=auto` (PMS's log: "hasMDE was specified along with directPlay on a part with a
+  selected subtitle and invalid subtitle setting 'auto'"), so none is recorded here.
+
+Read off Plex Web 4.147.1 rather than measured on a client: the player asks a decision and a
+conversion per Part (`mediaIndex`, `partIndex`), and its timeline reports `time` across the whole
+Media -- the Parts before the playing one plus the position in it (module 88937 sums the earlier
+Parts' `duration`, so every Part needs one) -- with the Media's `duration`. The resume point is
+therefore the Media's, and rex keeps whatever the client sends. A conversion's `offset` is the
+position inside the Part it converts.
+
+**Played on rex-fun (2026-11-01)**, Plex Web 4.163 in Windows Chrome against Monk S01E01 (ratingKey
+102283): a Media of the RD pack's two parts beside three Usenet releases of one half each.
+
+- **A remux crossed the Part boundary; a conversion stalled at the end of part 1.** The direct
+  stream (video copied, FLAC to AAC) asked a new decision and `start.m3u8` with `partIndex=1` and
+  played on, its timeline's `time` continuous. Converted (720p 2 Mbps, or the PGS burned in), the
+  player sat at 42:22.43 of 42:25: FFmpeg made segments to 1271 of the playlist's 1273, the file's
+  picture stopping 1.6 s before its container's 2544.128 s, and the request for 1272 was a seek
+  past the last frame, which made an empty segment after the device paths exited -1. Not the Part:
+  any converted file whose picture stops short of its container's duration did it (reproduced with
+  FFmpeg 8.1.2: a 9 s picture in an 11 s file made 5 of 6 segments). A converted run now holds its
+  last frame to the duration and stops there (`tpad=stop_mode=clone`, `-t`), so every listed
+  segment is made with a picture (the same file: 6 of 6, the last 25 frames; on the VA-API full
+  path with jellyfin-ffmpeg 8.1.3 too); `tests/test_native_transcode.py` "shortvideo".
+- **Plex Web picks the version itself**: of every Media it ranks the playable, then direct play or
+  stream, resolution, audio direct stream, channels, and last the HIGHER `bitrate`, ties going to
+  the first Media (`getBestDecision`, 4.147.1). The two-part Media held part 1's bitrate (23599)
+  and the lone part 2 beside it 23672, so Play and Resume played the lone half, which overran into
+  S01E02. rex now gives a Media of several Parts its last Part's bitrate, as PMS does above, and
+  lists a row's versions complete first (several Parts, a whole file, a lone part 1, a lone later
+  part; `feed::completeness`). A lone half that outranks the whole on Plex Web's own terms still
+  plays first: a real PMS gives no Media a default.
+- **Now Playing named the first Part while the second played**: the conversion's Media was built
+  from the row's first Media and Part with the plan's duration; it is now the Part being converted.

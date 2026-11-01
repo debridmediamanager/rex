@@ -255,7 +255,7 @@ documented provider API (`docs/rex-direct-api.md`), no longer a DMM sponsor perk
 provider (default DMM's `/api/rex-direct/register`) or `off`, and must be https, or plain http
 to loopback only, since the answer carries a private key and the request the claim's token.
 The provider knows the caller by the claim, so rex registers only once claimed: a claimed start
-POSTs its machineIdentifier before the port opens, with `X-Plex-Token` (the claim's server
+POSTs its machineIdentifier (and `lanIp`, its LAN address when that is RFC 1918 IPv4: `--announce-url`'s plain http one first, else the interface's) before the port opens, with `X-Plex-Token` (the claim's server
 token) and `X-Plex-Client-Identifier`, plus `Authorization: Bearer
 <REX_DIRECT_KEY>` when that is set; an unclaimed one registers the moment `/myplex/claim` lands,
 in the background before the claim's device PUT, no restart. The provider checks the token
@@ -264,7 +264,9 @@ name and a certificate for it (DMM: one per server). rex serves that certificate
 whose SNI is that name or, for a wildcard, under it, and `--tls-cert`'s to every other (to every
 name when there is no `--tls-cert`; with neither, the port is plain only as before), and appends
 `https://<name>:<REX_DIRECT_PORT or --port>` to `--announce-url`'s list, the heartbeat reading
-its target each beat. The answer is kept in `rex-direct.json` beside the catalog (0600: it holds
+its target each beat. An answer's optional `lanHostname` (one label under the name, at `lanIp`) is
+served the same certificate and announced right after it on `--port`, since plex.tv turns rex's
+plain LAN connection into a plex.direct name rex has no certificate for. The answer is kept in `rex-direct.json` beside the catalog (0600: it holds
 the private key) and serves a start the provider does not answer. A 202 is a provider still
 issuing the certificate: an INFO, asked again after its `retryAfter` (15 s..10 min). Any other
 refusal or an unreachable provider is a WARN and never fatal. A thread registers again every
@@ -666,6 +668,9 @@ python3 tests/test_feed_retry_placed.py     # an episode its source placed that 
 python3 tests/test_feed_named_on_claim.py   # what a source placed before rex could ask Plex's agent is named the moment it is claimed, and once
                                             # the agent is back on the next push, its show included (a sponsor's 7,035 releases)
 python3 tests/test_feed_versions_1017.py    # one row per episode whatever its guid, other files of one release apart, a trashed row folded or brought back (SpongeBob S10E64, Freakazoid)
+python3 tests/test_feed_parts.py            # an episode a source sends in `part`s is one row, one Media of several Parts, whatever its ids: each
+                                            # Part streams, leaves and is deleted as its own file, a whole-episode row takes its second part, and an
+                                            # allParts=1 pick carries by stream index as a real PMS's stacked pair does (Lost S4E13)
 python3 tests/test_zurg_contract.py        # zurg's own feed requests (its internal/rexfeed/testdata/rex-contract.json, from
                                             # ../zurg or $ZURG_CONTRACT) replayed in order, and the two 409s zurg tells apart
 python3 tests/test_auto_collections.py      # "Minimum automatic collection size" set later makes the agent's collections (a real library's Matrix trilogy)

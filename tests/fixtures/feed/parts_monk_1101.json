@@ -1,0 +1,107 @@
+{
+ "about": "rex-fun's Monk S01E01 'Mr. Monk Meets the Candidate' (ratingKey 102283) as it held it on 2026-11-01, read from its state file: TMDB's and Plex's one episode, which TVDB and the releases split in two. `pack` is the RD pack's two files sent as parts 1 and 2; `lone` are single-episode Usenet releases of one half each, sent as part 1 or part 2 of S1E1 by their own placement. Ids, paths, releases, sizes, durations and each file's bitrate (its probe's `bit_rate`) as that rex holds them (the pack's part 2 that of the lone FraMeSToR S01E02, the same file); the probes are tests/fixtures/zurg/entries.json's episode probe carrying them.",
+ "lone": [
+  {
+   "bit_rate": "23599000",
+   "duration": "2544.128",
+   "episode": 1,
+   "id": "shows/Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR/6RR6jJijXN2BKrjsJ.part01.rar/Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "ids": {
+    "imdb": "tt0312172",
+    "tmdb": 1695,
+    "tvdb": 78490
+   },
+   "kind": "episode",
+   "name": "Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR",
+   "part": 1,
+   "path": "shows/Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR/6RR6jJijXN2BKrjsJ.part01.rar/Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "release": "shows/Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR",
+   "season": 1,
+   "size": 7504979280,
+   "source": "usenet",
+   "tmdb_episode": 87515
+  },
+  {
+   "bit_rate": "7861000",
+   "duration": "2351.140",
+   "episode": 1,
+   "id": "shows/Monk.S01E02.Mr.Monk.and.the.Candidate.Part.2.1080p.NF.WEB-DL.DDP2.0.SDR.AV1-GRiMM/Monk.S01E02.Mr.Monk.and.the.Candidate.Part.2.1080p.NF.WEB-DL.DDP2.0.SDR.AV1-GRiMM.mkv",
+   "ids": {
+    "imdb": "tt0312172",
+    "tmdb": 1695,
+    "tvdb": 78490
+   },
+   "kind": "episode",
+   "name": "Monk.S01E02.Mr.Monk.and.the.Candidate.Part.2.1080p.NF.WEB-DL.DDP2.0.SDR.AV1-GRiMM",
+   "part": 2,
+   "path": "shows/Monk.S01E02.Mr.Monk.and.the.Candidate.Part.2.1080p.NF.WEB-DL.DDP2.0.SDR.AV1-GRiMM/Monk.S01E02.Mr.Monk.and.the.Candidate.Part.2.1080p.NF.WEB-DL.DDP2.0.SDR.AV1-GRiMM.mkv",
+   "release": "shows/Monk.S01E02.Mr.Monk.and.the.Candidate.Part.2.1080p.NF.WEB-DL.DDP2.0.SDR.AV1-GRiMM",
+   "season": 1,
+   "size": 2310348921,
+   "source": "usenet",
+   "tmdb_episode": 87515
+  },
+  {
+   "bit_rate": "23672000",
+   "duration": "2473.388",
+   "episode": 1,
+   "id": "shows/Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR/364qrC50uyKZEhVTw.part01.rar/Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "ids": {
+    "imdb": "tt0312172",
+    "tmdb": 1695,
+    "tvdb": 78490
+   },
+   "kind": "episode",
+   "name": "Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR",
+   "part": 2,
+   "path": "shows/Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR/364qrC50uyKZEhVTw.part01.rar/Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "release": "shows/Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR",
+   "season": 1,
+   "size": 7318653187,
+   "source": "usenet",
+   "tmdb_episode": 87515
+  }
+ ],
+ "pack": [
+  {
+   "bit_rate": "23599000",
+   "duration": "2544.128",
+   "episode": 1,
+   "id": "shows/Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P/Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "ids": {
+    "imdb": "tt0312172",
+    "tmdb": 1695,
+    "tvdb": 78490
+   },
+   "kind": "episode",
+   "name": "Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P",
+   "part": 1,
+   "path": "shows/Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P/Monk.S01E01.Mr.Monk.Meets.the.Candidate.1.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "release": "shows/Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P",
+   "season": 1,
+   "size": 7504979280,
+   "source": "rd",
+   "tmdb_episode": 87515
+  },
+  {
+   "bit_rate": "23672000",
+   "duration": "2473.388",
+   "episode": 1,
+   "id": "shows/Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P/Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "ids": {
+    "imdb": "tt0312172",
+    "tmdb": 1695,
+    "tvdb": 78490
+   },
+   "kind": "episode",
+   "name": "Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P",
+   "part": 2,
+   "path": "shows/Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P/Monk.S01E02.Mr.Monk.Meets.the.Candidate.2.1080p.FLAC.2.0.AVC.REMUX-FraMeSToR.mkv",
+   "release": "shows/Monk S01-06 COMPLETE 1080p BluRay REMUX AVC DTS-HD MA 2.0-P2P",
+   "season": 1,
+   "size": 7318653187,
+   "source": "rd",
+   "tmdb_episode": 87515
+  }
+ ]
+}

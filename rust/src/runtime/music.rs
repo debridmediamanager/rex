@@ -1298,6 +1298,7 @@ impl Runtime {
         let channels = stream.get("channels").and_then(Value::as_i64).unwrap_or(2).min(2);
         Some(Plan {
             rating_key: key.to_string(),
+            part_id: part.get("id").map(string_value).unwrap_or_default(),
             url,
             auth,
             duration_ms: media.get("duration").and_then(Value::as_i64).unwrap_or(0),

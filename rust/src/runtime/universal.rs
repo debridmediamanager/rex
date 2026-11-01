@@ -259,6 +259,8 @@ impl Protocol {
 #[derive(Clone, Debug)]
 pub(crate) struct Plan {
     pub rating_key: String,
+    /// The Part it converts: one of several on a Media of an episode in parts (`partIndex`).
+    pub part_id: String,
     pub url: String,
     pub auth: Option<String>,
     pub duration_ms: i64,
@@ -809,6 +811,15 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     if let (Some(input), None, None) = (&video_input, burn, &canvas) {
         push(&mut args, &["-map", input]);
     }
+    // The media playlist lists every segment up to the Part's duration (`media_playlist`), the
+    // container's, and a converted run ends where its video does. FraMeSToR's Monk S01E01 stops
+    // its picture 1.6 s before its container's 2544.128 s: the run made segments to 1271 of 1273,
+    // the 1272 the player asked for was a seek past the last frame that made nothing, and Plex Web
+    // sat buffering at 42:22 and never reached the next Part (rex-fun, 2026-11-01). Any converted
+    // file so made stalls there. The last frame is held to the duration and the run stops on it.
+    let tail = (converting && !plan.live() && matches!(plan.protocol, Protocol::Hls | Protocol::Dash))
+        .then(|| plan.duration_ms as f64 / 1000.0 - offset as f64)
+        .filter(|seconds| *seconds > 0.0);
     let video_filter = video.filter(|video| !video.copy).map(|video| {
         let (w, h) = (video.width, video.height);
         // Deinterlaced first, on the frames' own side (`device_deinterlacer`; `ladder` keeps a path
@@ -851,6 +862,9 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
                 chain.join(",")
             }
         }
+    }).map(|filter| match tail {
+        Some(seconds) => format!("{filter},tpad=stop_mode=clone:stop_duration={seconds:.3}"),
+        None => filter,
     });
     if let (Some(input), Some(subtitle), Some(filter)) = (&video_input, burn, &video_filter) {
         let graph = match video.filter(|_| path == Path::Full && device.is_some() && hardware.alpha_subtitles) {
@@ -942,6 +956,9 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     // A remux's pre-roll from the keyframe before the seek keeps its negative time, so
     // with the offset every packet lands on its true time on the title's clock.
     push(&mut args, &["-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-avoid_negative_ts", "disabled"]);
+    if let Some(seconds) = tail {
+        push(&mut args, &["-t", &format!("{seconds:.3}")]);
+    }
     if http {
         // Measured on plexlab (`http_mkv_s1434.json`): `copyts=1` with `offset=4` starts the
         // stream at 4.0 s, the title's clock; `copyts=0` (Plex Desktop's for live TV) at 0.
@@ -3313,6 +3330,7 @@ impl Runtime {
         if tone_mapping.is_some() && !hardware.supports_tone_mapping() && video.as_ref().is_some_and(|video| video.hdr && !video.copy) { return None; }
         Some(Plan {
             rating_key: key.to_string(),
+            part_id: part.get("id").map(string_value).unwrap_or_default(),
             url,
             auth,
             duration_ms: part
@@ -3793,7 +3811,16 @@ impl Runtime {
         let Some(session) = transcoder.for_playback(account, playback).filter(|session| session.plan.rating_key == key) else {
             return;
         };
-        if let Some(media) = object.get("Media").and_then(Value::as_array).and_then(|rows| rows.first()).cloned() {
+        // The Media and Part it converts: the second Part of an episode in parts showed the first's
+        // id and streams under the second's duration (rex-fun's Monk S01E01, 2026-11-01).
+        let rows = object.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+        let playing = rows.iter().find_map(|media| {
+            let part = media.get("Part")?.as_array()?.iter().find(|part| part.get("id").map(string_value) == Some(session.plan.part_id.clone()))?;
+            let mut media = media.clone();
+            media["Part"] = json!([part]);
+            Some(media)
+        });
+        if let Some(media) = playing.or_else(|| rows.first().cloned()) {
             object.insert("Media".to_string(), json!([self.converted_media(&media, &session.plan, false)]));
         }
         // A converting session's bandwidth is ~1.05x the OUTPUT (509 for 485 kbps,
@@ -3812,6 +3839,7 @@ mod tests {
     fn plan(copy: bool, duration_ms: i64) -> Plan {
         Plan {
             rating_key: "1".into(),
+            part_id: "10".into(),
             url: "http://zurg/dav/movies/a.mkv".into(),
             auth: None,
             duration_ms,
@@ -4105,7 +4133,7 @@ mod tests {
         assert_eq!(ladder(&hdr, &hardware), vec![Path::Full, Path::EncodeOnly, Path::Software]);
         let full = ffmpeg_args(&hdr, Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
         assert!(full.contains("-init_hw_device vaapi=va:/dev/dri/renderD128 -init_hw_device opencl=ocl@va -filter_hw_device va"), "{full}");
-        assert!(full.contains(&format!("-vf scale_vaapi=w=1280:h=720:format=p010,{OPENCL_TONEMAP} ")), "{full}");
+        assert!(full.contains(&format!("-vf scale_vaapi=w=1280:h=720:format=p010,{OPENCL_TONEMAP},tpad=stop_mode=clone:stop_duration=60.000 ")), "{full}");
         assert!(full.contains("h264_vaapi") && !full.contains("tonemapx"), "{full}");
         assert!(ffmpeg_args(&hdr, Path::EncodeOnly, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ").contains("tonemapx="));
         // An SDR source on the same device opens no OpenCL device.
@@ -4238,7 +4266,7 @@ mod tests {
         let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["h264".to_string(), "hevc".to_string()]), encode: true, tonemapx: true, ..Hardware::software() };
         assert_eq!(ladder(&ts, &hardware)[0], Path::Full);
         let full = ffmpeg_args(&ts, Path::Full, &hardware, 5, dir).join(" ");
-        assert!(full.contains("-vf scale_vaapi=w=1280:h=720:format=nv12,hwdownload,format=nv12,setpts=PTS+10/TB,subtitles=f='C\\:/rex/s/sidecar.srt',setpts=PTS-10/TB,format=nv12,hwupload -c:v h264_vaapi"), "{full}");
+        assert!(full.contains("-vf scale_vaapi=w=1280:h=720:format=nv12,hwdownload,format=nv12,setpts=PTS+10/TB,subtitles=f='C\\:/rex/s/sidecar.srt',setpts=PTS-10/TB,format=nv12,hwupload,tpad=stop_mode=clone:stop_duration=20.000 -c:v h264_vaapi"), "{full}");
         assert!(ladder(&mkv, &hardware).contains(&Path::Full));
     }
 
@@ -4266,7 +4294,7 @@ mod tests {
         let vaapi = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, alpha_subtitles: true, ..Hardware::software() };
         let overlay = ffmpeg_args(&ts, Path::Full, &vaapi, 5, &dir).join(" ");
         assert!(overlay.contains(&format!(
-            "-filter_complex [0:0]scale_vaapi=w=1280:h=720:format=nv12[main];alphasrc=s=1280x720:r=10:start=0,format=yuva420p,setpts=PTS+10/TB,subtitles=f='{file}':alpha=1:sub2video=1,setpts=PTS-10/TB,hwupload[sub];[main][sub]overlay_vaapi=eof_action=pass:repeatlast=0[v] -map [v] -map 0:1"
+            "-filter_complex [0:0]scale_vaapi=w=1280:h=720:format=nv12,tpad=stop_mode=clone:stop_duration=20.000[main];alphasrc=s=1280x720:r=10:start=0,format=yuva420p,setpts=PTS+10/TB,subtitles=f='{file}':alpha=1:sub2video=1,setpts=PTS-10/TB,hwupload[sub];[main][sub]overlay_vaapi=eof_action=pass:repeatlast=0[v] -map [v] -map 0:1"
         )), "{overlay}");
         assert!(!overlay.contains("hwdownload") && !overlay.contains("-vf ") && !overlay.contains("-map 0:0"), "{overlay}");
         // Decoded on the CPU, the frame is drawn on before its upload, as before.
@@ -4282,10 +4310,18 @@ mod tests {
         burned.subtitle = Some(3);
         assert_eq!(ladder(&burned, &hardware), vec![Path::EncodeOnly, Path::Software]);
         let soft = ffmpeg_args(&burned, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/x")).join(" ");
-        assert!(soft.contains("-filter_complex [0:0][0:3]overlay=eof_action=pass,scale=1280:720:flags=bicubic,format=yuv420p[v] -map [v] -map 0:1"), "{soft}");
+        assert!(soft.contains("-filter_complex [0:0][0:3]overlay=eof_action=pass,scale=1280:720:flags=bicubic,format=yuv420p,tpad=stop_mode=clone:stop_duration=60.000[v] -map [v] -map 0:1"), "{soft}");
         assert!(!soft.contains("-vf ") && !soft.contains("-map 0:0"), "{soft}");
         let upload = ffmpeg_args(&burned, Path::EncodeOnly, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
         assert!(upload.contains("overlay=eof_action=pass,format=nv12,hwupload,scale_vaapi"), "{upload}");
+    }
+
+    #[test]
+    fn a_converted_run_holds_its_last_frame_to_the_duration() {
+        let converted = ffmpeg_args(&plan(false, 11_023), Path::Software, &Hardware::software(), 2, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(converted.contains(",tpad=stop_mode=clone:stop_duration=7.023 ") && converted.contains(" -t 7.023 "), "{converted}");
+        let copied = ffmpeg_args(&plan(true, 11_023), Path::Software, &Hardware::software(), 2, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(!copied.contains("tpad") && !copied.contains(" -t "), "{copied}");
     }
 
     #[test]

@@ -312,13 +312,11 @@ impl Runtime {
             // source's X and another's Y took the second source's X for held.
             super::feed::tagged_media(row)
                 .iter()
-                .filter(|media| {
-                    media
-                        .get("Part")
-                        .and_then(Value::as_array)
-                        .into_iter()
-                        .flatten()
-                        .any(|part| part.get("file").and_then(Value::as_str) == Some(file))
+                .filter_map(|media| {
+                    let part = media.get("Part").and_then(Value::as_array).into_iter().flatten()
+                        .find(|part| part.get("file").and_then(Value::as_str) == Some(file))?;
+                    // A Part of an episode sent in parts carries its own item's fields.
+                    Some(if part.get("_sid").is_some() { part.clone() } else { media.clone() })
                 })
                 // An untagged Media is the row's own source's (only the first is tagged).
                 .find(|media| media.get("_source").or(row.get("_source")).and_then(Value::as_str).is_none_or(|name| name == source))
