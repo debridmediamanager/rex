@@ -157,7 +157,10 @@ pub(super) fn upsert_tracks(
                         match wanted {
                             Some(wanted) if wanted != had => plans.push((item, section, Plan::Lyrics(key.clone()))),
                             _ if loudness_changed => plans.push((item, section, Plan::Lyrics(key.clone()))),
-                            _ => counts.unchanged += 1,
+                            _ => {
+                                counts.unchanged += 1;
+                                counts.unchanged_tracks.push(item.id.clone());
+                            }
                         }
                     } else {
                         plans.push((item, section, Plan::Replace(key.clone())));
@@ -225,6 +228,7 @@ pub(super) fn upsert_tracks(
                     counts.updated += 1;
                 } else {
                     counts.unchanged += 1;
+                    counts.unchanged_tracks.push(item.id.clone());
                 }
                 continue;
             }

@@ -94,6 +94,9 @@ pub(super) struct Item {
     /// The collections its title (a film, or an episode's show) is in, by name, in its library
     /// (`collections`); `None` when it sent none, which keeps what the title has.
     collections: Option<Vec<String>>,
+    /// The playlists the file is in, by title, and its 1-based position in each (`playlists`);
+    /// `None` when it sent none, which keeps what the row has.
+    playlists: Option<BTreeMap<String, i64>>,
     /// A track's sidecar lyrics (`lyrics`: `.lrc` or `.txt` files beside it at the source), as
     /// (path, format, size); `None` when it sent none, which keeps what the track has.
     pub(super) lyrics: Option<Vec<(String, String, Option<u64>)>>,
@@ -358,6 +361,21 @@ impl Item {
             }
             Some(_) => return Err(refuse("collections must be a list of names")),
         };
+        let playlists = match value.get("playlists") {
+            None | Some(Value::Null) => None,
+            Some(Value::Object(entries)) => {
+                let mut kept = BTreeMap::new();
+                for (title, position) in entries {
+                    let title = title.trim();
+                    let Some(position) = position.as_i64().filter(|position| *position >= 1).filter(|_| !title.is_empty()) else {
+                        return Err(refuse("playlists must map each title to its position, from 1"));
+                    };
+                    kept.insert(title.to_string(), position);
+                }
+                Some(kept)
+            }
+            Some(_) => return Err(refuse("playlists must map each title to its position, from 1")),
+        };
         let channel = match value.get("channel") {
             None => None,
             Some(Value::Null) => Some(None),
@@ -400,6 +418,7 @@ impl Item {
             channel,
             part: (text("kind").as_deref() == Some("episode")).then(|| number("part", 1)).flatten(),
             collections,
+            playlists,
             subtitles: subtitle_entries(&source.name, &id, value.get("subtitles")),
             placed,
             edition,
@@ -498,6 +517,8 @@ pub(super) struct Counts {
     /// Items sent with a `probe` and no `media_info` whose probe rex needs: applied by none of
     /// their fields until the source sends them again with it.
     pub(super) wants: Vec<String>,
+    /// The tracks counted `unchanged`, which a change only `playlists` makes moves to `updated`.
+    pub(super) unchanged_tracks: Vec<String>,
 }
 
 impl Counts {
@@ -901,6 +922,9 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         unique.insert(item.id.clone(), index);
     }
     let items: Vec<Item> = unique.into_values().map(|index| items[index].clone()).collect();
+    // Applied last, tracks' and films' alike, on the rows the push left.
+    let listed: Vec<(String, BTreeMap<String, i64>)> =
+        items.iter().filter_map(|item| Some((item.id.clone(), item.playlists.clone()?))).collect();
     // Tracks are placed on their album by `music.rs`; everything else below is film and TV.
     let (tracks, items): (Vec<Item>, Vec<Item>) = items.into_iter().partition(|item| item.kind() == Some("track"));
     if !tracks.is_empty() {
@@ -1160,7 +1184,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         plans.iter().filter_map(|(item, _, _)| Some((item.id.clone(), item.subtitles.clone()?))).collect();
     let collected: Vec<(String, Vec<String>)> =
         plans.iter().filter_map(|(item, _, _)| Some((item.id.clone(), item.collections.clone()?))).collect();
-    let mut unchanged = HashSet::new();
+    let mut unchanged: HashSet<String> = counts.unchanged_tracks.drain(..).collect();
     for (index, (item, library, plan)) in plans.into_iter().enumerate() {
         let held = held_key(&source.name, &item.id);
         match plan {
@@ -1313,6 +1337,10 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
             regrouped.insert(id.clone());
         }
     }
+    let rows = guard.feed_rows(&source.name, listed.iter().map(|(id, _)| id.as_str()));
+    let listed: Vec<(String, String, BTreeMap<String, i64>)> =
+        listed.into_iter().filter_map(|(id, wanted)| Some((rows.get(&id)?.clone(), id, wanted))).collect();
+    regrouped.extend(guard.put_playlists(&source.name, &listed));
     if !regrouped.is_empty() {
         guard.dirty = true;
     }
@@ -3673,6 +3701,19 @@ mod tests {
         let lone = |part: Option<i64>| json!({"_part": part, "Part": [{"file": "f"}]});
         let order: Vec<u8> = [lone(Some(2)), lone(Some(1)), lone(None), media].iter().map(completeness).collect();
         assert_eq!(order, vec![3, 2, 1, 0]);
+    }
+
+    #[test]
+    fn playlists_map_each_title_to_a_position_from_one() {
+        let source = Source::register("test", &json!({"url": "http://127.0.0.1:9"})).unwrap();
+        let parse = |playlists: Value| Item::parse(&source, &json!({"id": "a", "path": "movies/a.mkv", "playlists": playlists}));
+        let kept = parse(json!({" My Mix ": 3, "Liked": 1})).unwrap().playlists.unwrap();
+        assert_eq!(kept, BTreeMap::from([("My Mix".to_string(), 3), ("Liked".to_string(), 1)]));
+        assert_eq!(parse(json!({})).unwrap().playlists, Some(BTreeMap::new()));
+        assert_eq!(parse(Value::Null).unwrap().playlists, None);
+        for refused in [json!({"Mix": 0}), json!({"Mix": "3"}), json!({"": 1}), json!(["Mix"])] {
+            assert!(parse(refused.clone()).is_err(), "{refused}");
+        }
     }
 
     #[test]

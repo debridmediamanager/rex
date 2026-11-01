@@ -7,6 +7,7 @@
 //! `playlistItemID`s live on the `Playlist` itself.
 
 use super::*;
+use std::collections::BTreeMap;
 
 /// `PLAYLIST_BASE`: playlists take 40000+ so a ratingKey names its own kind on sight.
 pub(super) const PLAYLIST_BASE: i64 = 40000;
@@ -275,6 +276,132 @@ impl Runtime {
                 false,
             ),
         )
+    }
+
+    /// Items' `playlists` (row key, item id, title -> position) on their rows, kept as
+    /// `_feedPlaylists`. Only what changed since the source's last list is applied, as its
+    /// `collections` are: a member a person took out stays out until the source drops it and names
+    /// it again, and a person's own members keep their places. A title the source names is the
+    /// owner's ordinary playlist the first time, found again by `_feedSource` and `_feedTitle`
+    /// whatever a person renames it; once the source empties one nobody edited, it is deleted.
+    /// Answers the ids whose rows changed.
+    pub(super) fn put_playlists(
+        &mut self,
+        source: &str,
+        listed: &[(String, String, BTreeMap<String, i64>)],
+    ) -> HashSet<String> {
+        let mut changed = HashSet::new();
+        // title -> (key, position, whether it was a member under the source's last list)
+        let mut moves: BTreeMap<String, Vec<(String, Option<i64>, bool)>> = BTreeMap::new();
+        for (key, id, wanted) in listed {
+            let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else { continue };
+            let before: BTreeMap<String, i64> = object
+                .get("_feedPlaylists")
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
+                .unwrap_or_default();
+            if &before == wanted {
+                continue;
+            }
+            for (title, position) in &before {
+                if wanted.get(title) != Some(position) {
+                    moves.entry(title.clone()).or_default().push((key.clone(), wanted.get(title).copied(), true));
+                }
+            }
+            for (title, position) in wanted.iter().filter(|(title, _)| !before.contains_key(*title)) {
+                moves.entry(title.clone()).or_default().push((key.clone(), Some(*position), false));
+            }
+            if wanted.is_empty() {
+                object.shift_remove("_feedPlaylists");
+            } else {
+                object.insert("_feedPlaylists".to_string(), json!(wanted));
+            }
+            changed.insert(id.clone());
+        }
+        for (title, moved) in moves {
+            let made = |runtime: &Self, id: &String| {
+                let columns = runtime.playlist_columns(id);
+                columns.get("_feedSource").and_then(Value::as_str) == Some(source)
+                    && columns.get("_feedTitle").and_then(Value::as_str) == Some(title.as_str())
+            };
+            let found = self.playlists.keys().find(|id| made(self, id)).cloned();
+            let id = match found {
+                Some(id) => id,
+                None if moved.iter().any(|(_, position, _)| position.is_some()) => {
+                    let kind = moved
+                        .iter()
+                        .find_map(|(key, position, _)| position.and(self.catalog.get(key)))
+                        .and_then(|row| row.get("type").and_then(Value::as_str))
+                        .map_or("video", |kind| if kind == "track" { "audio" } else { "video" });
+                    let query = HashMap::from([
+                        ("title".to_string(), title.clone()),
+                        ("type".to_string(), kind.to_string()),
+                        ("uri".to_string(), String::new()),
+                    ]);
+                    self.create_playlist_ported(&query);
+                    let id = (self.next_playlist - 1).to_string();
+                    let columns = self.edits.entry(id.clone()).or_default();
+                    columns.insert("_feedSource".to_string(), json!(source));
+                    columns.insert("_feedTitle".to_string(), json!(title));
+                    id
+                }
+                None => continue,
+            };
+            let kind = self.playlist_columns(&id).get("playlistType").map(string_value).unwrap_or_default();
+            let Some(mut playlist) = self.playlists.get(&id).cloned() else { continue };
+            // Each member's place under the source, read once: a row may be on disk.
+            let mut places: HashMap<String, i64> = playlist
+                .items
+                .iter()
+                .filter_map(|key| {
+                    let place = self.catalog.get(key)?.pointer(&format!("/_feedPlaylists/{}", title.replace('~', "~0").replace('/', "~1")))?;
+                    Some((key.clone(), place.as_i64()?))
+                })
+                .collect();
+            let mut placing: Vec<(String, i64)> = Vec::new();
+            for (key, position, was) in &moved {
+                let index = playlist.items.iter().position(|member| member == key);
+                if let Some(index) = index.filter(|_| *was) {
+                    playlist.items.remove(index);
+                    playlist.item_ids.remove(index);
+                }
+                // A moved member a person had taken out stays out; a new one joins unless it is in.
+                let wanted = if *was { index.is_some() } else { index.is_none() };
+                if let Some(position) = position.filter(|_| wanted) {
+                    placing.push((key.clone(), position));
+                }
+            }
+            placing.sort_by_key(|(_, position)| *position);
+            for (key, position) in placing {
+                let track = self.catalog.get(&key).and_then(|row| row.get("type").and_then(Value::as_str)) == Some("track");
+                if track != (kind == "audio") {
+                    info!("FEED {source} {key}: not a member of {kind} playlist {title}; left out");
+                    continue;
+                }
+                places.insert(key.clone(), position);
+                let at = playlist
+                    .items
+                    .iter()
+                    .position(|member| places.get(member).is_some_and(|place| *place > position))
+                    .unwrap_or(playlist.items.len());
+                playlist.items.insert(at, key);
+                let item_id = self.next_playlist_item_id();
+                playlist.item_ids.insert(at, item_id);
+            }
+            let columns = self.playlist_columns(&id);
+            let edited = columns.get("title").and_then(Value::as_str) != Some(title.as_str())
+                || ["summary", "thumb", "art"].iter().any(|name| columns.get(*name).is_some_and(|value| !string_value(value).is_empty()));
+            if playlist.items.is_empty() && !edited {
+                self.playlists.remove(&id);
+                self.push_list_timeline_titled(&id, 15, 9, "deleted", &title);
+                info!("FEED {source}: playlist {title} emptied, deleted");
+            } else {
+                info!("FEED {source}: playlist {title} has {} item(s)", playlist.items.len());
+                self.edits.entry(id.clone()).or_default().insert("updatedAt".to_string(), json!(now()));
+                self.playlists.insert(id, playlist);
+            }
+            self.dirty = true;
+        }
+        changed
     }
 
     /// `PUT /playlists/{id}` (and the `/library/metadata/{id}` alias): the item edit
