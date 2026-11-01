@@ -49,7 +49,7 @@ Pick the guide for what you have.
 
 In short:
 
-1. **Get it.** [Download](https://github.com/debridmediamanager/rex/releases) the newest build for Linux (glibc 2.35 or newer, so Ubuntu 22.04 and up), macOS or Windows, or build it with Rust.
+1. **Get it.** [Download](https://github.com/debridmediamanager/rex/releases) the newest build for Linux (glibc 2.35 or newer, so Ubuntu 22.04 and up), macOS or Windows, run the [Docker image](docs/setup.md#docker) `ghcr.io/debridmediamanager/rex:nightly` on Linux, or build it with Rust.
 2. **Start it.** It makes an empty Movies and an empty TV Shows library.
 3. **Claim it** with a code from [plex.tv/claim](https://www.plex.tv/claim) on a fresh free Plex account, and share it with your own. At your own risk: rex is not made by Plex, and Plex could act against the account that claims it.
 4. **Point a source at it.** Give it `http://<rex's LAN IP>:32400` and it registers itself: for zurg that is `rex_url` in its `config.yml`, for rex-stremio **rex's address** on its settings page, for your own app the [feed API](docs/feed-api.md).

@@ -16,7 +16,7 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 |---|---|
 | A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
 | 1 GB of RAM | with 4,062 movies and 656 shows (34,678 episodes) rex used under 500 MB while it started and about 730 MB while the library was browsed; converting video takes more |
-| rex nightly 2026.10.25 or newer | download it ([step 1](#1-get-it)), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
+| rex nightly 2026.10.25 or newer | download it ([step 1](#1-get-it)), run the [Docker image](#docker) on Linux, or build it with Rust 1.89 or newer (rustup) |
 | One or more sources | anything that serves the files over HTTP and pushes them to rex's feed: [rex-stremio](https://github.com/debridmediamanager/rex-stremio) for Stremio addons, [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer for a debrid account or Usenet (zurg v1.0.0 has no rex feed), or your own |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
@@ -42,6 +42,8 @@ tar -xf "rex-$tag-windows-amd64.zip" --strip-components=1; Remove-Item "rex-$tag
 ```
 
 A macOS build downloaded in a browser instead is stopped by Gatekeeper: run `xattr -dr com.apple.quarantine .` in its folder.
+
+On Linux, the same build also comes as the Docker image `ghcr.io/debridmediamanager/rex:nightly`, set up in [Docker](#docker).
 
 Or build it (Rust 1.89 or newer from rustup, as distro packages are often older):
 
