@@ -572,6 +572,8 @@ python3 tests/test_perf_feed_listing.py     # a source's listing and a snapshot'
 python3 tests/test_perf_livetv.py           # a lineup of 300 channels a week deep: the grid and lineup in milliseconds, holding no Plex request
 python3 tests/test_perf_bandwidth.py        # three days of per-second byte counts: a day of seconds kept, older ones per hour, the graph fast
 python3 tests/test_perf_blur.py             # 400 albums whose covers read slowly: listings never wait for the artwork analysis
+python3 tests/test_perf_stream_levels.py    # a track's levels and lyrics found by its stream id's own row, not by reading every row from
+                                            # the state file (Plexamp asks for each track it starts); needs ffmpeg
 python3 tests/test_manager.py               # rex manager end to end: create, start, crash restart, give-up, restore; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
