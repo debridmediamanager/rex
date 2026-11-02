@@ -1626,7 +1626,7 @@ fn may_be_blank(catalog: &crate::catalog::Catalog, row: &(impl Row + ?Sized), st
         let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| catalog.lazy_get(&show));
         return !has(show.as_ref().and_then(|show| show.get("_poster_url")))
             || row.get("guid").and_then(Field::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"))
-            || placed_unmatched(row.get("guid"), row.get("_placed").map(Field::value).as_deref(), show.as_ref().and_then(|show| show.get("guid")));
+            || placed_unmatched(row.get("guid"), row.get("_placed"), show.as_ref().and_then(|show| show.get("guid")));
     }
     !has(row.get("_poster_url"))
 }
@@ -1635,11 +1635,12 @@ fn may_be_blank(catalog: &crate::catalog::Catalog, row: &(impl Row + ?Sized), st
 /// Plex's agent named: Plex had no row for it when it came, and only a push named it again.
 /// Animaniacs' rows on the production server stayed unmatched after the agent's answers were read
 /// whole (43c6fd5c, 2026-10-23) until zurg's next snapshot, six hours on.
-fn placed_unmatched(guid: Option<Field<'_>>, placed: Option<&Value>, show_guid: Option<Field<'_>>) -> bool {
-    let placed = placed.filter(|placed| super::scan::placed_numbers(Some(placed)).is_some() || super::scan::placed_tmdb_episode(Some(placed)).is_some());
+fn placed_unmatched(guid: Option<Field<'_>>, placed: Option<Field<'_>>, show_guid: Option<Field<'_>>) -> bool {
+    // The placement last: a hot row's is its JSON text, and parsing every episode's made the
+    // ten-minute pass 13 ms slower on a library of the production server's 45,328 rows.
     guid.and_then(Field::as_str).is_some_and(|guid| guid.starts_with("local://"))
-        && placed.is_some()
         && show_guid.and_then(Field::as_str).is_some_and(|guid| guid.starts_with("plex://show/"))
+        && placed.map(Field::value).is_some_and(|placed| super::scan::placed_numbers(Some(&*placed)).is_some() || super::scan::placed_tmdb_episode(Some(&*placed)).is_some())
 }
 
 /// A row of several releases still on `local://`, each placed as its first: named by one, all are named
@@ -2198,7 +2199,7 @@ impl Runtime {
         }
         if kind == Some("episode") {
             let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| self.catalog.get(&show));
-            if placed_unmatched(row.get("guid").map(Field::from), version_placed(row, 0), show.and_then(|show| show.get("guid")).map(Field::from)) {
+            if placed_unmatched(row.get("guid").map(Field::from), version_placed(row, 0).map(Field::from), show.and_then(|show| show.get("guid")).map(Field::from)) {
                 return true;
             }
             // An episode with a film's guid is one `metadata::enrich` named after its show: every

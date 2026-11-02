@@ -77,10 +77,8 @@ fn field(name: &str) -> Option<u8> {
 pub struct HotRow {
     /// The row's position among the catalog's rows.
     pub position: usize,
-    /// Which fields the row holds, ascending, and their values: apart, as a pair padded each
-    /// value by seven bytes.
-    ids: Box<[u8]>,
-    values: Box<[Value]>,
+    /// Each field the row holds, by ascending id: the id, its kind and its value (`put`).
+    bytes: Box<[u8]>,
     /// The row's releases (`catalog::versions`): a source's listing and a snapshot's end walk
     /// every row for them, and on the production server reading each row for its Media took
     /// 26 s for one source's 40,335 rows, holding every Plex request (2026-10-18).
@@ -111,13 +109,11 @@ impl Release {
 
 impl HotRow {
     pub fn of(position: usize, row: &Value) -> Self {
-        let mut ids = Vec::new();
-        let mut values = Vec::new();
+        let mut bytes = Vec::new();
         if let Some(object) = row.as_object() {
-            for (at, name) in FIELDS.iter().enumerate() {
+            for (id, name) in FIELDS.iter().enumerate() {
                 if let Some(value) = object.get(*name) {
-                    ids.push(at as u8);
-                    values.push(fitted(value));
+                    put(&mut bytes, id as u8, value);
                 }
             }
         }
@@ -136,7 +132,7 @@ impl HotRow {
             .collect();
         let has_analysis = row.get("Media").and_then(Value::as_array).into_iter().flatten()
             .any(|media| media.get("_analysis").and_then(Value::as_object).is_some_and(|records| !records.is_empty()));
-        Self { position, ids: ids.into_boxed_slice(), values: values.into_boxed_slice(), releases, has_analysis }
+        Self { position, bytes: bytes.into_boxed_slice(), releases, has_analysis }
     }
 
     /// The field as the row holds it. Panics for a field a hot row does not keep.
@@ -150,15 +146,102 @@ impl HotRow {
     /// `get`, or `None` for a field a hot row does not keep.
     pub fn lookup(&self, name: &str) -> Option<Option<Field<'_>>> {
         let id = field(name)?;
-        Some(self.ids.binary_search(&id).ok().map(|at| Field::from(&self.values[at])))
+        let mut at = 0;
+        while at < self.bytes.len() {
+            let (held, kind, start, end) = entry(&self.bytes, at);
+            if held >= id {
+                return Some((held == id).then(|| decode(kind, &self.bytes[start..end])));
+            }
+            at = end;
+        }
+        Some(None)
     }
 }
 
-/// A copy of `value` with no room to spare.
-fn fitted(value: &Value) -> Value {
-    let mut value = value.clone();
-    crate::catalog::compact(&mut value);
-    value
+const NULL: u8 = 0;
+const FALSE: u8 = 1;
+const TRUE: u8 = 2;
+const INT: u8 = 3;
+const FLOAT: u8 = 4;
+const STR: u8 = 5;
+const JSON: u8 = 6;
+
+/// Field `id`'s entry: an int as a zigzag varint, a float as its eight bytes, a string, and the
+/// JSON text of anything else, after its varint length.
+fn put(bytes: &mut Vec<u8>, id: u8, value: &Value) {
+    let text = |bytes: &mut Vec<u8>, kind: u8, text: &str| {
+        bytes.extend([id, kind]);
+        varint(bytes, text.len() as u64);
+        bytes.extend_from_slice(text.as_bytes());
+    };
+    match Field::from(value) {
+        Field::Null => bytes.extend([id, NULL]),
+        Field::Bool(flag) => bytes.extend([id, if flag { TRUE } else { FALSE }]),
+        Field::Int(int) => {
+            bytes.extend([id, INT]);
+            varint(bytes, ((int << 1) ^ (int >> 63)) as u64);
+        }
+        Field::Float(float) => {
+            bytes.extend([id, FLOAT]);
+            bytes.extend(float.to_le_bytes());
+        }
+        Field::Str(value) => text(bytes, STR, value),
+        Field::Json(_) | Field::Value(_) => text(bytes, JSON, &value.to_string()),
+    }
+}
+
+fn varint(bytes: &mut Vec<u8>, mut value: u64) {
+    while value >= 0x80 {
+        bytes.push(value as u8 | 0x80);
+        value >>= 7;
+    }
+    bytes.push(value as u8);
+}
+
+/// The varint at `at`, and where it ends.
+fn read_varint(bytes: &[u8], mut at: usize) -> (u64, usize) {
+    let (mut value, mut shift) = (0, 0);
+    loop {
+        let byte = bytes[at];
+        at += 1;
+        value |= u64::from(byte & 0x7f) << shift;
+        if byte < 0x80 {
+            return (value, at);
+        }
+        shift += 7;
+    }
+}
+
+/// The entry at `at`: its id, its kind, and where its value starts and ends. A lookup steps
+/// over the entries before the one it wants without reading their values.
+fn entry(bytes: &[u8], at: usize) -> (u8, u8, usize, usize) {
+    let (id, kind, at) = (bytes[at], bytes[at + 1], at + 2);
+    let (start, end) = match kind {
+        NULL | FALSE | TRUE => (at, at),
+        INT => (at, read_varint(bytes, at).1),
+        FLOAT => (at, at + 8),
+        _ => {
+            let (len, at) = read_varint(bytes, at);
+            (at, at + len as usize)
+        }
+    };
+    (id, kind, start, end)
+}
+
+fn decode(kind: u8, value: &[u8]) -> Field<'_> {
+    let text = || std::str::from_utf8(value).expect("`put` writes text");
+    match kind {
+        NULL => Field::Null,
+        FALSE => Field::Bool(false),
+        TRUE => Field::Bool(true),
+        INT => {
+            let zigzag = read_varint(value, 0).0;
+            Field::Int((zigzag >> 1) as i64 ^ -((zigzag & 1) as i64))
+        }
+        FLOAT => Field::Float(f64::from_le_bytes(value.try_into().expect("eight bytes"))),
+        STR => Field::Str(text()),
+        _ => Field::Json(text()),
+    }
 }
 
 /// A row's field as a pass reads it: borrowed from a hot row, or from a row held whole. Read
@@ -462,10 +545,15 @@ mod tests {
     fn fields_are_sorted_and_answer_as_the_row_does() {
         assert!(FIELDS.windows(2).all(|pair| pair[0] < pair[1]), "FIELDS must stay sorted");
         let row = serde_json::json!({"ratingKey": "7", "type": "episode", "viewCount": 2,
-                                     "summary": "long", "librarySectionID": true, "_retry": {"at": 5}});
+                                     "summary": "long", "librarySectionID": true, "_retry": {"at": 5},
+                                     "addedAt": -1_791_651_463i64, "updatedAt": i64::MIN, "duration": u64::MAX, "rating": 6.9,
+                                     "audienceRating": -0.5, "year": 0, "deletedAt": null, "title": "", "_matched": false,
+                                     "grandparentTitle": "Ångström \"Ü\" 東京", "_collections": [{"tag": "Saga"}, 1.5, null],
+                                     "_placed": {"kind": "episode", "season": 1, "episode": 1, "tmdb_episode": 4789477}});
         let hot = HotRow::of(3, &row);
-        for name in ["ratingKey", "type", "viewCount", "librarySectionID", "_retry", "viewOffset"] {
-            assert_eq!(hot.get(name), row.get(name).map(Field::from), "{name}");
+        for name in FIELDS {
+            assert_eq!(hot.get(name), row.get(*name).map(Field::from), "{name}");
+            assert_eq!(hot.get(name).map(Field::to_value).as_ref(), row.get(*name), "{name}");
         }
         assert_eq!(hot.position, 3);
     }
