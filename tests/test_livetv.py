@@ -24,6 +24,8 @@ recorded guide pushed by a source of three real live HLS channels (`tests/livetv
                activities, the session and its Part key's 404
     listings   the provider's `/sections/<n>/all` and What's On keys, filtered, sorted and paged, on
                guides written for plexav and on its own (`listing_*_s1434`)
+    favorites  a favourite Plex Web keeps on plex.tv finds rex's channel by its number as it finds
+               plexav's, and the device's `favorite` is plexav's for its owner's (`favorites_s1434`)
 
     python3 tests/test_livetv.py      # needs ffmpeg (REX_TRANSCODER, else PATH's)
 """
@@ -639,6 +641,34 @@ def tune2(scratch, source, guide):
         process.wait()
 
 
+def favorites(scratch, source, guide):
+    """A favourite channel is the account's, kept on plex.tv (`favorites_s1434`): Plex Web PUTs
+    `{source: "server://<machineIdentifier>/<provider>", id, title, vcn}` there, writes nothing to
+    the server, and finds the channel again in the server's lineup by that provider and the
+    Channel's `id`. rex's channel must be found as plexav's is, and the device's `favorite` stay
+    what plexav answered while its owner had 2.1 as a favourite."""
+    recorded = fixture("favorites_s1434.json")
+    print("favorites (the reference at %d)" % recorded["now"])
+    port, process = start_rex(scratch, None)
+    try:
+        push_guide(port, source, guide)
+        put, _, device, lineup = recorded["exchanges"][:4]
+        accept = [("Accept", "application/json")]
+        identifier = provider(request(port, "GET", "/media/providers", headers=accept)[2])["identifier"]
+        mine = {row["id"]: row for row in json.loads(request(port, "GET", PREFIX + "/lineups/dvr/channels", headers=accept)[2])["MediaContainer"]["Channel"]}
+        theirs = {row["id"]: row for row in json.loads(lineup["body"])["MediaContainer"]["Channel"]}
+        for entry in put["sent"]:
+            check("Plex Web's favourite %s names rex's provider and finds its channel by id, as plexav's" % entry["id"],
+                  entry["source"].split("/", 3)[3] == identifier and mine.get(entry["id"]) == theirs[entry["id"]],
+                  "%s %s" % (identifier, json.dumps(mine.get(entry["id"]))))
+        flags = lambda body: {row["key"]: row["favorite"] for row in json.loads(body)["MediaContainer"]["DeviceChannel"]}
+        got = flags(request(port, "GET", "/media/grabbers/devices/1/channels", headers=accept)[2])
+        check("the device's `favorite` is plexav's with 2.1 its owner's favourite", got == flags(device["body"]), json.dumps(got))
+    finally:
+        process.kill()
+        process.wait()
+
+
 def main():
     if not FFMPEG or not FFPROBE:
         print("SKIP: no ffmpeg (set REX_TRANSCODER)")
@@ -648,13 +678,14 @@ def main():
     source = LiveSource(FFMPEG, FFPROBE, free_port(), root=os.path.join(scratch, "source"))
     try:
         source.wait()
-        wanted = sys.argv[1:] or ["tunerless", "reads", "browse", "listings", "web", "android", "session", "tune2"]
+        wanted = sys.argv[1:] or ["tunerless", "reads", "browse", "listings", "favorites", "web", "android", "session", "tune2"]
         for phase in wanted:
             {"tunerless": lambda: tunerless(scratch, source, guide), "reads": lambda: reads(scratch, source, guide),
              "web": lambda: watch(scratch, source, guide, "web_watch_s1434.json.gz", "Plex Web"),
              "android": lambda: watch(scratch, source, guide, "android_watch_s1434.json.gz", "Plex for Android"),
              "session": lambda: session(scratch, source, guide), "browse": lambda: browse(scratch, source, guide),
-             "tune2": lambda: tune2(scratch, source, guide), "listings": lambda: listings(scratch, source)}[phase]()
+             "tune2": lambda: tune2(scratch, source, guide), "listings": lambda: listings(scratch, source),
+             "favorites": lambda: favorites(scratch, source, guide)}[phase]()
     finally:
         source.close()
         if os.environ.get("REX_KEEP_TMP"):

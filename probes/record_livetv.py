@@ -25,6 +25,10 @@ The reference is plexav: a claimed PMS 1.43.4 with an HDHomeRun of three channel
     listing   on the lab host: WRITES plexav's guide.xml (one of GUIDES, or `plexav`, its own back
               from guide.xml.orig), refreshes the guide and asks the provider's listings
                 python3 record_livetv.py listing http://127.0.0.1:32420 order | gzip > listing_order_s1434.json.gz
+    favorites Plex Web's favourite-channel exchanges with plex.tv out of a capture, then plexav's
+              device and lineup read while its 2.1 is its owner's favourite (a write to the
+              account's plex.tv favourites, put back as they were)
+                PLEX_ACCOUNT_TOKEN=... python3 probes/record_livetv.py favorites http://127.0.0.1:32420 web-livetv-favorites.jsonl > favorites_s1434.json
 
 Every fixture is `{"now": <epoch the answers were given at>, "exchanges": [...]}` (a listing's also
 its `guide`, as a source pushes it); the test pins
@@ -362,9 +366,44 @@ def listing(base, name):
             "guide": guide(GUIDE_PATH, read), "exchanges": exchanges}
 
 
+EPG = "https://epg.provider.plex.tv/settings/favoriteChannels"
+
+
+def favorites(base, path):
+    """Favourite channels are the account's, kept on plex.tv: a Plex Web session that starred and
+    unstarred channels (`web-livetv-favorites.jsonl`) PUT the whole list to EPG each time and wrote
+    nothing to either server. Its EPG exchanges, then, with the owner's account token in
+    PLEX_ACCOUNT_TOKEN: Plex Web's favourite of plexav's 2.1 put back, plexav's device and lineup
+    read while it stands, and the account's favourites put back as they were."""
+    import os
+    client = [dict(exchange(record, record.get("res_body"), record["status"], ""), host=record["host"], sent=record.get("req_body"))
+              for record in map(json.loads, open(path))
+              if record.get("host") == "epg.provider.plex.tv" and record.get("path") == "/settings/favoriteChannels" and record["method"] in ("GET", "PUT")]
+    token = os.environ["PLEX_ACCOUNT_TOKEN"]
+    machine = re.search(r'machineIdentifier="([0-9a-f]+)"', urllib.request.urlopen(base + "/identity", timeout=30).read().decode()).group(1)
+    sent = next(json.loads(item["sent"]) for item in client if item["method"] == "PUT" and "server://%s/" % machine in (item["sent"] or ""))
+    headers = dict({name: value for name, value in WEB.items() if name != "Accept-Encoding"},
+                   **{"X-Plex-Provider-Version": "5.1", "Accept": "application/json", "Content-Type": "application/json"})
+
+    def epg(method, body=None):
+        request = urllib.request.Request(EPG, method=method, data=None if body is None else json.dumps(body).encode(),
+                                         headers=dict(headers, **{"X-Plex-Token": token}))
+        answer = urllib.request.urlopen(request, timeout=30)
+        return {"method": method, "host": "epg.provider.plex.tv", "path": "/settings/favoriteChannels", "headers": list(map(list, headers.items())),
+                "sent": body, "status": answer.status, "body": answer.read().decode(), "t": round(time.time(), 3)}
+
+    kept = json.loads(epg("GET")["body"])["MediaContainer"].get("FavoriteChannel", [])
+    exchanges = [epg("PUT", [entry for entry in sent if entry["source"].startswith("server://%s/" % machine)]), epg("GET")]
+    exchanges += [ask(base, token, "GET", target) for target in ("/media/grabbers/devices/1/channels", P + "/lineups/dvr/channels")]
+    exchanges += [epg("PUT", kept), epg("GET")]
+    return {"now": int(exchanges[0]["t"]), "source": "plexav's 2.1 its owner's favourite, as Plex Web 4.160.0 PUT it", "client": client,
+            "exchanges": exchanges}
+
+
 if __name__ == "__main__":
     mode = sys.argv[1]
     result = {"guide": lambda: guide(sys.argv[2], int(sys.argv[3])), "capture": lambda: capture(sys.argv[2]),
               "headers": lambda: headers(sys.argv[2:]), "ask": lambda: asked(sys.argv[2]), "tune": lambda: tuned(sys.argv[2]),
-              "replay": lambda: replay(sys.argv[2], sys.argv[3:]), "listing": lambda: listing(sys.argv[2], sys.argv[3])}[mode]()
+              "replay": lambda: replay(sys.argv[2], sys.argv[3:]), "listing": lambda: listing(sys.argv[2], sys.argv[3]),
+              "favorites": lambda: favorites(sys.argv[2], sys.argv[3])}[mode]()
     json.dump(result, sys.stdout, indent=None, separators=(",", ":"))
