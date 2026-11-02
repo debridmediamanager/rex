@@ -1073,7 +1073,7 @@ impl Runtime {
         }
         for gone in &doomed {
             if self.catalog.remove(gone).is_some() {
-                self.deleted.insert(gone.clone());
+                self.deleted.insert(gone);
                 if let Ok(number) = gone.parse::<i64>() {
                     self.retired_keys.push(number);
                 }

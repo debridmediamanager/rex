@@ -867,7 +867,7 @@ impl Runtime {
                 continue;
             };
             if self.catalog.children_refs(&parent).is_empty() && self.catalog.remove(&parent).is_some() {
-                self.deleted.insert(parent.clone());
+                self.deleted.insert(&parent);
                 if let Ok(number) = parent.parse::<i64>() {
                     self.retired_keys.push(number);
                 }

@@ -3675,7 +3675,7 @@ impl Runtime {
             return;
         }
         self.catalog.remove(key);
-        self.deleted.insert(key.to_string());
+        self.deleted.insert(key);
         if let Ok(number) = key.parse::<i64>() {
             self.retired_keys.push(number);
         }

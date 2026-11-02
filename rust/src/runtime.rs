@@ -299,6 +299,51 @@ impl<T> std::ops::DerefMut for Versioned<T> {
         &mut self.value
     }
 }
+
+/// The deleted rows' keys, each a key a number spells kept as that number: fun's 52,439
+/// six-digit keys held 1,953,042 bytes as `String`s (24 bytes a slot of a set grown to 65,536,
+/// and 6 on the heap) and hold 589,832 as numbers (2026-11-02,
+/// `a_start_keeps_the_deleted_keys_small`). A key no number prints back as ("0123", "+1", a
+/// catalog's own) is kept as it is. Saved in the sets' order, which a `HashSet`'s always was.
+#[derive(Debug, Default)]
+struct Keys {
+    numbers: HashSet<u64>,
+    others: HashSet<Box<str>>,
+}
+
+impl Keys {
+    /// `key` as the number that prints as it: digits only, no leading zero.
+    fn number(key: &str) -> Option<u64> {
+        let digits = !key.is_empty() && key.bytes().all(|byte| byte.is_ascii_digit());
+        (digits && (key == "0" || !key.starts_with('0'))).then(|| key.parse().ok()).flatten()
+    }
+
+    fn insert(&mut self, key: &str) -> bool {
+        match Self::number(key) {
+            Some(number) => self.numbers.insert(number),
+            None => self.others.insert(key.into()),
+        }
+    }
+
+    fn remove(&mut self, key: &str) -> bool {
+        match Self::number(key) {
+            Some(number) => self.numbers.remove(&number),
+            None => self.others.remove(key),
+        }
+    }
+
+    fn contains(&self, key: &str) -> bool {
+        match Self::number(key) {
+            Some(number) => self.numbers.contains(&number),
+            None => self.others.contains(key),
+        }
+    }
+
+    fn iter(&self) -> impl Iterator<Item = String> + '_ {
+        self.numbers.iter().map(u64::to_string).chain(self.others.iter().map(|key| key.to_string()))
+    }
+}
+
 /// A call to Plex's agent, made outside the runtime lock (`Runtime::agent_answer`).
 struct AgentCall(Box<dyn FnOnce() -> Value + Send>);
 
@@ -721,7 +766,7 @@ pub struct Runtime {
     /// By source, the first directory of every path it pushed: Add Library's folder picker
     /// lists them under the source's mount (`route_browse`).
     pub feed_directories: BTreeMap<String, BTreeSet<String>>,
-    deleted: Versioned<HashSet<String>>,
+    deleted: Versioned<Keys>,
     devices: HashMap<String, Device>,
     gdm_peers: HashMap<String, GdmPeer>,
     pub history: Vec<Value>,
@@ -1443,7 +1488,7 @@ impl Runtime {
             if let Some(deleted) = state.get("deleted").and_then(Value::as_array) {
                 for value in deleted {
                     let key = string_value(value);
-                    self.deleted.insert(key.clone());
+                    self.deleted.insert(&key);
                     if !restored_rows {
                         let _ = self.catalog.remove(&key);
                     }
@@ -2129,7 +2174,7 @@ impl Runtime {
             "prefs": self.prefs,
             "edits": self.edits,
             "addedSections": self.added_sections,
-            "deleted": (full || self.saving("deleted")).then(|| self.deleted.iter().map(|value| Value::String(value.clone())).collect::<Vec<_>>()),
+            "deleted": (full || self.saving("deleted")).then(|| self.deleted.iter().map(Value::String).collect::<Vec<_>>()),
             "viewState": view,
             "history": self.history,
             "viewCounts": self.view_counts.borrow().clone(),
@@ -18637,7 +18682,7 @@ impl Runtime {
                         if let Ok(number) = gone.parse::<i64>() {
                             self.retired_keys.push(number);
                         }
-                        self.deleted.insert(gone.clone());
+                        self.deleted.insert(gone);
                     } else {
                         self.forget_row(gone);
                         self.forget_history(gone);
@@ -26623,7 +26668,7 @@ mod migration_tests {
         let state_path = dir.join("rex.db");
         fs::write(&catalog_path, catalog().to_string()).unwrap();
         let mut runtime = Runtime::load(options(&catalog_path, &state_path)).expect("a start");
-        runtime.deleted.insert("900001".to_string());
+        runtime.deleted.insert("900001");
         runtime.retired_keys.push(900001);
         runtime.save_state().unwrap();
         let fields = |runtime: &Runtime| {
@@ -26631,14 +26676,49 @@ mod migration_tests {
             ["deleted", "retiredKeys", "byteBuckets"].map(|name| document.get(name).is_some())
         };
         assert_eq!(fields(&runtime), [false; 3], "nothing changed since the save");
-        runtime.deleted.insert("900002".to_string());
+        runtime.deleted.insert("900002");
         assert_eq!(fields(&runtime), [true, false, false]);
         runtime.save_state().unwrap();
         drop(runtime);
         let restored = Runtime::load(options(&catalog_path, &state_path)).expect("a restart");
-        assert_eq!(*restored.deleted, HashSet::from(["900001".to_string(), "900002".to_string()]));
+        assert_eq!(restored.deleted.iter().collect::<HashSet<_>>(), HashSet::from(["900001".to_string(), "900002".to_string()]));
         assert_eq!(*restored.retired_keys, vec![900001]);
         assert_eq!(fields(&restored), [false; 3], "a restart's state is the database's");
+    }
+
+    /// What a start keeps of fun's 52,439 deleted keys (2026-11-01): 1,953,042 bytes as a set of
+    /// `String`s, 37 a key; 589,832 as numbers, 11 (2026-11-02).
+    #[test]
+    fn a_start_keeps_the_deleted_keys_small() {
+        let dir = work("deleted-weight");
+        let catalog_path = dir.join("catalog.json");
+        let state_path = dir.join("rex.db");
+        fs::write(&catalog_path, catalog().to_string()).unwrap();
+        let deleted: Vec<Value> = (0..52_439).map(|n| json!((200_000 + n).to_string())).collect();
+        let mut saved = state();
+        saved.insert("deleted".to_string(), Value::Array(deleted));
+        store::write_fresh(&state_path, &saved).unwrap();
+        let mut runtime = Runtime::load(options(&catalog_path, &state_path)).expect("a start");
+        assert_eq!(runtime.deleted.iter().count(), 52_439);
+        let before = crate::test_alloc::held();
+        drop(std::mem::take(&mut *runtime.deleted));
+        let held = (before - crate::test_alloc::held()) as usize;
+        eprintln!("deleted: {held} bytes, {} a key", held / 52_439);
+        let _ = fs::remove_dir_all(&dir);
+        assert!(held < 52_439 * 16, "{held} bytes");
+    }
+
+    /// A deleted key is saved as it was given, whether or not a number spells it.
+    #[test]
+    fn a_deleted_key_is_saved_as_it_was_given() {
+        let given = ["0", "7", "200001", "0123", "+1", "-1", "1.0", "abc", "18446744073709551616", ""];
+        let mut keys = Keys::default();
+        given.iter().for_each(|key| {
+            keys.insert(key);
+        });
+        assert_eq!(keys.iter().collect::<HashSet<_>>(), given.iter().map(|key| key.to_string()).collect());
+        assert!(!keys.contains("123") && !keys.contains("1") && keys.contains("+1"));
+        assert!(keys.remove("0123") && !keys.contains("0123") && keys.contains("7"));
     }
 
     /// The show hub's titles for one search.

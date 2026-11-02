@@ -67,7 +67,7 @@ impl Runtime {
             if let Ok(number) = key.parse::<i64>() {
                 self.retired_keys.push(number);
             }
-            self.deleted.insert(key.clone());
+            self.deleted.insert(key);
         }
         // Cycle 87, plexscratch (1.43.4, `tests/fixtures/merge_playlist_s43.json`): the
         // absorbed row's playlist ENTRY goes with it -- its playlistItemID is a 404 to a
