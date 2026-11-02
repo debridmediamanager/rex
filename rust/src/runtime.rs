@@ -16879,6 +16879,7 @@ impl Runtime {
                 let answer = |row: &Value| row_has_stream(row, stream_id).then(|| row.clone());
                 let row = self.catalog.rows_by(crate::catalog::By::Upload, &stream_id.to_string())
                     .into_iter().find_map(answer)
+                    .or_else(|| self.stream_owner(stream_id))
                     .or_else(|| self.catalog.hot().lazy().find_map(|row| answer(row.body())));
                 let Some(row) = row else { return Response::error(404, "rex: not found") };
                 if let Some(response) = self.music_lyrics(&row, stream_id, query, &request.headers) {
@@ -25988,6 +25989,15 @@ fn order_scalar_fields(value: Value) -> Value {
         }
         other => other,
     }
+}
+
+/// The keys a stream id names by rex's own numbering: a track's streams are numbered from its
+/// ratingKey (`music::place_track`, 198517 -> 198517001), a video's from its Part's id
+/// (`mediainfo::build_media`, part * 10000 + index). Asked before any walk of the library: on rex-fun
+/// (43,506 rows, 2026-11-02) Plexamp's levels request for each track it started walked every row
+/// from the state file, 10-16 s with every other request waiting (`test_perf_stream_levels.py`).
+fn stream_candidates(stream_id: i64) -> [(Option<crate::catalog::By>, String); 2] {
+    [(None, (stream_id / 1000).to_string()), (Some(crate::catalog::By::Part), (stream_id / 10000).to_string())]
 }
 
 fn row_has_stream(row: &Value, stream_id: i64) -> bool {

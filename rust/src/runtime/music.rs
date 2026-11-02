@@ -425,6 +425,17 @@ impl Runtime {
     /// `GET /library/streams/{id}/levels`: a track's loudness levels its source pushed, as plexav
     /// answers them once its loudness analysis ran (`{"size", "totalSamples", "Level": [{"v"}]}`);
     /// `None` -- the 404 plexav answers before any analysis -- for a stream with none.
+    /// The row holding a stream, found by the keys its id names (`runtime::stream_candidates`).
+    pub(super) fn stream_owner(&self, stream_id: i64) -> Option<Value> {
+        super::stream_candidates(stream_id).into_iter().find_map(|(by, key)| {
+            let rows = match by {
+                Some(by) => self.catalog.rows_by(by, &key),
+                None => self.catalog.get(&key).into_iter().collect(),
+            };
+            rows.into_iter().find(|row| super::row_has_stream(row, stream_id)).cloned()
+        })
+    }
+
     pub(super) fn music_levels(&self, id: &str, query: &HashMap<String, String>) -> Option<Response> {
         let stream_id = id.parse::<i64>().ok()?;
         let found = |row: &Value| -> Option<Vec<f64>> {
@@ -436,7 +447,12 @@ impl Runtime {
                 crate::catalog::part_streams(part).iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id))?.get("_levels")?.as_array()?.iter().map(Value::as_f64).collect()
             })
         };
-        let levels = self.catalog.hot().lazy().find_map(|row| found(row.body()))?;
+        // Its own row when rex's numbering names it: one with no levels is the 404 at once, not
+        // after every other row has been read (`runtime::stream_candidates`).
+        let levels = match self.stream_owner(stream_id) {
+            Some(row) => found(&row)?,
+            None => self.catalog.hot().lazy().find_map(|row| found(row.body()))?,
+        };
         let wanted = query.get("subsample").and_then(|value| value.parse::<usize>().ok());
         let shown = subsample_levels(&levels, wanted);
         let mut container = Map::new();
