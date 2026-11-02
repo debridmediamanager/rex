@@ -14942,6 +14942,42 @@ read by hand first, with the same answers.
   search hit's `genre=` id is rex's own, numbered in the order the categories first air; the
   replay opens each hit by the key rex's search gives it.
 
+### Favourite channels are kept on plex.tv (2026-11-02)
+
+Plex Web 4.160.0 (plexav's bundled copy, signed in as plexav's owner, no Plex Pass) starred 2.1 in
+rex's guide and in plexav's, opened the guide's Favorites tab, and unstarred both, recorded
+through the lab's proxy and over CDP (`capture/sessions/web-livetv-favorites.jsonl`; the
+exchanges with plex.tv in `tests/fixtures/livetv/favorites_s1434.json`).
+
+- **The star is a write to plex.tv, never to the server.** The guide row's heart ("Add to
+  Favorites", shown when the row's title is hovered) sends `PUT
+  https://epg.provider.plex.tv/settings/favoriteChannels` with the whole list as JSON, `[{"source":
+  "server://8cae8179281238e457af89bd0d65210eb9c116d1/tv.plex.providers.epg.xmltv:2", "id": "2.1",
+  "title": "Rex News", "vcn": "2.1"}]` (a `thumb` too when the channel has one), answered 200
+  `{"MediaContainer":{"size":0}}`; a removal PUTs what is left (`[]` at the end). `GET` on the same
+  URL lists them as `FavoriteChannel` rows. The only non-GETs either server got in the whole
+  session were each page load's `PUT /updater/check`; rex's log showed nothing new at the click.
+  The bundles say the same (4.147.1's, 4.160.0's and app.plex.tv's 4.163.0 sagas:
+  `favoriteChannelsUpdateRequested` PUTs to that URL with the cloud server, never the media server).
+- **Plex for Android reads them off plex.tv too.** `luma.plex.tv/api/screen/live-tv/favorites/ota/
+  <machineIdentifier>?providerID=tv.plex.providers.epg.xmltv:2` (its Live TV tab's request in
+  `droid-livetv.jsonl`, asked again with its query and the account's token while both stood)
+  answered the favourite for rex's machine and for plexav's, alike but for the machine, with `airings` empty (`supportsChannelFetch=1`: the app asks the server) and a
+  luma action `DELETE https://luma.plex.tv/api/action/live-tv/favorites/2.1` to remove it. No
+  Android star was recorded.
+- **What the server answers for them.** The Favorites tab finds each favourite in the server's
+  `/<provider>/lineups/dvr/channels` by `${source}-${id}` (the Channel's `id`, which plexav and
+  rex give as the channel number) for its `gridKey`, and reads `/grid?channelGridKey=` as the
+  guide does. With 2.1 its owner's favourite plexav still answered `"favorite": false` for 2.1 in
+  `/media/grabbers/devices/1/channels`, and its lineup rows carry no favourite at all: that flag is
+  the tuner's (its `lineup.json` has no `Favorite`), not the account's.
+- **What rex does with it: nothing.** Its channels are keyed by the number the source pushed, so a
+  favourite stays with its channel across restarts and lineup changes while the number stays.
+  Two things the Favorites tab draws are Plex Web's, on plexav alike: a favourite read back from
+  plex.tv has no `callSign`, so after a reload its row's title cell is blank unless it has a
+  `thumb`; and the tab keys airings by `gridKey` alone, so two servers' favourites with one number
+  (rex's 2.1 and plexav's) showed one channel's airings in both rows.
+
 ## Music: conversion, lyrics, loudness and bitrate, measured on plexav (2026-10-31)
 
 Measured on plexav (PMS 1.43.4) by replaying its clients' own recorded requests, after adding six

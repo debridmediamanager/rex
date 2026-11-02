@@ -1580,6 +1580,8 @@ impl Runtime {
 
     /// `/media/grabbers/devices/1/channels`: the device's channels (measured: `drm` and
     /// `favorite` false, `hd` as the tuner says; rex says it of a channel 720 lines or more).
+    /// `favorite` is the tuner's: a person's favourite channels are kept on plex.tv and plexav
+    /// answered false for its owner's (findings, "Favourite channels are kept on plex.tv").
     fn device_channels(&self, guide: &Guide) -> Value {
         let rows = guide
             .channels

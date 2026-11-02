@@ -630,6 +630,8 @@ Each programme:
 - **Watching** a channel from the guide tunes it as a real PMS does and plays the item's own
   live conversion: nothing new runs at the source. Like any live channel it keeps no resume
   point and is never marked watched.
+- **Favourites** (the guide's heart and its Favorites tab) are kept per Plex account on plex.tv,
+  naming the channel by its `number`: a channel keeps them while its source keeps its number.
 - **No recording.** rex records nothing, so the source carries no Record (as a PMS whose owner
   has no Plex Pass answers it), and Plex apps offer none.
 - **The channel stays a row** of its library, playable there as before.
