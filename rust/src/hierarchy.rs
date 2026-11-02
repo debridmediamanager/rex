@@ -299,11 +299,16 @@ pub fn stored_sort_title(row: &(impl crate::hotrow::Row + ?Sized)) -> String {
 }
 /// `str_value` for any `hotrow::Row`.
 fn row_text(row: &(impl crate::hotrow::Row + ?Sized), key: &str) -> Option<String> {
+    use crate::hotrow::Field;
     row.get(key).and_then(|value| match value {
-        Value::String(value) => Some(value.clone()),
-        Value::Number(value) => Some(value.to_string()),
-        Value::Bool(value) => Some(value.to_string()),
-        _ => None,
+        Field::Str(value) => Some(value.to_string()),
+        Field::Int(value) => Some(value.to_string()),
+        Field::Bool(value) => Some(value.to_string()),
+        Field::Null => None,
+        other => match other.value().as_ref() {
+            Value::Number(value) => Some(value.to_string()),
+            _ => None,
+        },
     })
 }
 pub fn person_tag_key(name: &str) -> String {

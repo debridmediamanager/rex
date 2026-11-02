@@ -37,7 +37,7 @@ impl Runtime {
             .map(|row| {
                 let longest = row
                     .get("Media")
-                    .and_then(Value::as_array)
+                    .and_then(Field::as_array)
                     .map(|media| {
                         media
                             .iter()
@@ -46,7 +46,7 @@ impl Runtime {
                             .unwrap_or(0)
                     })
                     .filter(|value| *value > 0)
-                    .unwrap_or_else(|| row.get("duration").and_then(Value::as_i64).unwrap_or(0));
+                    .unwrap_or_else(|| row.get("duration").and_then(Field::as_i64).unwrap_or(0));
                 longest / 1000
             })
             .sum::<i64>()

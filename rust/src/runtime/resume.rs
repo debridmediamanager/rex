@@ -32,7 +32,7 @@ impl Runtime {
         rows.into_iter()
             .filter(|row| {
                 !hidden.contains(
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)).as_str(),
+                    string_value(row.get("librarySectionID").unwrap_or(Field::Null)).as_str(),
                 )
             })
             .collect()
@@ -51,7 +51,7 @@ impl Runtime {
                 .into_iter()
                 .filter(|row| {
                     wanted.contains(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
+                        row.get("librarySectionID").unwrap_or(Field::Null),
                     ))
                 })
                 .collect(),
@@ -119,8 +119,8 @@ impl Runtime {
         if memo.typed_sections.as_ref().is_none_or(|(built, _)| *built != generation) {
             let mut index: HashMap<(String, String), Vec<usize>> = HashMap::new();
             for row in self.catalog.hot().rows() {
-                let kind = row.get("type").and_then(Value::as_str).unwrap_or_default().to_string();
-                let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
+                let kind = row.get("type").and_then(Field::as_str).unwrap_or_default().to_string();
+                let section = string_value(row.get("librarySectionID").unwrap_or(Field::Null));
                 index.entry((kind, section)).or_default().push(row.position);
             }
             memo.typed_sections = Some((generation, index));
@@ -137,7 +137,7 @@ impl Runtime {
         if memo.guid_index.as_ref().is_none_or(|(built, _)| *built != generation) {
             let mut index: std::collections::BTreeMap<String, Vec<usize>> = Default::default();
             for row in self.catalog.hot().rows() {
-                if let Some(guid) = row.get("guid").and_then(Value::as_str) {
+                if let Some(guid) = row.get("guid").and_then(Field::as_str) {
                     index.entry(guid.to_string()).or_default().push(row.position);
                 }
             }
@@ -161,15 +161,15 @@ impl Runtime {
     fn continue_watching_uncached(&self, include_hidden: bool) -> Vec<Value> {
         fn truthy(row: &impl Row, name: &str) -> bool {
             match row.get(name) {
-                None | Some(Value::Null) => false,
-                Some(Value::Number(number)) => number.as_f64().unwrap_or(0.0) != 0.0,
-                Some(Value::String(text)) => !text.is_empty(),
-                Some(Value::Bool(flag)) => *flag,
-                Some(_) => true,
+                None | Some(Field::Null) => false,
+                Some(Field::Str(text)) => !text.is_empty(),
+                Some(Field::Bool(flag)) => flag,
+                // A number, or a list or object (true, empty or not).
+                Some(other) => other.as_f64().is_none_or(|number| number != 0.0),
             }
         }
         fn stamp_of(row: &impl Row) -> i64 {
-            row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0)
+            row.get("lastViewedAt").and_then(Field::as_i64).unwrap_or(0)
         }
         // References: copying every episode of the library here, once per call and three
         // calls per `/hubs`, was most of the home screen's 1.9 GB (the production server,
@@ -179,8 +179,8 @@ impl Runtime {
         // pass reads the hot fields (`hotrow.rs`), and copies only the rows it answers.
         fn show_of<'a>(row: Lazy<'a, 'a>) -> std::borrow::Cow<'a, str> {
             match row.get("grandparentRatingKey") {
-                Some(Value::String(text)) => std::borrow::Cow::Borrowed(text.as_str()),
-                other => std::borrow::Cow::Owned(string_value(other.unwrap_or(&Value::Null))),
+                Some(Field::Str(text)) => std::borrow::Cow::Borrowed(text),
+                other => std::borrow::Cow::Owned(string_value(other.unwrap_or(Field::Null))),
             }
         }
         let hot = self.catalog.hot();
@@ -189,7 +189,7 @@ impl Runtime {
         let mut active: HashSet<String> = HashSet::new();
         let mut played_libraries: HashSet<String> = HashSet::new();
         for row in hot.lazy() {
-            match row.get("type").and_then(Value::as_str) {
+            match row.get("type").and_then(Field::as_str) {
                 Some("movie") => {
                     if truthy(&row, "viewOffset") && (include_hidden || !self.hidden_from_continue(&row)) {
                         rows.push((stamp_of(&row), row.body().clone()));
@@ -203,7 +203,7 @@ impl Runtime {
                     if !self.viewed_in_session.is_empty()
                         && key_of(&row).is_some_and(|key| self.viewed_in_session.contains(&key))
                     {
-                        played_libraries.insert(string_value(row.get("librarySectionID").unwrap_or(&Value::Null)));
+                        played_libraries.insert(string_value(row.get("librarySectionID").unwrap_or(Field::Null)));
                     }
                     episodes_of_library.push((show, row));
                 }
@@ -230,8 +230,8 @@ impl Runtime {
             }
             episodes.sort_by_key(|row| {
                 (
-                    row.get("parentIndex").and_then(Value::as_i64).unwrap_or(0),
-                    row.get("index").and_then(Value::as_i64).unwrap_or(0),
+                    row.get("parentIndex").and_then(Field::as_i64).unwrap_or(0),
+                    row.get("index").and_then(Field::as_i64).unwrap_or(0),
                 )
             });
             // `max` keeps the FIRST maximal element in Python; iterate in order and
@@ -255,18 +255,18 @@ impl Runtime {
                 }
                 if let Some(anchor) = anchor {
                     let anchor_row = episodes[anchor];
-                    anchor_stamp = anchor_row.get("lastViewedAt").and_then(Value::as_i64);
+                    anchor_stamp = anchor_row.get("lastViewedAt").and_then(Field::as_i64);
                     scrobbled = !played_libraries.contains(&string_value(
-                        anchor_row.get("librarySectionID").unwrap_or(&Value::Null),
+                        anchor_row.get("librarySectionID").unwrap_or(Field::Null),
                     ));
-                    let parent_index = anchor_row.get("parentIndex").cloned();
+                    let parent_index = anchor_row.get("parentIndex").map(Field::to_value);
                     chosen = episodes[anchor + 1..]
                         .iter()
                         .find(|row| {
                             !truthy(row, "viewCount")
                                 && !truthy(row, "viewOffset")
-                                && (row.get("parentIndex").cloned() == parent_index
-                                    || row.get("index").and_then(Value::as_i64).unwrap_or(0) > 0)
+                                && (row.get("parentIndex").map(Field::to_value) == parent_index
+                                    || row.get("index").and_then(Field::as_i64).unwrap_or(0) > 0)
                         })
                         .copied();
                 }
@@ -608,9 +608,9 @@ impl Runtime {
         let key = key_of(row).unwrap_or_default();
         self.leaves_refs(&key)
             .iter()
-            .map(|leaf| leaf.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
+            .map(|leaf| leaf.get("addedAt").and_then(Field::as_i64).unwrap_or(0))
             .max()
-            .unwrap_or_else(|| row.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
+            .unwrap_or_else(|| row.get("addedAt").and_then(Field::as_i64).unwrap_or(0))
     }
 
     /// `/hubs/home/recentlyAdded?type=2` -- a MIXED, rolled-up list (cycle 28): two or
@@ -657,7 +657,7 @@ impl Runtime {
                 let hot = self.catalog.hot();
                 let leaves = hot
                     .lazy()
-                    .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+                    .filter(|row| row.get("type").and_then(Field::as_str) == Some("episode"))
                     .collect::<Vec<_>>();
                 self.roll_up_tv(section_id, leaves, |row| row.body().clone())
             }
@@ -671,7 +671,7 @@ impl Runtime {
             Parent(RowRef<'r>),
         }
         impl<R: Row> Pick<'_, R> {
-            fn get(&self, name: &str) -> Option<&Value> {
+            fn get(&self, name: &str) -> Option<Field<'_>> {
                 match self {
                     Pick::Leaf(row) => row.get(name),
                     Pick::Parent(row) => row.get(name),
@@ -681,7 +681,7 @@ impl Runtime {
         if let Some(section) = section_number(section_id) {
             let section = section.to_string();
             leaves.retain(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
+                string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == section
             });
         }
         // Measured on plexscratch (1.43.4): a show whose effective `flattenSeasons` skips
@@ -700,8 +700,8 @@ impl Runtime {
                 (
                     leaf,
                     key_of(leaf).unwrap_or_default(),
-                    string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null)),
-                    string_value(leaf.get("grandparentRatingKey").unwrap_or(&Value::Null)),
+                    string_value(leaf.get("parentRatingKey").unwrap_or(Field::Null)),
+                    string_value(leaf.get("grandparentRatingKey").unwrap_or(Field::Null)),
                 )
             })
             .collect::<Vec<_>>();
@@ -748,7 +748,7 @@ impl Runtime {
             }
         }
         rows.retain(|(row, key)| {
-            !(row.get("type").and_then(Value::as_str) == Some("episode")
+            !(row.get("type").and_then(Field::as_str) == Some("episode")
                 && key
                     .and_then(|key| leaf_season.get(key))
                     .is_some_and(|season| claimed.contains(season)))
@@ -759,8 +759,8 @@ impl Runtime {
             .map(|row| {
                 // An episode is its own only leaf: looking up its (absent) children for
                 // each of the library's episodes was most of this roll-up.
-                if row.get("type").and_then(Value::as_str) == Some("episode") {
-                    (row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row)
+                if row.get("type").and_then(Field::as_str) == Some("episode") {
+                    (row.get("addedAt").and_then(Field::as_i64).unwrap_or(0), row)
                 } else {
                     let stamp = match &row {
                         Pick::Leaf(leaf) => self.newest_leaf_stamp(&own(leaf)),
@@ -822,7 +822,7 @@ impl Runtime {
         }
         // Filtered through their hot fields; only the episodes it keeps are copied.
         let hot = self.catalog.hot();
-        let leaves = hot.lazy().filter(|row| row.get("type").and_then(Value::as_str) == Some("episode")).collect::<Vec<_>>();
+        let leaves = hot.lazy().filter(|row| row.get("type").and_then(Field::as_str) == Some("episode")).collect::<Vec<_>>();
         self.filter_rows(leaves, &pairs).map(|rows| Some(rows.into_iter().map(|row| row.body().clone()).collect()))
     }
 
@@ -850,12 +850,12 @@ impl Runtime {
             return positions.iter().filter_map(|position| self.catalog.lazy_at(*position)).collect();
         }
         let hot = self.catalog.hot();
-        let mut movies = hot.rows().filter(|row| row.get("type").and_then(Value::as_str) == Some("movie")).collect::<Vec<_>>();
+        let mut movies = hot.rows().filter(|row| row.get("type").and_then(Field::as_str) == Some("movie")).collect::<Vec<_>>();
         if let Some(section) = section_number(section_id) {
             let section = section.to_string();
-            movies.retain(|row| string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section);
+            movies.retain(|row| string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == section);
         }
-        movies.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
+        movies.sort_by_key(|row| -row.get("addedAt").and_then(Field::as_i64).unwrap_or(0));
         let positions = movies.iter().map(|row| row.position).collect::<Vec<_>>();
         drop(movies);
         let rows = positions.iter().filter_map(|&position| self.catalog.lazy_at(position)).collect();
@@ -878,7 +878,7 @@ impl Runtime {
     /// A movie library's rows newest first, borrowed.
     pub(super) fn section_recent_movie_refs(&self, key: &str) -> Vec<RowRef<'_>> {
         let mut rows = self.section_row_refs(key);
-        rows.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
+        rows.sort_by_key(|row| -row.get("addedAt").and_then(Field::as_i64).unwrap_or(0));
         rows
     }
 
@@ -940,7 +940,7 @@ impl Runtime {
                     .collect(),
                 "home.ondeck" => watching
                     .iter()
-                    .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+                    .filter(|row| row.get("type").and_then(Field::as_str) == Some("episode"))
                     .map(|row| AnyRow::Borrowed(*row))
                     .collect(),
                 // Read through their hot fields: only the shelf's twelve are read whole.
@@ -1016,7 +1016,7 @@ impl Runtime {
             let rows = self
                 .on_home(all.iter().collect::<Vec<_>>())
                 .into_iter()
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+                .filter(|row| row.get("type").and_then(Field::as_str) == Some("episode"))
                 .collect::<Vec<_>>();
             hubs.push(self.home_hub(
                 "home.ondeck",
@@ -1392,7 +1392,7 @@ fn resume_point(row: &Value) -> bool {
 fn ondeck_hidden_in(watching: &[Value]) -> bool {
     let deck: HashSet<String> = watching
         .iter()
-        .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+        .filter(|row| row.get("type").and_then(Field::as_str) == Some("episode"))
         .filter_map(key_of)
         .collect();
     let resuming: HashSet<String> = watching.iter().filter(|row| resume_point(row)).filter_map(key_of).collect();

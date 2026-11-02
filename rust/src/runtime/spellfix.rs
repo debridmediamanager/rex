@@ -1005,10 +1005,10 @@ pub struct Fuzzy {
 }
 
 impl Fuzzy {
-    pub fn metadata_matches<'v>(&self, get: impl Fn(&str) -> Option<&'v serde_json::Value>) -> bool {
+    pub fn metadata_matches<'v>(&self, get: impl Fn(&str) -> Option<crate::hotrow::Field<'v>>) -> bool {
         let text = ["title", "titleSort", "originalTitle"]
             .iter()
-            .map(|field| get(field).and_then(serde_json::Value::as_str).unwrap_or(""))
+            .map(|field| get(field).and_then(crate::hotrow::Field::as_str).unwrap_or(""))
             .collect::<Vec<_>>()
             .join(" ");
         hits(&self.metadata, &text)

@@ -493,7 +493,7 @@ impl Runtime {
     /// season and an episode count under their SHOW (cycle 16).
     fn first_character_basis<'a>(&'a self, row: RowRef<'a>) -> RowRef<'a> {
         // An album and a track count under their ARTIST (plexav: Discovery's 14 tracks under `D`).
-        let key = match row.get("type").and_then(Value::as_str) {
+        let key = match row.get("type").and_then(Field::as_str) {
             Some("season" | "album") => row.get("parentRatingKey"),
             Some("episode" | "track") => row.get("grandparentRatingKey"),
             _ => return row,
@@ -557,7 +557,7 @@ impl Runtime {
                 .into_iter()
                 .flat_map(|row| {
                     if matches!(
-                        row.get("type").and_then(Value::as_str),
+                        row.get("type").and_then(Field::as_str),
                         Some("show" | "season")
                     ) {
                         self.leaves_refs(&key_of(&row).unwrap_or_default())
@@ -578,7 +578,7 @@ impl Runtime {
             for row in &rows {
                 let tags = row
                     .get(element)
-                    .and_then(Value::as_array)
+                    .and_then(Field::as_array)
                     .cloned()
                     .unwrap_or_default();
                 let tags = if leaf == "actor" {
@@ -624,7 +624,7 @@ impl Runtime {
             for row in &rows {
                 let Some(value) = row
                     .get(field)
-                    .filter(|value| !value.is_null() && *value != &json!(""))
+                    .filter(|value| !value.is_null() && *value != Field::Str(""))
                 else {
                     continue;
                 };

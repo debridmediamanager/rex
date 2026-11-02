@@ -7,7 +7,7 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::corpus::{corpus_row, CorpusRow, Names};
-use crate::hotrow::{HotRow, Lazy};
+use crate::hotrow::{Field, HotRow, Lazy};
 use crate::rows::Rows;
 use crate::{hierarchy, mediainfo};
 
@@ -622,7 +622,7 @@ impl Catalog {
     pub fn restore_row(&mut self, key: &str, row: Value) {
         let position = self.rows.len();
         self.index.file_restored(position, &row);
-        if let Some(rating_key) = key_value_of(row.get("ratingKey")) {
+        if let Some(rating_key) = key_value_of(row.get("ratingKey").map(Field::from)) {
             self.by_id.insert(rating_key, position);
         }
         if key.starts_with('#') {
@@ -1200,14 +1200,16 @@ pub fn releases(row: &Value) -> Vec<(String, String, usize, usize)> {
 }
 
 fn key_value(item: &Value) -> Option<String> {
-    key_value_of(item.get("ratingKey"))
+    key_value_of(item.get("ratingKey").map(Field::from))
 }
 
-fn key_value_of(key: Option<&Value>) -> Option<String> {
+fn key_value_of(key: Option<Field<'_>>) -> Option<String> {
     key.and_then(|v| match v {
-        Value::String(v) => Some(v.clone()),
-        Value::Number(v) => Some(v.to_string()),
-        _ => None,
+        Field::Str(v) => Some(v.to_string()),
+        other => match other.value().as_ref() {
+            Value::Number(v) => Some(v.to_string()),
+            _ => None,
+        },
     })
 }
 
@@ -1394,7 +1396,7 @@ mod tests {
                 }
             }
             let hot = catalog.hot();
-            let rows: Vec<(usize, Option<Value>)> = hot.rows().map(|row| (row.position, row.get("ratingKey").cloned())).collect();
+            let rows: Vec<(usize, Option<Value>)> = hot.rows().map(|row| (row.position, row.get("ratingKey").map(Field::to_value))).collect();
             (out, rows)
         };
         answers(&catalog);
@@ -1433,4 +1435,5 @@ mod tests {
         catalog.add(serde_json::json!({"title":"keyless"}));
         assert!(catalog.take_changes().all, "a row without a key is found by a full pass");
     }
+
 }

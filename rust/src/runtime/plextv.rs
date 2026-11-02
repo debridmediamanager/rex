@@ -22,6 +22,7 @@ use std::time::Duration;
 use serde_json::{json, Value};
 
 use super::logging::{error, info, warning};
+use crate::hotrow::Field;
 use super::upstream;
 use super::SharedRuntime;
 
@@ -2535,7 +2536,7 @@ impl super::Runtime {
     pub(super) fn guid_keys(&self) -> HashMap<String, String> {
         let mut keys = HashMap::new();
         for row in self.catalog.hot().lazy() {
-            if let (Some(guid), Some(key)) = (row.get("guid").and_then(Value::as_str), super::key_of(&row)) {
+            if let (Some(guid), Some(key)) = (row.get("guid").and_then(Field::as_str), super::key_of(&row)) {
                 if !self.deleted.contains(&key) {
                     keys.entry(guid.to_string()).or_insert(key);
                 }

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::time::UNIX_EPOCH;
 
-use crate::hotrow::Row;
+use crate::hotrow::{Field, Row};
 use serde_json::{json, Map, Value};
 
 use crate::hierarchy::{fold_case, fold_query};
@@ -1064,7 +1064,7 @@ pub fn evaluate_with(
             let sort = crate::hierarchy::stored_sort_title(candidate);
             let original = candidate
                 .get("originalTitle")
-                .and_then(Value::as_str)
+                .and_then(Field::as_str)
                 .unwrap_or("")
                 .to_string();
             if title_match(&wanted, &text, Some(&sort), Some(&original)) {

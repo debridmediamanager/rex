@@ -75,7 +75,7 @@ enum Plan {
 fn lyric_sources(streams: &[Value]) -> Vec<(String, Option<u64>)> {
     streams
         .iter()
-        .filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(4))
+        .filter(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(4))
         .filter_map(|stream| Some((stream.get("_sourceLyrics")?.as_str()?.to_string(), stream.get("_sourceSize").and_then(Value::as_u64))))
         .collect()
 }
@@ -333,9 +333,9 @@ impl Runtime {
         let (Some(at), Some(old)) = (self.item_part(key, &source.name, &item.id), self.item_streams(key, &source.name, &item.id).map(std::borrow::Cow::into_owned)) else {
             return false;
         };
-        let mut streams: Vec<Value> = old.iter().filter(|stream| stream.get("streamType").and_then(Value::as_i64) != Some(4)).cloned().collect();
+        let mut streams: Vec<Value> = old.iter().filter(|stream| stream.get("streamType").and_then(Field::as_i64) != Some(4)).cloned().collect();
         for (path, format, size) in wanted {
-            let had = old.iter().find(|stream| stream.get("_sourceLyrics").and_then(Value::as_str) == Some(path.as_str()));
+            let had = old.iter().find(|stream| stream.get("_sourceLyrics").and_then(Field::as_str) == Some(path.as_str()));
             let Some(text) = texts.get(&(item.id.clone(), path.clone())).cloned().or_else(|| had.and_then(|had| had.get("_content")?.as_str().map(str::to_string))) else {
                 continue;
             };
@@ -373,7 +373,7 @@ impl Runtime {
         let row = crate::catalog::unpacked(row);
         let stream = row
             .get("Media")
-            .and_then(Value::as_array)
+            .and_then(Field::as_array)
             .into_iter()
             .flatten()
             .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
@@ -444,7 +444,7 @@ impl Runtime {
             }
             let row = crate::catalog::unpacked(row);
             row.get("Media")?.as_array()?.iter().flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten()).find_map(|part| {
-                crate::catalog::part_streams(part).iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id))?.get("_levels")?.as_array()?.iter().map(Value::as_f64).collect()
+                crate::catalog::part_streams(part).iter().find(|stream| stream.get("id").and_then(Field::as_i64) == Some(stream_id))?.get("_levels")?.as_array()?.iter().map(Value::as_f64).collect()
             })
         };
         // Its own row when rex's numbering names it: one with no levels is the 404 at once, not
@@ -471,13 +471,13 @@ impl Runtime {
             return;
         };
         for row in rows {
-            let Some(stored) = row.get("ratingKey").map(string_value).and_then(|key| self.catalog.get(&key)).filter(|stored| stored.get("type").and_then(Value::as_str) == Some("track")) else {
+            let Some(stored) = row.get("ratingKey").map(string_value).and_then(|key| self.catalog.get(&key)).filter(|stored| stored.get("type").and_then(Field::as_str) == Some("track")) else {
                 continue;
             };
             let stored = crate::catalog::unpacked(stored);
             let ramps: HashMap<i64, Vec<(&str, Value)>> = stored
                 .get("Media")
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .into_iter()
                 .flatten()
                 .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
@@ -513,7 +513,7 @@ impl Runtime {
     /// makes no library on a push, as for films and shows: Add Library (type `artist`) or a
     /// source's `directories` (`music`) make one.
     pub(super) fn music_library(&self, item: &Item) -> Option<String> {
-        let music: Vec<&Value> = self.catalog.sections.iter().filter(|section| section.get("type").and_then(Value::as_str) == Some("artist")).collect();
+        let music: Vec<&Value> = self.catalog.sections.iter().filter(|section| section.get("type").and_then(Field::as_str) == Some("artist")).collect();
         let key = |section: &&Value| section.get("key").map(string_value);
         if let Some(wanted) = item.library.as_deref().filter(|wanted| *wanted != "artist") {
             return music.iter().find(|section| key(section).as_deref() == Some(wanted)).and_then(key);
@@ -546,9 +546,9 @@ impl Runtime {
     fn music_row(&self, section: &str, kind: &str, identity: &str, parent: Option<&str>, release: Option<&(String, String)>) -> Option<String> {
         self.catalog
             .find_where(|row| {
-                row.get("type").and_then(Value::as_str) == Some(kind)
-                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
-                    && row.get("_identity").and_then(Value::as_str) == Some(identity)
+                row.get("type").and_then(Field::as_str) == Some(kind)
+                    && string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == section
+                    && row.get("_identity").and_then(Field::as_str) == Some(identity)
                     && parent.is_none_or(|parent| row.get("parentRatingKey").map(string_value).as_deref() == Some(parent))
                     && release.is_none_or(|release| key_of(row).and_then(|key| self.album_release(&key)).as_ref() == Some(release))
             })
@@ -751,8 +751,8 @@ impl Runtime {
             self.catalog
                 .children_refs(&album_key)
                 .iter()
-                .filter(|row| row.get("parentIndex").and_then(Value::as_i64).unwrap_or(1) == disc)
-                .filter_map(|row| row.get("index").and_then(Value::as_i64))
+                .filter(|row| row.get("parentIndex").and_then(Field::as_i64).unwrap_or(1) == disc)
+                .filter_map(|row| row.get("index").and_then(Field::as_i64))
                 .max()
                 .unwrap_or(0)
                 + 1
@@ -993,8 +993,8 @@ impl Runtime {
     /// each named only once there is one.
     pub(super) fn music_play_counts(&self, key: &str, object: &mut Map<String, Value>) {
         let tracks = self.leaves_refs(key);
-        let sum = |field: &str| tracks.iter().filter_map(|track| track.get(field).and_then(Value::as_i64)).sum::<i64>();
-        let last = tracks.iter().filter_map(|track| track.get("lastViewedAt").and_then(Value::as_i64)).max();
+        let sum = |field: &str| tracks.iter().filter_map(|track| track.get(field).and_then(Field::as_i64)).sum::<i64>();
+        let last = tracks.iter().filter_map(|track| track.get("lastViewedAt").and_then(Field::as_i64)).max();
         for (field, value) in [("viewCount", sum("viewCount")), ("skipCount", sum("skipCount")), ("lastViewedAt", last.unwrap_or(0))] {
             if value > 0 {
                 object.insert(field.to_string(), json!(value));
@@ -1013,14 +1013,14 @@ impl Runtime {
         let sorted = |key: Option<String>| {
             key.and_then(|key| self.catalog.lazy_get(&key)).map(|row| crate::hierarchy::stored_sort_title(&row).to_lowercase()).unwrap_or_default()
         };
-        let number = |row: &R, field: &str| row.get(field).and_then(Value::as_i64).unwrap_or(0);
+        let number = |row: &R, field: &str| row.get(field).and_then(Field::as_i64).unwrap_or(0);
         rows.sort_by_cached_key(|row| {
             let own = crate::hierarchy::stored_sort_title(row).to_lowercase();
             if type_number == Some(9) {
                 (sorted(row.get("parentRatingKey").map(string_value)), own, 0, 0, 0)
             } else {
                 let album = row.get("parentRatingKey").map(string_value);
-                let year = album.as_ref().and_then(|key| self.catalog.lazy_get(key)).and_then(|row| row.get("year").and_then(Value::as_i64)).unwrap_or(0);
+                let year = album.as_ref().and_then(|key| self.catalog.lazy_get(key)).and_then(|row| row.get("year").and_then(Field::as_i64)).unwrap_or(0);
                 (sorted(row.get("grandparentRatingKey").map(string_value)), sorted(album), year, number(row, "parentIndex"), number(row, "index"))
             }
         });
@@ -1123,7 +1123,7 @@ impl Runtime {
         let mut played: Vec<Value> = self
             .choose_refs(Some(section), Some(10))
             .into_iter()
-            .filter(|track| track.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0) > 0)
+            .filter(|track| track.get("lastViewedAt").and_then(Field::as_i64).unwrap_or(0) > 0)
             .map(|track| track.body().clone())
             .collect();
         played.sort_by_key(|track| std::cmp::Reverse(number(track, "lastViewedAt")));
@@ -1234,7 +1234,7 @@ impl Runtime {
             let today = local_month_day();
             let rows: Vec<Value> = albums
                 .iter()
-                .filter(|album| album.get("originallyAvailableAt").and_then(Value::as_str).is_some_and(|date| date.get(5..) == Some(today.as_str())))
+                .filter(|album| album.get("originallyAvailableAt").and_then(Field::as_str).is_some_and(|date| date.get(5..) == Some(today.as_str())))
                 .cloned()
                 .collect();
             let mut hub = shelf("music.anniversary.releases", "On This Day".to_string(), "/library/metadata/".to_string(), &[]);
@@ -1279,7 +1279,7 @@ impl Runtime {
             let id = genre.get("id").map(string_value).unwrap_or_default();
             let theirs: Vec<Value> = albums
                 .iter()
-                .filter(|album| album.get("Genre").and_then(Value::as_array).is_some_and(|tags| tags.iter().any(|tag| tag.get("tag").map(string_value).as_deref() == Some(name.as_str()))))
+                .filter(|album| album.get("Genre").and_then(Field::as_array).is_some_and(|tags| tags.iter().any(|tag| tag.get("tag").map(string_value).as_deref() == Some(name.as_str()))))
                 .cloned()
                 .collect();
             let mut hub = shelf("music.recent.genre", format!("More in {name}"), format!("{base}?type=9&genre={id}"), &[("random", json!(true))]);
@@ -1353,9 +1353,9 @@ impl Runtime {
             return None;
         }
         let media = crate::catalog::unpacked(media);
-        let part = media.get("Part").and_then(Value::as_array).and_then(|parts| parts.first())?;
+        let part = media.get("Part").and_then(Field::as_array).and_then(|parts| parts.first())?;
         let streams = crate::catalog::part_streams(part);
-        let stream = streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2))?;
+        let stream = streams.iter().find(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(2))?;
         let row = self.catalog.get(key)?;
         let file = part.get("file").and_then(Value::as_str).filter(|file| !file.is_empty())?;
         let (source, path) = self.part_source(row, file)?;
@@ -1372,7 +1372,7 @@ impl Runtime {
             part_id: part.get("id").map(string_value).unwrap_or_default(),
             url,
             auth,
-            duration_ms: media.get("duration").and_then(Value::as_i64).unwrap_or(0),
+            duration_ms: media.get("duration").and_then(Field::as_i64).unwrap_or(0),
             video: None,
             audio: Some(AudioPlan {
                 index: stream.get("index").and_then(Value::as_i64).unwrap_or(0),
@@ -1492,7 +1492,7 @@ impl Runtime {
                     .flatten()
                     .filter_map(Value::as_object)
                     // A track's lyrics stream is no part of its decision (plexav, 2026-10-31).
-                    .filter(|stream| stream.get("streamType").and_then(Value::as_i64) != Some(4))
+                    .filter(|stream| stream.get("streamType").and_then(Field::as_i64) != Some(4))
                     .map(|stream| {
                         let mut out = Map::new();
                         for (name, value) in sorted(stream) {

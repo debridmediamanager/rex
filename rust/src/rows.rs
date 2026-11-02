@@ -817,7 +817,7 @@ mod overlay_tests {
         catalog.overlay_views(&FIELDS, &hide, &show);
         assert_eq!(catalog.get("1").unwrap(), &json!({"ratingKey": "1", "title": "a", "year": 2000}));
         assert_eq!(catalog.get("2").unwrap(), &json!({"ratingKey": "2", "title": "b", "viewCount": 4}));
-        assert_eq!(catalog.hot().at(1).unwrap().get("viewCount"), Some(&json!(4)));
+        assert_eq!(catalog.hot().at(1).unwrap().get("viewCount"), Some(crate::hotrow::Field::Int(4)));
         assert_eq!(catalog.hot().at(0).unwrap().get("viewCount"), None);
         catalog.get_mut("1").unwrap()["viewCount"] = json!(9);
         catalog.get_mut("3").unwrap()["viewOffset"] = json!(5);

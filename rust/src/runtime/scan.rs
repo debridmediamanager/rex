@@ -314,13 +314,13 @@ impl Runtime {
                 .iter()
                 .filter_map(|media| {
                     let part = media.get("Part").and_then(Value::as_array).into_iter().flatten()
-                        .find(|part| part.get("file").and_then(Value::as_str) == Some(file))?;
+                        .find(|part| part.get("file").and_then(Field::as_str) == Some(file))?;
                     // A Part of an episode sent in parts carries its own item's fields.
                     Some(if part.get("_sid").is_some() { part.clone() } else { media.clone() })
                 })
                 // An untagged Media is the row's own source's (only the first is tagged).
-                .find(|media| media.get("_source").or(row.get("_source")).and_then(Value::as_str).is_none_or(|name| name == source))
-                .map(|media| media.get("_sid").or(row.get("_sid")).and_then(Value::as_str).unwrap_or_default().to_string())
+                .find(|media| media.get("_source").map(Field::from).or(row.get("_source")).and_then(Field::as_str).is_none_or(|name| name == source))
+                .map(|media| media.get("_sid").map(Field::from).or(row.get("_sid")).and_then(Field::as_str).unwrap_or_default().to_string())
         })
     }
 
@@ -454,9 +454,9 @@ impl Runtime {
             let temporary = key_of(&rows[index]).unwrap_or_default();
             let identity = identity_of(&rows, &temporary).unwrap_or(Value::Null);
             let found = self.catalog.find_where(|row| {
-                row.get("type").and_then(Value::as_str) == Some("show")
-                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == plan.key
-                    && row.get("_identity") == Some(&identity)
+                row.get("type").and_then(Field::as_str) == Some("show")
+                    && string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == plan.key
+                    && row.get("_identity") == Some(Field::from(&identity))
             });
             let key = match found.and_then(key_of) {
                 Some(key) => {
@@ -477,9 +477,9 @@ impl Runtime {
             let show = rekeyed.get(&show).cloned().unwrap_or(show);
             let season_index = rows[index].get("index").and_then(Value::as_i64);
             let found = self.catalog.find_where(|row| {
-                row.get("type").and_then(Value::as_str) == Some("season")
+                row.get("type").and_then(Field::as_str) == Some("season")
                     && row.get("parentRatingKey").map(string_value).as_deref() == Some(show.as_str())
-                    && row.get("index").and_then(Value::as_i64) == season_index
+                    && row.get("index").and_then(Field::as_i64) == season_index
             });
             let key = match found.and_then(key_of) {
                 Some(key) => {
@@ -772,7 +772,7 @@ impl Runtime {
         // be its title's -- Motto To Love-Ru's NCOP went to Movies, its episodes to TV Shows.
         // The rows with a file in that directory (`By::Directory`), in row order.
         let parent = self.catalog.rows_by(crate::catalog::By::Directory, directory).into_iter().find(|row| {
-            matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+            matches!(row.get("type").and_then(Field::as_str), Some("movie" | "episode"))
                 && row_files(row).iter().any(|other| other.rsplit_once('/').map(|(of, _)| of) == Some(directory))
         });
         let Some(parent) = parent else {
@@ -811,7 +811,7 @@ impl Runtime {
         let trailer = self
             .extras_of(&parent_key)
             .into_iter()
-            .find(|row| row.get("extraType").and_then(Value::as_i64) == Some(1))
+            .find(|row| row.get("extraType").and_then(Field::as_i64) == Some(1))
             .and_then(|row| row.get("key").cloned());
         if let (Some(trailer), Some(row)) = (trailer, self.catalog.get_mut(&parent_key).and_then(Value::as_object_mut)) {
             row.insert("primaryExtraKey".to_string(), trailer);
@@ -1093,8 +1093,8 @@ impl Runtime {
             .hot()
             .lazy()
             .filter(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
-                    && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode" | "track"))
+                string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == section
+                    && matches!(row.get("type").and_then(Field::as_str), Some("movie" | "episode" | "track"))
                     && row.get("deletedAt").is_some()
             })
             .map(|row| row.body().clone())

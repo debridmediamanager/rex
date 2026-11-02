@@ -213,7 +213,7 @@ fn passes(row: &(impl Row + ?Sized), spec: &str) -> bool {
                 .collect(),
             "label" => row
                 .get("Label")
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .into_iter()
                 .flatten()
                 .filter_map(|label| label.get("tag").map(string_value))
@@ -345,15 +345,15 @@ impl Runtime {
         if self.viewer.is_owner() {
             return true;
         }
-        let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
+        let section = string_value(row.get("librarySectionID").unwrap_or(Field::Null));
         if !section.is_empty() && !self.section_granted(&section) {
             return false;
         }
-        match row.get("type").and_then(Value::as_str) {
+        match row.get("type").and_then(Field::as_str) {
             Some("movie") => passes(row, &self.viewer.filter_movies) && self.local_share_passes(row, "filterMovies"),
             Some("show") => passes(row, &self.viewer.filter_television) && self.local_share_passes(row, "filterTelevision"),
             Some("season") | Some("episode") => {
-                let show_key = if row.get("type").and_then(Value::as_str) == Some("season") {
+                let show_key = if row.get("type").and_then(Field::as_str) == Some("season") {
                     row.get("parentRatingKey")
                 } else {
                     row.get("grandparentRatingKey")

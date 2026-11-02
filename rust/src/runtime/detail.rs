@@ -39,7 +39,7 @@ impl Runtime {
             object.entry("index".to_string()).or_insert(json!(1));
             let durations = leaves
                 .iter()
-                .filter_map(|leaf| leaf.get("duration").and_then(Value::as_i64))
+                .filter_map(|leaf| leaf.get("duration").and_then(Field::as_i64))
                 .filter(|duration| *duration != 0)
                 .collect::<Vec<_>>();
             if !durations.is_empty() && object.get("duration").is_none() {
@@ -50,7 +50,7 @@ impl Runtime {
             if object.get("originallyAvailableAt").is_none() {
                 if let Some(earliest) = leaves
                     .iter()
-                    .filter_map(|leaf| leaf.get("originallyAvailableAt").and_then(Value::as_str))
+                    .filter_map(|leaf| leaf.get("originallyAvailableAt").and_then(Field::as_str))
                     .filter(|date| !date.is_empty())
                     .min()
                 {
@@ -99,7 +99,7 @@ impl Runtime {
                 let leaves = self
                     .leaves_refs(&show_key)
                     .into_iter()
-                    .filter(|leaf| leaf.get("type").and_then(Value::as_str) == Some("episode"))
+                    .filter(|leaf| leaf.get("type").and_then(Field::as_str) == Some("episode"))
                     .collect::<Vec<_>>();
                 let number = |leaf: &RowRef<'_>, name: &str| {
                     leaf.get(name)

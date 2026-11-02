@@ -26,7 +26,7 @@ use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, mediainfo, metadata, store, xmlout};
 use crate::catalog::RowRef;
-use crate::hotrow::{AnyRow, Lazy, Row};
+use crate::hotrow::{AnyRow, Field, Lazy, Row};
 
 mod accounts;
 mod analysis;
@@ -2285,7 +2285,7 @@ impl Runtime {
             .catalog
             .rows_by(crate::catalog::By::ClipParent, key)
             .into_iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("clip"))
+            .filter(|row| row.get("type").and_then(Field::as_str) == Some("clip"))
             .collect::<Vec<_>>();
         rows.sort_by_key(|row| clip_index(row));
         rows
@@ -2297,7 +2297,7 @@ impl Runtime {
     fn section_clips(&self, section_key: &str) -> Vec<Value> {
         let mut parents = Vec::new();
         for row in self.catalog.hot().lazy() {
-            if row.get("type").and_then(Value::as_str) == Some("clip")
+            if row.get("type").and_then(Field::as_str) == Some("clip")
                 && row.get("_librarySectionID").map(string_value).as_deref() == Some(section_key)
             {
                 let parent = row.get("_parentRatingKey").map(string_value).unwrap_or_default();
@@ -2344,14 +2344,14 @@ impl Runtime {
     /// 2026-10-10).
     fn children_refs(&self, key: &str) -> Vec<RowRef<'_>> {
         let mut rows = self.catalog.lazy_by(crate::catalog::By::Parent, key);
-        rows.sort_by_key(|row| row.get("index").and_then(Value::as_i64).unwrap_or(0));
+        rows.sort_by_key(|row| row.get("index").and_then(Field::as_i64).unwrap_or(0));
         rows
     }
 
     fn leaves_refs(&self, key: &str) -> Vec<RowRef<'_>> {
         let mut out = Vec::new();
         for child in self.children_refs(key) {
-            if matches!(child.get("type").and_then(Value::as_str), Some("episode" | "track")) {
+            if matches!(child.get("type").and_then(Field::as_str), Some("episode" | "track")) {
                 out.push(child);
             } else if let Some(child_key) = key_of(&child) {
                 out.extend(self.leaves_refs(&child_key));
@@ -2367,7 +2367,7 @@ impl Runtime {
     /// 71 on both copies.  Not the `unwatched` filter column, which is the row's own
     /// counter.
     fn has_unwatched(&self, row: &(impl Row + ?Sized)) -> bool {
-        if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
+        if matches!(row.get("type").and_then(Field::as_str), Some("show" | "season")) {
             return key_of(row)
                 .is_some_and(|key| self.leaves_refs(&key).iter().any(|leaf| !watched_leaf(leaf)));
         }
@@ -2558,7 +2558,7 @@ impl Runtime {
                             !matches!(destination, "parentTitle" | "parentStudio")
                                 || !string_value(value).is_empty()
                         }) {
-                            object.insert(destination.to_string(), value.clone());
+                            object.insert(destination.to_string(), value.to_value());
                         } else {
                             object.shift_remove(destination);
                         }
@@ -2572,25 +2572,25 @@ impl Runtime {
                         .get("title")
                         .filter(|value| !string_value(value).is_empty())
                     {
-                        object.insert("parentTitle".to_string(), value.clone());
+                        object.insert("parentTitle".to_string(), value.to_value());
                     } else {
                         object.shift_remove("parentTitle");
                     }
                     object.insert(
                         "parentIndex".to_string(),
-                        parent.get("index").cloned().unwrap_or(Value::Null),
+                        parent.get("index").map(Field::to_value).unwrap_or(Value::Null),
                     );
                     if let Some(value) = parent
                         .get("studio")
                         .filter(|value| !string_value(value).is_empty())
                     {
-                        object.insert("parentStudio".to_string(), value.clone());
+                        object.insert("parentStudio".to_string(), value.to_value());
                     } else {
                         object.shift_remove("parentStudio");
                     }
                     if object.get("summary").is_none() {
                         if let Some(value) = parent.get("summary") {
-                            object.insert("summary".to_string(), value.clone());
+                            object.insert("summary".to_string(), value.to_value());
                         }
                     }
                 }
@@ -2601,14 +2601,14 @@ impl Runtime {
                         .get("title")
                         .filter(|value| !string_value(value).is_empty())
                     {
-                        object.insert("grandparentTitle".to_string(), value.clone());
+                        object.insert("grandparentTitle".to_string(), value.to_value());
                     } else {
                         object.shift_remove("grandparentTitle");
                     }
                     if object.get("summary").is_none() {
                         if let Some(value) = show.get("summary")
                         {
-                            object.insert("summary".to_string(), value.clone());
+                            object.insert("summary".to_string(), value.to_value());
                         }
                     }
                 }
@@ -3270,7 +3270,7 @@ impl Runtime {
             .filter_map(Value::as_str)
             .filter_map(|name| {
                 base.iter()
-                    .find(|row| row.get("id").and_then(Value::as_str) == Some(name))
+                    .find(|row| row.get("id").and_then(Field::as_str) == Some(name))
                     .cloned()
                     .or_else(|| document.get("settings").and_then(|known| known.get(name)).cloned())
             })
@@ -3392,7 +3392,7 @@ impl Runtime {
         let rows = self.section_row_refs(&key);
         let newest = rows
             .iter()
-            .filter_map(|row| row.get("addedAt").and_then(Value::as_i64))
+            .filter_map(|row| row.get("addedAt").and_then(Field::as_i64))
             .max()
             .unwrap_or(0);
         // A library made by Add Library carries its own create stamp; a catalog
@@ -4487,7 +4487,7 @@ impl Runtime {
                 .catalog
                 .hot()
                 .lazy()
-                .filter_map(|row| row.get("studio").and_then(Value::as_str))
+                .filter_map(|row| row.get("studio").and_then(Field::as_str))
                 .map(str::to_string)
                 .collect::<HashSet<_>>()
                 .into_iter()
@@ -4530,7 +4530,7 @@ impl Runtime {
             .filter(|((field, _), _)| field == element)
             .map(|(_, tag)| tag);
         let hot = self.catalog.hot();
-        let on_rows = hot.lazy().flat_map(|row| row.get(element).and_then(Value::as_array).into_iter().flatten());
+        let on_rows = hot.lazy().flat_map(|row| row.get(element).and_then(Field::as_array).into_iter().flatten());
         for tag in on_rows.chain(table) {
             let Some(id) = tag.get("id").filter(|value| !value.is_null()).map(string_value) else {
                 continue;
@@ -4614,7 +4614,7 @@ impl Runtime {
             ] {
                 for tag in row
                     .get(element)
-                    .and_then(Value::as_array)
+                    .and_then(Field::as_array)
                     .into_iter()
                     .flatten()
                 {
@@ -4743,7 +4743,7 @@ impl Runtime {
                     .hot()
                     .lazy()
                     .filter(|row| {
-                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                        string_value(row.get("librarySectionID").unwrap_or(Field::Null))
                             == section_key
                     })
                     .map(|row| row.body().clone())
@@ -4884,10 +4884,10 @@ impl Runtime {
             .catalog
             .hot()
             .lazy()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some(wanted))
+            .filter(|row| row.get("type").and_then(Field::as_str) == Some(wanted))
             .filter(|row| {
                 if let Some(guid) = query.get("guid") {
-                    return row.get("guid").and_then(Value::as_str) == Some(guid);
+                    return row.get("guid").and_then(Field::as_str) == Some(guid);
                 }
                 if wanted == "episode" && query.contains_key("grandparentTitle") {
                     return row
@@ -5408,7 +5408,7 @@ impl Runtime {
                 let episodes = self
                     .children_refs(key)
                     .into_iter()
-                    .filter(|leaf| leaf.get("type").and_then(Value::as_str) == Some("episode"))
+                    .filter(|leaf| leaf.get("type").and_then(Field::as_str) == Some("episode"))
                     .filter_map(|row| key_of(&row))
                     .collect::<Vec<_>>();
                 for episode in episodes {
@@ -5706,10 +5706,10 @@ impl Runtime {
             .lazy()
             .filter(|row| {
                 section.is_none_or(|section| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
+                    string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == section
                 })
             })
-            .filter(|row| kind.is_none_or(|kind| row.get("type").and_then(Value::as_str) == Some(kind)))
+            .filter(|row| kind.is_none_or(|kind| row.get("type").and_then(Field::as_str) == Some(kind)))
             // A share's libraries and filter, before the listing pages or counts.
             .filter(|row| self.viewer.is_owner() || self.visible(row))
             .collect()
@@ -5943,7 +5943,7 @@ impl Runtime {
         // They are projections over hierarchy, view state, tags, or Media and
         // must be resolved before the generic scalar lookup below.
         if field == "type" {
-            return json!(match row.get("type").and_then(Value::as_str) {
+            return json!(match row.get("type").and_then(Field::as_str) {
                 Some("movie") => 1,
                 Some("show") => 2,
                 Some("season") => 3,
@@ -5972,7 +5972,7 @@ impl Runtime {
                 .into_iter()
                 .flat_map(|name| {
                     row.get(name)
-                        .and_then(Value::as_array)
+                        .and_then(Field::as_array)
                         .into_iter()
                         .flatten()
                         .filter_map(|tag| tag.get("id").cloned())
@@ -5981,13 +5981,13 @@ impl Runtime {
             );
         }
         if field == "parent" {
-            return row.get("parentRatingKey").cloned().unwrap_or(Value::Null);
+            return row.get("parentRatingKey").map(Field::to_value).unwrap_or(Value::Null);
         }
         if field == "trash" {
             // Measured (plexscratch, `missing_file_scan_s43.json`): a trashed movie or
             // episode -- a file a scan found gone -- is `trash=1`; its show, though it
             // carries `deletedAt` too, is not.
-            let leaf = matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"));
+            let leaf = matches!(row.get("type").and_then(Field::as_str), Some("movie" | "episode"));
             return json!(i64::from(leaf && row.get("deletedAt").is_some()));
         }
         if matches!(
@@ -6021,18 +6021,18 @@ impl Runtime {
             } else {
                 capitalize_ascii(field)
             };
-            return row.get(&element).cloned().unwrap_or_else(|| json!([]));
+            return row.get(&element).map(Field::to_value).unwrap_or_else(|| json!([]));
         }
         if field == "titleSort" {
             return json!(crate::hierarchy::stored_sort_title(row));
         }
-        if field == "index" && row.get("type").and_then(Value::as_str) == Some("movie") {
-            return row.get("index").cloned().unwrap_or_else(|| json!(1));
+        if field == "index" && row.get("type").and_then(Field::as_str) == Some("movie") {
+            return row.get("index").map(Field::to_value).unwrap_or_else(|| json!(1));
         }
         if field == "unmatched" {
             return json!(row
                 .get("guid")
-                .and_then(Value::as_str)
+                .and_then(Field::as_str)
                 .is_some_and(|value| value.starts_with("local://")
                     || value.starts_with("tv.plex.agents.none://")
                     || value.starts_with("none://")));
@@ -6041,12 +6041,12 @@ impl Runtime {
             return json!(!row.get("viewCount").is_some_and(truthy));
         }
         if field == "inProgress" {
-            return json!(row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0);
+            return json!(row.get("viewOffset").and_then(Field::as_i64).unwrap_or(0) > 0);
         }
         if field == "mediaCount" {
             // `filter_value`: a show or season counts each LEAF's versions, a list that
             // matches when any leaf does (0 when it has none); a row its own Media.
-            if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
+            if matches!(row.get("type").and_then(Field::as_str), Some("show" | "season")) {
                 let counts = key_of(row)
                     .map(|key| self.leaves(&key))
                     .unwrap_or_default()
@@ -6057,22 +6057,22 @@ impl Runtime {
                     .collect::<Vec<_>>();
                 return if counts.is_empty() { json!(0) } else { Value::Array(counts) };
             }
-            return json!(row.get("Media").and_then(Value::as_array).map_or(0, Vec::len));
+            return json!(row.get("Media").and_then(Field::as_array).map_or(0, Vec::len));
         }
         if field == "duplicate" {
             let own = row
                 .get("Media")
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .is_some_and(|media| media.len() > 1);
             if own {
                 return json!(1);
             }
             if matches!(
-                row.get("type").and_then(Value::as_str),
+                row.get("type").and_then(Field::as_str),
                 Some("show" | "season")
             ) {
                 return Value::Array(
-                    self.leaves(&string_value(row.get("ratingKey").unwrap_or(&Value::Null)))
+                    self.leaves(&string_value(row.get("ratingKey").unwrap_or(Field::Null)))
                         .into_iter()
                         .map(|leaf| {
                             json!(leaf
@@ -6099,7 +6099,7 @@ impl Runtime {
                 .iter()
                 .filter(|leaf| {
                     leaf.get("viewCount").is_some_and(truthy)
-                        || leaf.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0
+                        || leaf.get("viewOffset").and_then(Field::as_i64).unwrap_or(0) > 0
                 })
                 .count() as i64;
             return json!(match field {
@@ -6123,17 +6123,17 @@ impl Runtime {
         ) {
             let mut media = row
                 .get("Media")
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .cloned()
                 .unwrap_or_default();
             if media.is_empty()
                 && matches!(
-                    row.get("type").and_then(Value::as_str),
+                    row.get("type").and_then(Field::as_str),
                     Some("show" | "season")
                 )
             {
                 media = self
-                    .leaves(&string_value(row.get("ratingKey").unwrap_or(&Value::Null)))
+                    .leaves(&string_value(row.get("ratingKey").unwrap_or(Field::Null)))
                     .into_iter()
                     .flat_map(|leaf| {
                         leaf.get("Media")
@@ -6145,7 +6145,7 @@ impl Runtime {
             }
             if field == "duration" {
                 if media.is_empty() {
-                    return row.get("duration").cloned().unwrap_or(Value::Null);
+                    return row.get("duration").map(Field::to_value).unwrap_or(Value::Null);
                 }
                 return Value::Array(
                     media
@@ -6195,7 +6195,7 @@ impl Runtime {
             return Value::Array(values);
         }
         if field == "createdAt" {
-            return row.get("addedAt").cloned().unwrap_or(Value::Null);
+            return row.get("addedAt").map(Field::to_value).unwrap_or(Value::Null);
         }
         if field == "unwatchedLeaves" {
             // Cycle 54: 1 while the SHOW (for a season or an episode) has an unwatched leaf.
@@ -6208,7 +6208,7 @@ impl Runtime {
         }
         if field == "viewUpdatedAt" {
             // Cycle 54: the per-user write stamp, kept private on the row.
-            return row.get("_viewUpdatedAt").cloned().unwrap_or(Value::Null);
+            return row.get("_viewUpdatedAt").map(Field::to_value).unwrap_or(Value::Null);
         }
         if matches!(field, "viewCount" | "skipCount") && row.get(field).is_none() {
             // Cycle 56, measured on plexscratch42 and on the 1.42.2 reference and plexlab:
@@ -6226,7 +6226,7 @@ impl Runtime {
             let stream_type = if field == "audioLanguage" { 2 } else { 3 };
             return Value::Array(
                 row.get("Media")
-                    .and_then(Value::as_array)
+                    .and_then(Field::as_array)
                     .into_iter()
                     .flatten()
                     .flat_map(|media| {
@@ -6245,7 +6245,7 @@ impl Runtime {
                             .into_iter()
                             .flatten()
                     })
-                    .filter(truthy)
+                    .filter(|value| truthy(value))
                     .collect(),
             );
         }
@@ -6275,7 +6275,7 @@ impl Runtime {
                 // SEASON with no Media reads its leaves'.
                 let files = |row: &dyn Row| {
                     row.get("Media")
-                        .and_then(Value::as_array)
+                        .and_then(Field::as_array)
                         .into_iter()
                         .flatten()
                         .flat_map(|media| {
@@ -6289,7 +6289,7 @@ impl Runtime {
                         .collect::<Vec<_>>()
                 };
                 let mut paths = files(row);
-                if paths.is_empty() && row.get("type").and_then(Value::as_str) == Some("season") {
+                if paths.is_empty() && row.get("type").and_then(Field::as_str) == Some("season") {
                     paths = self
                         .leaves(&key_of(row).unwrap_or_default())
                         .iter()
@@ -6303,11 +6303,11 @@ impl Runtime {
         };
         if field == "decade" {
             return actual
-                .and_then(Value::as_i64)
+                .and_then(Field::as_i64)
                 .map(|year| json!(year / 10 * 10))
                 .unwrap_or(Value::Null);
         }
-        actual.cloned().unwrap_or(Value::Null)
+        actual.map(Field::to_value).unwrap_or(Value::Null)
     }
 
     /// The leaves a leaf-count filter counts: a show's own, and -- cycles 14/54 -- the
@@ -6316,8 +6316,8 @@ impl Runtime {
     /// and copying every episode of every show was the TV library's Unplayed filter reading
     /// the whole library from disk per page.
     fn show_leaves_for_counts(&self, row: &dyn Row) -> Vec<RowRef<'_>> {
-        let key = string_value(row.get("ratingKey").unwrap_or(&Value::Null));
-        match row.get("type").and_then(Value::as_str) {
+        let key = string_value(row.get("ratingKey").unwrap_or(Field::Null));
+        match row.get("type").and_then(Field::as_str) {
             Some("show") => self.leaves_refs(&key),
             Some("season") => row
                 .get("parentRatingKey")
@@ -6359,7 +6359,7 @@ impl Runtime {
             let resolve = |scope: &str, value: &dyn Row| -> Vec<Value> {
                 let kind = value
                     .get("type")
-                    .and_then(Value::as_str)
+                    .and_then(Field::as_str)
                     .unwrap_or_default();
                 match (scope, kind) {
                     ("show", "show") | ("season", "season") | ("episode", "episode") => {
@@ -6368,8 +6368,8 @@ impl Runtime {
                     // A music library's scopes (plexav's clients: `artist.id=`, `album.subformat!=`,
                     // `track.userRating>>=`), resolved as the show's are.
                     ("artist", "artist") | ("album", "album") | ("track", "track") => vec![value.whole().clone()],
-                    ("album", "artist") | ("track", "album") => self.children(&string_value(value.get("ratingKey").unwrap_or(&Value::Null))),
-                    ("track", "artist") => self.leaves(&string_value(value.get("ratingKey").unwrap_or(&Value::Null))),
+                    ("album", "artist") | ("track", "album") => self.children(&string_value(value.get("ratingKey").unwrap_or(Field::Null))),
+                    ("track", "artist") => self.leaves(&string_value(value.get("ratingKey").unwrap_or(Field::Null))),
                     ("artist", "album") | ("album", "track") => value
                         .get("parentRatingKey")
                         .map(string_value)
@@ -6388,13 +6388,13 @@ impl Runtime {
                     // and season), so `episode.title=` on a show and
                     // `episode.index=` on a season silently matched nothing.
                     ("season", "show") => self.children(&string_value(
-                        value.get("ratingKey").unwrap_or(&Value::Null),
+                        value.get("ratingKey").unwrap_or(Field::Null),
                     )),
                     ("episode", "show") => self.leaves(&string_value(
-                        value.get("ratingKey").unwrap_or(&Value::Null),
+                        value.get("ratingKey").unwrap_or(Field::Null),
                     )),
                     ("episode", "season") => self.children(&string_value(
-                        value.get("ratingKey").unwrap_or(&Value::Null),
+                        value.get("ratingKey").unwrap_or(Field::Null),
                     )),
                     ("show", "season") => value
                         .get("parentRatingKey")
@@ -6526,7 +6526,7 @@ impl Runtime {
         if !specs.is_empty() && !only_title && !any_random {
             let natural = !rows.is_empty()
                 && rows.iter().all(|row| {
-                    matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode"))
+                    matches!(row.get("type").and_then(Field::as_str), Some("season" | "episode"))
                 });
             specs.push((
                 if natural { "_natural" } else { "titleSort" }.to_string(),
@@ -6566,7 +6566,7 @@ impl Runtime {
             }
             if field == "_natural" {
                 let natural = |row: &dyn Row| {
-                    let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
+                    let kind = row.get("type").and_then(Field::as_str).unwrap_or_default();
                     let parent = match kind {
                         "episode" => row
                             .get("grandparentRatingKey")
@@ -6589,9 +6589,9 @@ impl Runtime {
                         .or_else(|| show.get("title").map(string_value))
                         .unwrap_or_default()
                         .to_lowercase();
-                    let index = row.get("index").and_then(Value::as_i64).unwrap_or(0);
+                    let index = row.get("index").and_then(Field::as_i64).unwrap_or(0);
                     if kind == "episode" {
-                        (title, row.get("parentIndex").and_then(Value::as_i64).unwrap_or(0), index)
+                        (title, row.get("parentIndex").and_then(Field::as_i64).unwrap_or(0), index)
                     } else {
                         (title, index, 0)
                     }
@@ -6643,7 +6643,7 @@ impl Runtime {
         let target: Option<&dyn Row> = if scope.is_empty() {
             Some(row)
         } else {
-            let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
+            let kind = row.get("type").and_then(Field::as_str).unwrap_or_default();
             let Some(key) = (match (kind, scope) {
                 ("episode", "show") => row.get("grandparentRatingKey").map(string_value),
                 ("episode", "season") => row.get("parentRatingKey").map(string_value),
@@ -6667,20 +6667,20 @@ impl Runtime {
         if bare == "viewUpdatedAt" {
             return target
                 .and_then(|target| target.get("_viewUpdatedAt"))
-                .cloned()
+                .map(Field::to_value)
                 .unwrap_or(Value::Null);
         }
         if bare == "mediaCount" {
             return target
                 .and_then(|target| target.get("Media"))
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .map(|media| json!(media.len()))
                 .unwrap_or(Value::Null);
         }
         if bare == "mediaBitrate" {
             return target
                 .and_then(|target| target.get("Media"))
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .into_iter()
                 .flatten()
                 .filter_map(|media| media.get("bitrate").and_then(Value::as_f64))
@@ -6691,7 +6691,7 @@ impl Runtime {
         if bare == "mediaSize" {
             return target
                 .and_then(|target| target.get("Media"))
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .into_iter()
                 .flatten()
                 .flat_map(|media| {
@@ -6709,7 +6709,7 @@ impl Runtime {
         if bare == "type" {
             return json!(match target
                 .and_then(|value| value.get("type"))
-                .and_then(Value::as_str)
+                .and_then(Field::as_str)
             {
                 Some("movie") => 1,
                 Some("show") => 2,
@@ -6729,7 +6729,7 @@ impl Runtime {
         if bare == "createdAt" {
             return target
                 .and_then(|value| value.get("addedAt"))
-                .cloned()
+                .map(Field::to_value)
                 .unwrap_or(Value::Null);
         }
         if bare == "duration" {
@@ -6740,7 +6740,7 @@ impl Runtime {
             // separate axis no reference witnessed.
             return target
                 .and_then(|target| target.get("Media"))
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .and_then(|media| media.first())
                 .and_then(|media| media.get("duration"))
                 .cloned()
@@ -6749,7 +6749,7 @@ impl Runtime {
         if bare == "mediaHeight" {
             return target
                 .and_then(|target| target.get("Media"))
-                .and_then(Value::as_array)
+                .and_then(Field::as_array)
                 .into_iter()
                 .flatten()
                 .filter_map(|media| media.get("height").and_then(Value::as_i64))
@@ -6763,7 +6763,7 @@ impl Runtime {
                     .get(bare)
                     .or_else(|| (bare == "titleSort").then(|| target.get("title")).flatten())
             })
-            .cloned()
+            .map(Field::to_value)
             .unwrap_or(Value::Null)
     }
 
@@ -9158,14 +9158,14 @@ impl Runtime {
         let mut counts: HashMap<String, i64> = HashMap::new();
         let mut duration = 0i64;
         for row in self.catalog.hot().lazy() {
-            if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != section_key {
+            if string_value(row.get("librarySectionID").unwrap_or(Field::Null)) != section_key {
                 continue;
             }
-            if let Some(kind) = row.get("type").and_then(Value::as_str) {
+            if let Some(kind) = row.get("type").and_then(Field::as_str) {
                 *counts.entry(kind.to_string()).or_default() += 1;
             }
             duration =
-                duration.saturating_add(row.get("duration").and_then(Value::as_i64).unwrap_or(0));
+                duration.saturating_add(row.get("duration").and_then(Field::as_i64).unwrap_or(0));
         }
         let mut types = counts.into_iter().collect::<Vec<_>>();
         types.sort_by_key(|(kind, _)| match kind.as_str() {
@@ -9613,7 +9613,7 @@ impl Runtime {
                 .and_then(Value::as_array)
                 .into_iter()
                 .flatten()
-                .filter(|media| media.get("mediaType").and_then(Value::as_i64) == type_number)
+                .filter(|media| media.get("mediaType").and_then(Field::as_i64) == type_number)
                 .flat_map(|media| {
                     media
                         .get("Language")
@@ -9773,7 +9773,7 @@ impl Runtime {
             .catalog
             .sections
             .iter()
-            .find(|known| string_value(known.get("key").unwrap_or(&Value::Null)) == key.to_string())
+            .find(|known| string_value(known.get("key").unwrap_or(Field::Null)) == key.to_string())
             .cloned()
             .unwrap_or(section);
         // Cycle 35, measured on both copies frame for frame: a create SCANS, and the
@@ -9990,8 +9990,8 @@ impl Runtime {
         // Read through their hot fields; only the fifty it answers are read whole.
         let mut dated = Vec::<(i64, RowRef<'_>)>::new();
         for row in self.catalog.hot().lazy() {
-            if row.get("type").and_then(Value::as_str) == Some("movie") {
-                dated.push((row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row));
+            if row.get("type").and_then(Field::as_str) == Some("movie") {
+                dated.push((row.get("addedAt").and_then(Field::as_i64).unwrap_or(0), row));
             }
         }
         let mut seasons: Vec<(i64, RowRef<'_>)> = Vec::new();
@@ -10000,12 +10000,12 @@ impl Runtime {
             .catalog
             .hot()
             .lazy()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+            .filter(|row| row.get("type").and_then(Field::as_str) == Some("episode"))
         {
             let Some(parent_key) = episode.get("parentRatingKey").map(string_value) else {
                 continue;
             };
-            let stamp = episode.get("addedAt").and_then(Value::as_i64).unwrap_or(0);
+            let stamp = episode.get("addedAt").and_then(Field::as_i64).unwrap_or(0);
             if let Some(&at) = season_at.get(&parent_key) {
                 seasons[at].0 = seasons[at].0.min(stamp);
                 continue;
@@ -10020,7 +10020,7 @@ impl Runtime {
         // Cycle 58: a library kept off Home (Visibility 1 or 2) drops out of this list.
         dated.retain(|(_, row)| {
             self.section_visibility(&string_value(
-                row.get("librarySectionID").unwrap_or(&Value::Null),
+                row.get("librarySectionID").unwrap_or(Field::Null),
             )) < 1
         });
         dated.sort_by_cached_key(|(stamp, row)| {
@@ -10057,7 +10057,7 @@ impl Runtime {
         for (added_at, row) in dated {
             // Cycle 46: the grid row keeping its Guid for the `includeGuids` gate.
             let mut projected = guid_gate(self.grid_row(row.body(), true, true, false), query);
-            if row.get("type").and_then(Value::as_str) == Some("season") {
+            if row.get("type").and_then(Field::as_str) == Some("season") {
                 if let Some(parent) = row
                     .get("parentRatingKey")
                     .map(string_value)
@@ -10065,13 +10065,13 @@ impl Runtime {
                 {
                     if parent
                         .get("summary")
-                        .and_then(Value::as_str)
+                        .and_then(Field::as_str)
                         .is_some_and(|value| !value.is_empty())
                     {
                         if let Some(object) = projected.as_object_mut() {
                             object.insert(
                                 "parentSummary".to_string(),
-                                parent.get("summary").cloned().unwrap_or(Value::Null),
+                                parent.get("summary").map(Field::to_value).unwrap_or(Value::Null),
                             );
                         }
                     }
@@ -10082,7 +10082,7 @@ impl Runtime {
                 object.insert(
                     "librarySectionUUID".to_string(),
                     self.section(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
+                        row.get("librarySectionID").unwrap_or(Field::Null),
                     ))
                     .and_then(|section| section.get("uuid"))
                     .cloned()
@@ -11931,14 +11931,14 @@ impl Runtime {
         // waiting on the lock.
         // Read through their hot fields: a shelf reads its rows whole only for those it shows.
         let item_refs = self.catalog.lazy_where(|item| {
-            matches!(item.get("type").and_then(Value::as_str), Some("movie" | "show"))
-                && string_value(item.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+            matches!(item.get("type").and_then(Field::as_str), Some("movie" | "show"))
+                && string_value(item.get("librarySectionID").unwrap_or(Field::Null)) == section_key
         });
         let items = item_refs.iter().map(|row| row as &dyn Row).collect::<Vec<_>>();
         let episode_refs = if is_show {
             self.catalog.lazy_where(|row| {
-                row.get("type").and_then(Value::as_str) == Some("episode")
-                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                row.get("type").and_then(Field::as_str) == Some("episode")
+                    && string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == section_key
             })
         } else {
             Vec::new()
@@ -11957,23 +11957,23 @@ impl Runtime {
         };
         watched.retain(|row| {
             row.get("lastViewedAt")
-                .and_then(Value::as_i64)
+                .and_then(Field::as_i64)
                 .is_some_and(|value| value > 0)
                 && row
                     .get("viewCount")
-                    .and_then(Value::as_i64)
+                    .and_then(Field::as_i64)
                     .is_some_and(|value| value > 0)
-                && row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) == 0
+                && row.get("viewOffset").and_then(Field::as_i64).unwrap_or(0) == 0
         });
         watched.sort_by(|left, right| {
             right
                 .get("lastViewedAt")
-                .and_then(Value::as_i64)
+                .and_then(Field::as_i64)
                 .unwrap_or(0)
                 .cmp(
                     &left
                         .get("lastViewedAt")
-                        .and_then(Value::as_i64)
+                        .and_then(Field::as_i64)
                         .unwrap_or(0),
                 )
         });
@@ -11989,7 +11989,7 @@ impl Runtime {
             let year_ago = unix_year(now() - 365 * 86_400);
             released.retain(|row| {
                 row.get("originallyAvailableAt")
-                    .and_then(Value::as_str)
+                    .and_then(Field::as_str)
                     .and_then(|value| value.get(..4))
                     .and_then(|value| value.parse::<i64>().ok())
                     .map(|year| year >= year_ago)
@@ -11997,7 +11997,7 @@ impl Runtime {
             });
         }
         released.sort_by_cached_key(|row| {
-            std::cmp::Reverse(string_value(row.get("originallyAvailableAt").unwrap_or(&Value::Null)))
+            std::cmp::Reverse(string_value(row.get("originallyAvailableAt").unwrap_or(Field::Null)))
         });
 
         let mut added_tv = if is_show { self.section_recently_added_rows(section) } else { Vec::new() };
@@ -12020,26 +12020,26 @@ impl Runtime {
         } else {
             // `section_recently_added_rows`' movie order: the section's rows, newest first.
             added = items.clone();
-            added.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
+            added.sort_by_key(|row| -row.get("addedAt").and_then(Field::as_i64).unwrap_or(0));
         }
 
         let mut top_unwatched = items.clone();
         top_unwatched.retain(|row| {
-            row.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0
+            row.get("viewCount").and_then(Field::as_i64).unwrap_or(0) == 0
                 && row
                     .get("audienceRating")
-                    .and_then(Value::as_f64)
+                    .and_then(Field::as_f64)
                     .is_some_and(|value| value >= 7.0)
         });
         top_unwatched.sort_by(|left, right| {
             right
                 .get("audienceRating")
-                .and_then(Value::as_f64)
+                .and_then(Field::as_f64)
                 .unwrap_or(0.0)
                 .partial_cmp(
                     &left
                         .get("audienceRating")
-                        .and_then(Value::as_f64)
+                        .and_then(Field::as_f64)
                         .unwrap_or(0.0),
                 )
                 .unwrap_or(std::cmp::Ordering::Equal)
@@ -12049,21 +12049,21 @@ impl Runtime {
         unstarted.retain(|show| {
             let key = key_of(show).unwrap_or_default();
             self.leaves_refs(&key).iter().all(|leaf| {
-                leaf.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0
-                    && leaf.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) == 0
+                leaf.get("viewCount").and_then(Field::as_i64).unwrap_or(0) == 0
+                    && leaf.get("viewOffset").and_then(Field::as_i64).unwrap_or(0) == 0
             })
         });
 
         let mut top_rated = items.clone();
         top_rated.retain(|show| {
             show.get("audienceRating")
-                .and_then(Value::as_f64)
+                .and_then(Field::as_f64)
                 .is_some_and(|value| value >= 7.0)
                 && {
                     let key = key_of(show).unwrap_or_default();
                     self.leaves_refs(&key)
                         .iter()
-                        .any(|leaf| leaf.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0)
+                        .any(|leaf| leaf.get("viewCount").and_then(Field::as_i64).unwrap_or(0) == 0)
                 }
         });
 
@@ -12072,15 +12072,15 @@ impl Runtime {
         rediscover.retain(|show| {
             let last = show
                 .get("lastViewedAt")
-                .and_then(Value::as_i64)
+                .and_then(Field::as_i64)
                 .unwrap_or(0);
             show.get("viewCount")
-                .and_then(Value::as_i64)
+                .and_then(Field::as_i64)
                 .is_some_and(|value| value > 0)
                 && show
                     .get("viewedLeafCount")
-                    .and_then(Value::as_i64)
-                    .zip(show.get("leafCount").and_then(Value::as_i64))
+                    .and_then(Field::as_i64)
+                    .zip(show.get("leafCount").and_then(Field::as_i64))
                     .is_some_and(|(viewed, leaves)| viewed < leaves)
                 && last <= current - 42 * 86_400
                 && last >= current - 5 * 365 * 86_400
@@ -12129,10 +12129,10 @@ impl Runtime {
                 .map(|(name, (tag, rows))| {
                     let mut filtered = rows;
                     filtered.retain(|row| {
-                        row.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0
+                        row.get("viewCount").and_then(Field::as_i64).unwrap_or(0) == 0
                             && row
                                 .get("audienceRating")
-                                .and_then(Value::as_f64)
+                                .and_then(Field::as_f64)
                                 .is_some_and(|value| value >= 7.0)
                     });
                     // Cycle 55, re-measured on the 1.42.2 reference: the shelf is the HEAD
@@ -12650,7 +12650,7 @@ impl Runtime {
         // `merged_continue_watching` borrowed: the same stable newest-viewed-first order.
         let shared = self.continue_watching_shared(false);
         let mut merged = shared.iter().collect::<Vec<&Value>>();
-        merged.sort_by_key(|row| -row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0));
+        merged.sort_by_key(|row| -row.get("lastViewedAt").and_then(Field::as_i64).unwrap_or(0));
         let all = self.on_home(merged);
         // Paged before the detail projection, which carries every stream: Plex Web asks
         // for 6 and every row was projected first (0.3-1 s on the production server,
@@ -12846,7 +12846,7 @@ impl Runtime {
             .and_then(Value::as_array)
             .and_then(|hubs| {
                 hubs.iter().find(|hub| {
-                    hub.get("hubIdentifier").and_then(Value::as_str) == Some(identifier.as_str())
+                    hub.get("hubIdentifier").and_then(Field::as_str) == Some(identifier.as_str())
                 })
             });
         let Some(hub) = hub else {
@@ -14065,7 +14065,7 @@ impl Runtime {
         if query.get("includeFiles").map(String::as_str) == Some("1") {
             let mut unique = BTreeSet::new();
             for row in self.catalog.hot().lazy() {
-                for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+                for media in row.get("Media").and_then(Field::as_array).into_iter().flatten() {
                     for part in media.get("Part").and_then(Value::as_array).into_iter().flatten()
                     {
                         let file = part.get("file").map(string_value).unwrap_or_default();
@@ -14656,7 +14656,7 @@ impl Runtime {
         {
             let requested = segments[3];
             let Some(row) = self.history.iter().find(|row| {
-                let full = string_value(row.get("historyKey").unwrap_or(&Value::Null));
+                let full = string_value(row.get("historyKey").unwrap_or(Field::Null));
                 (full == requested || full.rsplit('/').next().unwrap_or_default() == requested)
                     && history_mine(&self.viewer, row)
             }) else {
@@ -14748,7 +14748,7 @@ impl Runtime {
             let rows = self
                 .in_directories(watching.iter().collect::<Vec<_>>(), &directories)
                 .into_iter()
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+                .filter(|row| row.get("type").and_then(Field::as_str) == Some("episode"))
                 .map(|row| {
                     let mut entry = self.detail_row(row);
                     if let Some(object) = entry.as_object_mut() {
@@ -14852,7 +14852,7 @@ impl Runtime {
                 .iter()
                 .take(if type_id == "2" { usize::MAX } else { 12 })
                 .map(|row| {
-                    if row.get("type").and_then(Value::as_str) == Some("show") {
+                    if row.get("type").and_then(Field::as_str) == Some("show") {
                         // Cycle 83 (plexlab), cycle 55 (the 1.42.2 reference): on the TV
                         // list the full show row takes the `include*` blocks.
                         let mut full = self.detail_row(row.whole());
@@ -15160,7 +15160,7 @@ impl Runtime {
                     // library with members is a jpeg (plexlab). rex drew a generated
                     // tile for it.
                     if !self.catalog.hot().lazy().any(|row| {
-                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                        string_value(row.get("librarySectionID").unwrap_or(Field::Null))
                             == section_key
                     }) {
                         return Response::error(404, "rex: not found");
@@ -15170,13 +15170,13 @@ impl Runtime {
                         .hot()
                         .lazy()
                         .filter(|row| {
-                            string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                            string_value(row.get("librarySectionID").unwrap_or(Field::Null))
                                 == section_key
                         })
                         .find_map(|row| {
                             row.get("_poster_url")
                                 .or_else(|| row.get("_art_url"))
-                                .and_then(Value::as_str)
+                                .and_then(Field::as_str)
                                 .filter(|url| !url.is_empty())
                                 .map(str::to_string)
                         });
@@ -15558,7 +15558,7 @@ impl Runtime {
                             };
                             rows.retain(|candidate| {
                                 let candidate_number =
-                                    match candidate.get("type").and_then(Value::as_str) {
+                                    match candidate.get("type").and_then(Field::as_str) {
                                         Some("movie") => 1,
                                         Some("show") => 2,
                                         Some("season") => 3,
@@ -15715,18 +15715,18 @@ impl Runtime {
                             roots.sort_by(|left, right| {
                                 right
                                     .get("lastViewedAt")
-                                    .and_then(Value::as_i64)
+                                    .and_then(Field::as_i64)
                                     .unwrap_or(0)
                                     .cmp(
                                         &left
                                             .get("lastViewedAt")
-                                            .and_then(Value::as_i64)
+                                            .and_then(Field::as_i64)
                                             .unwrap_or(0),
                                     )
                                     .then_with(|| {
-                                        string_value(left.get("titleSort").unwrap_or(&Value::Null))
+                                        string_value(left.get("titleSort").unwrap_or(Field::Null))
                                             .cmp(&string_value(
-                                                right.get("titleSort").unwrap_or(&Value::Null),
+                                                right.get("titleSort").unwrap_or(Field::Null),
                                             ))
                                     })
                             });
@@ -15758,7 +15758,7 @@ impl Runtime {
                         let mut roots = Vec::new();
                         for row in rows {
                             let mut parent = row;
-                            while parent.get("type").and_then(Value::as_str) != Some("show") {
+                            while parent.get("type").and_then(Field::as_str) != Some("show") {
                                 let Some(parent_key) =
                                     parent.get("parentRatingKey").map(string_value)
                                 else {
@@ -15769,7 +15769,7 @@ impl Runtime {
                                 };
                                 parent = next;
                             }
-                            if parent.get("type").and_then(Value::as_str) == Some("show") {
+                            if parent.get("type").and_then(Field::as_str) == Some("show") {
                                 let key = key_of(&parent).unwrap_or_default();
                                 if seen.insert(key) {
                                     roots.push(parent);
@@ -15834,7 +15834,7 @@ impl Runtime {
                             rows.retain(|row| stamp(row, "lastViewedAt") != 0);
                         }
                         let released = |row: &dyn Row| {
-                            string_value(row.get("originallyAvailableAt").unwrap_or(&Value::Null))
+                            string_value(row.get("originallyAvailableAt").unwrap_or(Field::Null))
                         };
                         if leaf == "newest" {
                             untrimmed = Some(rows.len());
@@ -16103,7 +16103,7 @@ impl Runtime {
                                 .iter()
                                 .find_map(|name| {
                                     row.get(*name)
-                                        .and_then(Value::as_array)
+                                        .and_then(Field::as_array)
                                         .into_iter()
                                         .flatten()
                                         .find_map(|tag| {
@@ -16556,7 +16556,7 @@ impl Runtime {
                                 .and_then(Value::as_array)
                                 .into_iter()
                                 .flatten()
-                                .filter(|entry| entry.get("type").and_then(Value::as_str) == Some(named))
+                                .filter(|entry| entry.get("type").and_then(Field::as_str) == Some(named))
                                 .flat_map(|entry| {
                                     entry.get("Sort").and_then(Value::as_array).cloned().unwrap_or_default()
                                 })
@@ -17371,7 +17371,7 @@ impl Runtime {
             .filter(|row| {
                 if type_number.is_none() {
                     matches!(
-                        row.get("type").and_then(Value::as_str),
+                        row.get("type").and_then(Field::as_str),
                         Some("movie" | "show" | "artist")
                     )
                 } else {
@@ -17450,7 +17450,7 @@ impl Runtime {
                     .or_else(|| row.get("parentRatingKey"))
                     .map(string_value)
                     .unwrap_or_default();
-                let key = if row.get("type").and_then(Value::as_str) == Some("season") {
+                let key = if row.get("type").and_then(Field::as_str) == Some("season") {
                     row.get("parentRatingKey").map(string_value).unwrap_or(key)
                 } else {
                     key
@@ -17468,7 +17468,7 @@ impl Runtime {
                     .unwrap_or(0)
             };
             let parent_index = |row: &RowRef<'_>| {
-                if row.get("type").and_then(Value::as_str) == Some("episode") {
+                if row.get("type").and_then(Field::as_str) == Some("episode") {
                     row.get("parentRatingKey")
                         .map(string_value)
                         .and_then(|key| self.catalog.lazy_get(&key))
@@ -19058,10 +19058,10 @@ impl Runtime {
                     self.history
                         .iter()
                         .filter(|entry| {
-                            string_value(entry.get("ratingKey").unwrap_or(&Value::Null)) == key
+                            string_value(entry.get("ratingKey").unwrap_or(Field::Null)) == key
                                 && Self::history_passes(
                                     &tests,
-                                    entry.get("viewedAt").and_then(Value::as_i64).unwrap_or(0),
+                                    entry.get("viewedAt").and_then(Field::as_i64).unwrap_or(0),
                                 )
                         })
                         .count()
@@ -19173,7 +19173,7 @@ impl Runtime {
                     children
                         .first()
                         .and_then(|child| child.get("type"))
-                        .and_then(Value::as_str),
+                        .and_then(Field::as_str),
                 );
                 fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 if group {
@@ -20341,7 +20341,7 @@ impl Runtime {
             .then(|| {
                 self.catalog.find_where(|other| {
                     key_of(other).as_deref() != Some(key)
-                        && other.get("guid").and_then(Value::as_str) == Some(guid.as_str())
+                        && other.get("guid").and_then(Field::as_str) == Some(guid.as_str())
                         && other.get("librarySectionID").map(string_value).as_deref()
                             == Some(section.as_str())
                 })
@@ -21030,7 +21030,7 @@ impl Runtime {
         item.insert(
             "originallyAvailableAt".to_string(),
             number("originallyAvailableAt")
-                .filter(truthy)
+                .filter(|value| truthy(value))
                 .or(first_air)
                 .unwrap_or(json!("")),
         );
@@ -21085,7 +21085,7 @@ impl Runtime {
             for name in names {
                 let Some(mut setting) = known
                     .iter()
-                    .find(|setting| setting.get("id").and_then(Value::as_str) == Some(name))
+                    .find(|setting| setting.get("id").and_then(Field::as_str) == Some(name))
                     .cloned()
                 else {
                     continue;
@@ -21259,9 +21259,8 @@ impl Runtime {
                     if let Some(parent) = row
                         .get(field)
                         .and_then(|value| match value {
-                            Value::String(text) => Some(text.clone()),
-                            Value::Number(number) => Some(number.to_string()),
-                            _ => None,
+                            Field::Str(text) => Some(text.to_string()),
+                            number => number.as_f64().map(|_| string_value(number)),
                         })
                         .filter(|text| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()))
                     {
@@ -21272,7 +21271,7 @@ impl Runtime {
                     let Some(found) = self.catalog.lazy_get(&candidate) else {
                         continue;
                     };
-                    if found.get("type").and_then(Value::as_str) != Some(wanted_kind) {
+                    if found.get("type").and_then(Field::as_str) != Some(wanted_kind) {
                         continue;
                     }
                     let Some(candidate_key) = key_of(&found) else {
@@ -21305,10 +21304,10 @@ impl Runtime {
                         return false;
                     };
                     query.get("title").is_none_or(|needle| {
-                        row.get("title").and_then(Value::as_str).unwrap_or_default().contains(needle.as_str())
+                        row.get("title").and_then(Field::as_str).unwrap_or_default().contains(needle.as_str())
                     }) && query.get("unwatched").is_none_or(|value| {
-                        value == "1" && row.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0
-                    }) && year_floor.is_none_or(|year| row.get("year").and_then(Value::as_i64).unwrap_or(0) >= year)
+                        value == "1" && row.get("viewCount").and_then(Field::as_i64).unwrap_or(0) == 0
+                    }) && year_floor.is_none_or(|year| row.get("year").and_then(Field::as_i64).unwrap_or(0) >= year)
                 })
                 .map(Value::String)
                 .collect::<Vec<_>>();
@@ -21764,7 +21763,7 @@ impl Runtime {
             .into_iter()
             .find(|row| {
                 row.get("Media")
-                    .and_then(Value::as_array)
+                    .and_then(Field::as_array)
                     .into_iter()
                     .flatten()
                     .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
@@ -21840,7 +21839,7 @@ impl Runtime {
         });
         let carried = |stream_type: i64, chosen: &str| -> Option<i64> {
             picked.as_ref()?.1.iter()
-                .find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(stream_type) && stream_id(stream) == chosen)?
+                .find(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(stream_type) && stream_id(stream) == chosen)?
                 .get("index")?.as_i64()
         };
         // `get_mut`, not `items_mut`: the latter marks every row changed, and the save
@@ -22117,7 +22116,7 @@ impl Runtime {
             .unwrap_or(false);
         if !download && request.method == "GET" {
             let bitrate = owner.get("Media").and_then(Value::as_array).into_iter().flatten()
-                .find(|media| media.get("Part").and_then(Value::as_array).is_some_and(|parts| parts.iter().any(|part| part.get("id").and_then(Value::as_i64) == Some(part_id))))
+                .find(|media| media.get("Part").and_then(Field::as_array).is_some_and(|parts| parts.iter().any(|part| part.get("id").and_then(Value::as_i64) == Some(part_id))))
                 .and_then(|media| media.get("bitrate")).and_then(Value::as_i64).unwrap_or(0);
             if let Err(error) = self.reserve_stream_admission(query, &request.headers, self.playback_lan(&request.headers), bitrate) {
                 return Response::error(503, error.reason());
@@ -22189,7 +22188,7 @@ impl Runtime {
     fn part_sources(&self, row: &Value, file: &str) -> Vec<(Arc<source::Source>, String)> {
         let mut found = Vec::new();
         for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
-            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Value::as_str) == Some(file));
+            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Field::as_str) == Some(file));
             // A Part of an episode sent in parts is its own item: its own source and path.
             let tags = part.filter(|part| part.get("_sid").is_some()).unwrap_or(media);
             let tags = (tags.get("_source").and_then(Value::as_str), tags.get("_path").and_then(Value::as_str));
@@ -22210,7 +22209,7 @@ impl Runtime {
     /// one the feed made it with), else the source whose mount holds the file.
     fn part_source(&self, row: &Value, file: &str) -> Option<(Arc<source::Source>, String)> {
         let (holder, part) = row.get("Media").and_then(Value::as_array).into_iter().flatten().find_map(|media| {
-            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Value::as_str) == Some(file))?;
+            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Field::as_str) == Some(file))?;
             Some((media, part))
         }).unzip();
         let own = scan::row_files(row).into_iter().next().is_some_and(|first| first == file);
@@ -26013,12 +26012,18 @@ fn row_has_stream(row: &Value, stream_id: i64) -> bool {
         })
 }
 
-fn string_value(value: &Value) -> String {
-    match value {
-        Value::String(v) => v.clone(),
-        Value::Number(v) => v.to_string(),
-        Value::Bool(v) => v.to_string(),
-        _ => String::new(),
+fn string_value<'a>(value: impl Into<Field<'a>>) -> String {
+    match value.into() {
+        Field::Str(v) => v.to_string(),
+        Field::Int(v) => v.to_string(),
+        Field::Bool(v) => v.to_string(),
+        Field::Null => String::new(),
+        field => match field.value().as_ref() {
+            Value::String(v) => v.clone(),
+            Value::Number(v) => v.to_string(),
+            Value::Bool(v) => v.to_string(),
+            _ => String::new(),
+        },
     }
 }
 
@@ -26211,7 +26216,7 @@ const OWNER_FEATURES: &str = "76ddd91e-8321-4916-94b6-ded8e3727a64,Subtitles V2,
 /// or an episode with a play recorded.  A parent row is never dropped for it.
 fn watched_leaf(row: &(impl Row + ?Sized)) -> bool {
     matches!(
-        row.get("type").and_then(Value::as_str),
+        row.get("type").and_then(Field::as_str),
         Some("movie" | "episode")
     ) && row.get("viewCount").is_some_and(|count| {
         !count.is_null()
@@ -26403,25 +26408,23 @@ use crate::metadata::truthy;
 
 /// An integer out of a JSON number or a numeric string, the way `int(x)` reads the
 /// Python rows (whose indexes are sometimes stored as strings).
-fn value_as_i64(value: &Value) -> Option<i64> {
-    match value {
-        Value::Number(number) => number
-            .as_i64()
-            .or_else(|| number.as_f64().map(|value| value as i64)),
-        Value::String(text) => text.trim().parse::<i64>().ok(),
-        Value::Bool(flag) => Some(*flag as i64),
-        _ => None,
+fn value_as_i64<'a>(value: impl Into<Field<'a>>) -> Option<i64> {
+    match value.into() {
+        Field::Str(text) => text.trim().parse::<i64>().ok(),
+        Field::Bool(flag) => Some(flag as i64),
+        Field::Null => None,
+        number => number.as_i64().or_else(|| number.as_f64().map(|value| value as i64)),
     }
 }
 
 /// Python's `"%s" % value` for a JSON scalar: None, True/False, the number, the text.
-fn py_str(value: &Value) -> String {
-    match value {
-        Value::Null => "None".to_string(),
-        Value::Bool(true) => "True".to_string(),
-        Value::Bool(false) => "False".to_string(),
-        Value::String(text) => text.clone(),
-        other => other.to_string(),
+fn py_str<'a>(value: impl Into<Field<'a>>) -> String {
+    match value.into() {
+        Field::Null => "None".to_string(),
+        Field::Bool(true) => "True".to_string(),
+        Field::Bool(false) => "False".to_string(),
+        Field::Str(text) => text.to_string(),
+        other => other.value().to_string(),
     }
 }
 
@@ -26645,7 +26648,7 @@ mod migration_tests {
             .get("show")
             .into_iter()
             .flatten()
-            .filter_map(|row| row.get("title").and_then(Value::as_str).map(str::to_string))
+            .filter_map(|row| row.get("title").and_then(Field::as_str).map(str::to_string))
             .collect::<Vec<_>>();
         titles.sort();
         titles
@@ -27193,7 +27196,7 @@ fn translation_table(catalog: &Path) -> Option<Arc<TranslationTable>> {
         return found;
     }
     let table = shared_json_sidecar(catalog, "translations.json")
-        .and_then(|document| document.get("strings").cloned())
+        .and_then(|document| document.get("strings").map(Field::to_value))
         .map(|strings| {
             let languages = i18n::Languages::from_strings_pub(&strings);
             Arc::new(TranslationTable { strings, languages })

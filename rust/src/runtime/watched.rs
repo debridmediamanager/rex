@@ -152,10 +152,10 @@ impl Runtime {
     fn import_watched(&mut self, items: &[Value]) -> Value {
         let mut keys: HashMap<String, Vec<String>> = HashMap::new();
         for row in self.catalog.hot().lazy() {
-            if !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")) || !self.visible(&row) {
+            if !matches!(row.get("type").and_then(Field::as_str), Some("movie" | "episode")) || !self.visible(&row) {
                 continue;
             }
-            if let (Some(guid), Some(key)) = (row.get("guid").and_then(Value::as_str), key_of(&row)) {
+            if let (Some(guid), Some(key)) = (row.get("guid").and_then(Field::as_str), key_of(&row)) {
                 if !self.deleted.contains(&key) {
                     keys.entry(guid.to_string()).or_default().push(key);
                 }

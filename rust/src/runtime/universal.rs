@@ -3019,7 +3019,7 @@ impl Runtime {
     pub(super) fn bandwidth_conversion_required(&self, query: &HashMap<String, String>, media: &Value) -> bool {
         let Some(limit) = self.stream_bitrate_limit(query) else { return false };
         let media = crate::catalog::unpacked(media);
-        number_of(media.get("bitrate")).is_none_or(|bitrate| bitrate <= 0.0 || bitrate > limit as f64)
+        number_of(media.as_ref().get("bitrate")).is_none_or(|bitrate| bitrate <= 0.0 || bitrate > limit as f64)
     }
 
     /// The conversion this request asks for, or `None` when rex cannot make one: no
@@ -3076,12 +3076,12 @@ impl Runtime {
             .flatten()
             .filter_map(Value::as_object)
             .find(|target| {
-                let context = target.get("context").and_then(Value::as_str);
-                target.get("tag").and_then(Value::as_str) == Some("VideoProfile")
+                let context = target.get("context").and_then(Field::as_str);
+                target.get("tag").and_then(Field::as_str) == Some("VideoProfile")
                     && if wire == Protocol::File {
                         context == Some("static")
                     } else {
-                        target.get("protocol").and_then(Value::as_str) == Some(protocol) && context != Some("static")
+                        target.get("protocol").and_then(Field::as_str) == Some(protocol) && context != Some("static")
                     }
             })?;
         let list = |value: Option<&Value>| {

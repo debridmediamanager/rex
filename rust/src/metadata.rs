@@ -4,6 +4,8 @@ use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
 
+use crate::hotrow::Field;
+
 fn put(row: &mut Map<String, Value>, key: &str, value: impl Into<Value>) {
     row.insert(key.to_string(), value.into());
 }
@@ -246,14 +248,21 @@ pub fn apply_plex_guids_recorded(items: &mut [Value], recorded: &Value) -> usize
 
 /// Python's truthiness for a JSON value: null, false, 0, "" and empty containers are false.
 /// The oracle read most optional fields this way; every module reads them through this.
-pub fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(flag) => *flag,
-        Value::Number(number) => number.as_f64().is_some_and(|value| value != 0.0),
-        Value::String(text) => !text.is_empty(),
-        Value::Array(items) => !items.is_empty(),
-        Value::Object(map) => !map.is_empty(),
+pub fn truthy<'a>(value: impl Into<Field<'a>>) -> bool {
+    match value.into() {
+        Field::Null => false,
+        Field::Bool(flag) => flag,
+        Field::Int(number) => number != 0,
+        Field::Float(number) => number != 0.0,
+        Field::Str(text) => !text.is_empty(),
+        field => match field.value().as_ref() {
+            Value::Null => false,
+            Value::Bool(flag) => *flag,
+            Value::Number(number) => number.as_f64().is_some_and(|value| value != 0.0),
+            Value::String(text) => !text.is_empty(),
+            Value::Array(items) => !items.is_empty(),
+            Value::Object(map) => !map.is_empty(),
+        },
     }
 }
 

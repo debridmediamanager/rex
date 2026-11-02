@@ -1440,7 +1440,7 @@ fn tag_in_catalog(catalog: &crate::catalog::Catalog, key: &str, lowered: &str) -
     let matches = |tag: &&Value| tag.get("tag").map(string_value).is_some_and(|text| text.to_lowercase() == lowered);
     let hot = catalog.hot();
     let Some(slot) = crate::corpus::CORPUS_TAG_FIELDS.iter().position(|field| *field == key) else {
-        return hot.lazy().find_map(|row| row.get(key).and_then(Value::as_array).and_then(|tags| tags.iter().find(matches)).cloned());
+        return hot.lazy().find_map(|row| row.get(key).and_then(Field::as_array).and_then(|tags| tags.iter().find(matches)).cloned());
     };
     let (rows, names) = hot.corpus();
     let wanted = names.each().filter(|(name, _)| name.to_lowercase() == lowered).map(|(_, id)| id).collect::<HashSet<_>>();

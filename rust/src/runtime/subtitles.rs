@@ -975,7 +975,7 @@ fn keep_reference(part: &mut Value, fingerprint: &str, reference: &Reference) {
 }
 
 fn saved_references(part: &Value, fingerprint: Option<&str>) -> Vec<Reference> {
-    part.get("_subtitleSyncReference").filter(|value| value.get("source").and_then(Value::as_str) == fingerprint)
+    part.get("_subtitleSyncReference").filter(|value| value.get("source").and_then(Field::as_str) == fingerprint)
         .and_then(|value| value.get("references")).and_then(Value::as_object).into_iter().flat_map(|references| references.values())
         .filter_map(Reference::from_value).collect()
 }
@@ -1089,14 +1089,14 @@ impl Runtime {
     pub(super) fn prepare_voice_analysis(&self, key: &str, part_id: &str) -> Option<VoiceJob> {
         let ffmpeg = self.transcoder.as_ref()?.ffmpeg().to_path_buf();
         let row = crate::catalog::unpacked(self.catalog.get(key)?);
-        for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+        for media in row.get("Media").and_then(Field::as_array).into_iter().flatten() {
             for part in media.get("Part").and_then(Value::as_array).into_iter().flatten() {
                 if part.get("id").map(string_value).as_deref() != Some(part_id) { continue }
                 let info = self.subtitle_read_part(&row, media, part)?;
                 if info.duration <= 0 || info.audio_index.is_none() { return None }
                 let fingerprint = source_fingerprint(&info);
-                let saved = part.get("_subtitleSyncReference").filter(|value| value.get("source").and_then(Value::as_str) == Some(fingerprint.as_str()));
-                let cached = saved.filter(|value| value.get("audioAnalyzed").and_then(Value::as_bool) == Some(true))
+                let saved = part.get("_subtitleSyncReference").filter(|value| value.get("source").and_then(Field::as_str) == Some(fingerprint.as_str()));
+                let cached = saved.filter(|value| value.get("audioAnalyzed").and_then(Field::as_bool) == Some(true))
                     .map(|_| saved_references(part, Some(&fingerprint)).into_iter().find(|reference| reference.voice));
                 return Some(VoiceJob { key: key.to_string(), part: info, fingerprint, ffmpeg, cached });
             }
@@ -1110,7 +1110,7 @@ impl Runtime {
         let VoiceResult { job, reference } = result;
         let Some(row) = self.catalog.get(&job.key) else { return false };
         let row = crate::catalog::unpacked(row);
-        let current = row.get("Media").and_then(Value::as_array).into_iter().flatten().any(|media| {
+        let current = row.get("Media").and_then(Field::as_array).into_iter().flatten().any(|media| {
             media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| {
                 part.get("id").map(string_value).as_deref() == Some(job.part.id.as_str())
                     && self.subtitle_read_part(&row, media, part).is_some_and(|info| source_fingerprint(&info) == job.fingerprint)
@@ -1210,7 +1210,7 @@ impl Runtime {
             file: file.to_string(),
             duration: media.get("duration").or_else(|| part.get("duration")).or_else(|| row.get("duration")).and_then(Value::as_i64).unwrap_or(0),
             content_version: subtitle_content_version(row, media),
-            audio_index: streams.iter().filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2))
+            audio_index: streams.iter().filter(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(2))
                 .find_map(|stream| stream.get("index").and_then(Value::as_i64).filter(|index| *index >= 0)),
             text_tracks: streams.iter().filter(|stream| {
                 stream.get("_content").is_none() && stream.get("key").is_none()
@@ -1226,10 +1226,10 @@ impl Runtime {
             return Err(Response::error(404, "rex: not found"));
         }
         let row = crate::catalog::unpacked(row);
-        for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+        for media in row.get("Media").and_then(Field::as_array).into_iter().flatten() {
             for part in media.get("Part").and_then(Value::as_array).into_iter().flatten() {
                 let streams = crate::catalog::part_streams(part);
-                let Some(stream) = streams.iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id)) else { continue };
+                let Some(stream) = streams.iter().find(|stream| stream.get("id").and_then(Field::as_i64) == Some(stream_id)) else { continue };
                 let original = stream.get("_content").and_then(Value::as_str);
                 let adjust = query.get("autoAdjustSubtitle").is_some_and(|value| value == "1" || value.eq_ignore_ascii_case("true"));
                 if !adjust {
@@ -1249,9 +1249,9 @@ impl Runtime {
                 let index = if original.is_none() { stream.get("index").and_then(Value::as_i64) } else { None };
                 let cached = stream.get("_subtitleSyncCache").and_then(|cache| cache.get(&account_key));
                 if adjust {
-                    if let Some(cache) = cached.filter(|cache| cache.get("source").and_then(Value::as_str) == Some(fingerprint.as_str())
-                        && cache.get("index").and_then(Value::as_i64) == index
-                        && original.is_none_or(|original| cache.get("original").and_then(Value::as_str) == Some(original))) {
+                    if let Some(cache) = cached.filter(|cache| cache.get("source").and_then(Field::as_str) == Some(fingerprint.as_str())
+                        && cache.get("index").and_then(Field::as_i64) == index
+                        && original.is_none_or(|original| cache.get("original").and_then(Field::as_str) == Some(original))) {
                         if let Some(text) = cache.get("adjusted").and_then(Value::as_str) {
                             return Ok(SubtitleRead::Ready(subtitle_response(text)));
                         }
@@ -1277,7 +1277,7 @@ impl Runtime {
         let ReadResult { job, original, adjusted, reference, measured } = result;
         let Some(row) = self.catalog.get(&job.key) else { return Response::error(404, "rex: not found") };
         let unpacked = crate::catalog::unpacked(row);
-        let matching = unpacked.get("Media").and_then(Value::as_array).into_iter().flatten().any(|media| {
+        let matching = unpacked.get("Media").and_then(Field::as_array).into_iter().flatten().any(|media| {
             media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| {
                 part.get("id").map(string_value).as_deref() == Some(job.part.id.as_str())
                     && self.subtitle_read_part(&unpacked, media, part).is_some_and(|info| source_fingerprint(&info) == job.fingerprint)
@@ -1576,7 +1576,7 @@ fn wanted_language(streams: &[Value], prefs: &crate::mediainfo::TrackPrefs) -> O
             let (audio, _) = crate::mediainfo::chosen_tracks(streams, prefs);
             let spoken = streams
                 .iter()
-                .find(|stream| audio.is_some() && stream.get("id").and_then(Value::as_i64) == audio)
+                .find(|stream| audio.is_some() && stream.get("id").and_then(Field::as_i64) == audio)
                 .and_then(crate::mediainfo::stream_language);
             (spoken != Some(crate::mediainfo::setting_language(&language))).then_some(language)
         }
@@ -1597,7 +1597,7 @@ impl Runtime {
             .catalog
             .hot()
             .lazy()
-            .flat_map(|item| item.get("Media").and_then(Value::as_array).cloned().unwrap_or_default())
+            .flat_map(|item| item.get("Media").and_then(Field::as_array).cloned().unwrap_or_default())
             .flat_map(|media| media.get("Part").and_then(Value::as_array).cloned().unwrap_or_default())
             .filter_map(|part| crate::catalog::max_stream_id(&part))
             .max()
@@ -1728,7 +1728,7 @@ impl Runtime {
         let agent = self.subtitle_agent();
         agent.as_ref()?;
         let row = crate::catalog::unpacked(row);
-        let rows = row.get("Media").and_then(Value::as_array)?;
+        let rows = row.get("Media").and_then(Field::as_array)?;
         let chosen = media
             .and_then(|wanted| rows.iter().find(|media| media.get("id").map(string_value).as_deref() == Some(wanted)))
             .or_else(|| rows.first())?;
@@ -1743,7 +1743,7 @@ impl Runtime {
             .iter()
             .filter(|_| readable)
             .filter(|stream| {
-                stream.get("streamType").and_then(Value::as_i64) == Some(3)
+                stream.get("streamType").and_then(Field::as_i64) == Some(3)
                     && stream.get("key").is_none()
                     && !stream.get("forced").is_some_and(truthy)
                     && matches!(text(stream, "codec").unwrap_or_default().to_ascii_lowercase().as_str(), "srt" | "ass" | "ssa" | "mov_text")
@@ -1751,7 +1751,7 @@ impl Runtime {
             .filter_map(|stream| stream.get("index").and_then(Value::as_i64))
             .filter(|index| *index >= 0)
             .collect();
-        let episode = row.get("type").and_then(Value::as_str) == Some("episode");
+        let episode = row.get("type").and_then(Field::as_str) == Some("episode");
         Some(Search {
             language: language.to_string(),
             agent,
@@ -1770,7 +1770,7 @@ impl Runtime {
                 text_tracks,
                 hash: text(part, "_osHash"),
                 content_version: subtitle_content_version(&row, chosen),
-                audio_index: streams.iter().filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2))
+                audio_index: streams.iter().filter(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(2))
                     .find_map(|stream| stream.get("index").and_then(Value::as_i64).filter(|index| *index >= 0)),
             },
         })

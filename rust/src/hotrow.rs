@@ -9,6 +9,10 @@
 //!
 //! A hot row answers `get` for its fields exactly as the row does, so a pass reads it as it
 //! read the row. Asking it for any other field panics: a pass that needs one reads the row.
+//! What `get` answers is a `Field`, borrowed from wherever the field is held, read with the
+//! names `Value` reads with.
+
+use std::borrow::Cow;
 
 use serde_json::Value;
 
@@ -136,7 +140,7 @@ impl HotRow {
     }
 
     /// The field as the row holds it. Panics for a field a hot row does not keep.
-    pub fn get(&self, name: &str) -> Option<&Value> {
+    pub fn get(&self, name: &str) -> Option<Field<'_>> {
         match self.lookup(name) {
             Some(value) => value,
             None => panic!("a hot row does not keep {name}; read the row"),
@@ -144,9 +148,9 @@ impl HotRow {
     }
 
     /// `get`, or `None` for a field a hot row does not keep.
-    pub fn lookup(&self, name: &str) -> Option<Option<&Value>> {
+    pub fn lookup(&self, name: &str) -> Option<Option<Field<'_>>> {
         let id = field(name)?;
-        Some(self.ids.binary_search(&id).ok().map(|at| &self.values[at]))
+        Some(self.ids.binary_search(&id).ok().map(|at| Field::from(&self.values[at])))
     }
 }
 
@@ -157,17 +161,168 @@ fn fitted(value: &Value) -> Value {
     value
 }
 
+/// A row's field as a pass reads it: borrowed from a hot row, or from a row held whole. Read
+/// with `Value`'s names (`as_str`, `as_i64`, ...); an object or array a hot row keeps is its
+/// JSON text, parsed by `value`.
+#[derive(Debug, Clone, Copy)]
+pub enum Field<'a> {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    Str(&'a str),
+    /// A hot row's object or array, or a number neither an i64 nor an f64 holds as it was.
+    Json(&'a str),
+    /// An object, an array or such a number of a row held whole.
+    Value(&'a Value),
+}
+
+impl<'a> From<&'a Value> for Field<'a> {
+    fn from(value: &'a Value) -> Self {
+        match value {
+            Value::Null => Field::Null,
+            Value::Bool(flag) => Field::Bool(*flag),
+            Value::Number(number) => match (number.as_i64(), number.as_f64()) {
+                (Some(int), _) => Field::Int(int),
+                (None, Some(float)) if number.is_f64() => Field::Float(float),
+                _ => Field::Value(value),
+            },
+            Value::String(text) => Field::Str(text),
+            _ => Field::Value(value),
+        }
+    }
+}
+
+/// A field passed on by reference, as `.filter(|field| truthy(field))` hands it.
+impl<'a> From<&Field<'a>> for Field<'a> {
+    fn from(field: &Field<'a>) -> Self {
+        *field
+    }
+}
+
+impl<'a> From<&&'a Value> for Field<'a> {
+    fn from(value: &&'a Value) -> Self {
+        Field::from(*value)
+    }
+}
+
+impl<'a> Field<'a> {
+    pub fn as_str(self) -> Option<&'a str> {
+        match self {
+            Field::Str(text) => Some(text),
+            _ => None,
+        }
+    }
+    pub fn as_i64(self) -> Option<i64> {
+        match self {
+            Field::Int(int) => Some(int),
+            Field::Value(value) => value.as_i64(),
+            _ => None,
+        }
+    }
+    pub fn as_u64(self) -> Option<u64> {
+        match self {
+            Field::Int(int) => u64::try_from(int).ok(),
+            Field::Value(value) => value.as_u64(),
+            Field::Json(text) => text.parse().ok(),
+            _ => None,
+        }
+    }
+    pub fn as_f64(self) -> Option<f64> {
+        match self {
+            Field::Int(int) => Some(int as f64),
+            Field::Float(float) => Some(float),
+            Field::Value(value) => value.as_f64(),
+            Field::Json(text) => text.parse::<u64>().ok().map(|int| int as f64),
+            _ => None,
+        }
+    }
+    pub fn as_bool(self) -> Option<bool> {
+        match self {
+            Field::Bool(flag) => Some(flag),
+            _ => None,
+        }
+    }
+    pub fn is_null(self) -> bool {
+        matches!(self, Field::Null)
+    }
+    /// A list of a row held whole. Panics for a hot row's: its text has no list to borrow.
+    pub fn as_array(self) -> Option<&'a Vec<Value>> {
+        match self {
+            Field::Value(value) => value.as_array(),
+            Field::Json(text) if text.starts_with('[') => panic!("a hot row's list is its JSON text; read it with `value`"),
+            _ => None,
+        }
+    }
+    /// An object of a row held whole. Panics for a hot row's: its text has no map to borrow.
+    pub fn as_object(self) -> Option<&'a serde_json::Map<String, Value>> {
+        match self {
+            Field::Value(value) => value.as_object(),
+            Field::Json(text) if text.starts_with('{') => panic!("a hot row's object is its JSON text; read it with `value`"),
+            _ => None,
+        }
+    }
+    /// The field as a value: the row's own when it holds one, else made from the field.
+    pub fn value(self) -> Cow<'a, Value> {
+        match self {
+            Field::Value(value) => Cow::Borrowed(value),
+            field => Cow::Owned(field.to_value()),
+        }
+    }
+    pub fn to_value(self) -> Value {
+        match self {
+            Field::Null => Value::Null,
+            Field::Bool(flag) => Value::Bool(flag),
+            Field::Int(int) => Value::from(int),
+            Field::Float(float) => Value::from(float),
+            Field::Str(text) => Value::from(text),
+            Field::Json(text) => serde_json::from_str(text).unwrap_or(Value::Null),
+            Field::Value(value) => value.clone(),
+        }
+    }
+}
+
+/// As the values they stand for compare.
+impl PartialEq for Field<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (*self, *other) {
+            (Field::Null, Field::Null) => true,
+            (Field::Bool(one), Field::Bool(other)) => one == other,
+            (Field::Int(one), Field::Int(other)) => one == other,
+            (Field::Float(one), Field::Float(other)) => one == other,
+            (Field::Str(one), Field::Str(other)) => one == other,
+            (Field::Value(one), Field::Value(other)) => one == other,
+            (one @ (Field::Json(_) | Field::Value(_)), other @ (Field::Json(_) | Field::Value(_))) => one.value() == other.value(),
+            _ => false,
+        }
+    }
+}
+
+/// As the value it stands for: `json!` and the XML writer take a field as they took the value.
+impl serde::Serialize for Field<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match *self {
+            Field::Null => serializer.serialize_unit(),
+            Field::Bool(flag) => serializer.serialize_bool(flag),
+            Field::Int(int) => serializer.serialize_i64(int),
+            Field::Float(float) => serializer.serialize_f64(float),
+            Field::Str(text) => serializer.serialize_str(text),
+            Field::Json(_) | Field::Value(_) => self.value().serialize(serializer),
+        }
+    }
+}
+
 /// What a pass over the library reads a row through: the row, or its hot fields.
 pub trait Row {
-    fn get(&self, name: &str) -> Option<&Value>;
+    fn get(&self, name: &str) -> Option<Field<'_>>;
     /// The whole row, for what `get` cannot answer: the row as one value (a copy of it, its
     /// keys in order). A hot row alone has none and panics.
     fn whole(&self) -> &Value;
 }
 
 impl Row for Value {
-    fn get(&self, name: &str) -> Option<&Value> {
-        Value::get(self, name)
+    fn get(&self, name: &str) -> Option<Field<'_>> {
+        Value::get(self, name).map(Field::from)
     }
     fn whole(&self) -> &Value {
         self
@@ -176,8 +331,8 @@ impl Row for Value {
 
 /// A row's object, as `hierarchy` reads it.
 impl Row for serde_json::Map<String, Value> {
-    fn get(&self, name: &str) -> Option<&Value> {
-        serde_json::Map::get(self, name)
+    fn get(&self, name: &str) -> Option<Field<'_>> {
+        serde_json::Map::get(self, name).map(Field::from)
     }
     fn whole(&self) -> &Value {
         panic!("a map is not a whole row")
@@ -185,7 +340,7 @@ impl Row for serde_json::Map<String, Value> {
 }
 
 impl Row for HotRow {
-    fn get(&self, name: &str) -> Option<&Value> {
+    fn get(&self, name: &str) -> Option<Field<'_>> {
         HotRow::get(self, name)
     }
     fn whole(&self) -> &Value {
@@ -193,9 +348,9 @@ impl Row for HotRow {
     }
 }
 
-impl Row for std::borrow::Cow<'_, Value> {
-    fn get(&self, name: &str) -> Option<&Value> {
-        Value::get(self, name)
+impl Row for Cow<'_, Value> {
+    fn get(&self, name: &str) -> Option<Field<'_>> {
+        Value::get(self, name).map(Field::from)
     }
     fn whole(&self) -> &Value {
         self
@@ -203,8 +358,8 @@ impl Row for std::borrow::Cow<'_, Value> {
 }
 
 impl Row for std::sync::Arc<Value> {
-    fn get(&self, name: &str) -> Option<&Value> {
-        Value::get(self, name)
+    fn get(&self, name: &str) -> Option<Field<'_>> {
+        Value::get(self, name).map(Field::from)
     }
     fn whole(&self) -> &Value {
         self
@@ -212,7 +367,7 @@ impl Row for std::sync::Arc<Value> {
 }
 
 impl<T: Row + ?Sized> Row for &T {
-    fn get(&self, name: &str) -> Option<&Value> {
+    fn get(&self, name: &str) -> Option<Field<'_>> {
         T::get(self, name)
     }
     fn whole(&self) -> &Value {
@@ -243,13 +398,13 @@ impl<'h, 'a: 'h> Lazy<'h, 'a> {
         self.rows.get(self.hot.position).unwrap_or(&UNREAD)
     }
 
-    pub fn get(&self, name: &str) -> Option<&'h Value> {
+    pub fn get(&self, name: &str) -> Option<Field<'h>> {
         if let Some(value) = self.rows.view_field(self.hot.position, name) {
-            return value;
+            return value.map(Field::from);
         }
         match self.hot.lookup(name) {
             Some(value) => value,
-            None => self.body().get(name),
+            None => self.body().get(name).map(Field::from),
         }
     }
 }
@@ -274,11 +429,11 @@ impl AnyRow<'_> {
 }
 
 impl Row for AnyRow<'_> {
-    fn get(&self, name: &str) -> Option<&Value> {
+    fn get(&self, name: &str) -> Option<Field<'_>> {
         match self {
             AnyRow::Ref(row) => Row::get(row, name),
-            AnyRow::Owned(row) => row.get(name),
-            AnyRow::Borrowed(row) => row.get(name),
+            AnyRow::Owned(row) => Row::get(row, name),
+            AnyRow::Borrowed(row) => Row::get(*row, name),
         }
     }
     fn whole(&self) -> &Value {
@@ -291,7 +446,7 @@ impl Row for AnyRow<'_> {
 }
 
 impl<'h, 'a: 'h> Row for Lazy<'h, 'a> {
-    fn get(&self, name: &str) -> Option<&Value> {
+    fn get(&self, name: &str) -> Option<Field<'_>> {
         Lazy::get(self, name)
     }
     fn whole(&self) -> &Value {
@@ -310,7 +465,7 @@ mod tests {
                                      "summary": "long", "librarySectionID": true, "_retry": {"at": 5}});
         let hot = HotRow::of(3, &row);
         for name in ["ratingKey", "type", "viewCount", "librarySectionID", "_retry", "viewOffset"] {
-            assert_eq!(hot.get(name), row.get(name), "{name}");
+            assert_eq!(hot.get(name), row.get(name).map(Field::from), "{name}");
         }
         assert_eq!(hot.position, 3);
     }

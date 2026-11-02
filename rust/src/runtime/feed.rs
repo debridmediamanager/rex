@@ -436,7 +436,7 @@ impl Item {
             // (findings, "An item without a probe cannot play"), so it is held like a missing one.
             media_info: value
                 .get("media_info")
-                .filter(|probe| probe.get("streams").and_then(Value::as_array).is_some_and(|streams| !streams.is_empty()))
+                .filter(|probe| probe.get("streams").and_then(Field::as_array).is_some_and(|streams| !streams.is_empty()))
                 .cloned(),
             ids: Map::from_iter(
                 [("imdb", imdb.clone()), ("tmdb", id_text("tmdb")), ("tvdb", id_text("tvdb")),
@@ -1124,7 +1124,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     // Nothing numbered it: it keeps the numbers it has, and is identified on them
                     // (a row is renumbered by its source alone).
                     if super::scan::placed_numbers(item.placed.as_ref()).is_none() {
-                        item.kept = row.filter(|row| row.get("type").and_then(Value::as_str) == Some("episode")).and_then(|row| {
+                        item.kept = row.filter(|row| row.get("type").and_then(Field::as_str) == Some("episode")).and_then(|row| {
                             Some((row.get("parentIndex")?.as_i64()?, row.get("index")?.as_i64()?))
                         });
                     }
@@ -1503,14 +1503,14 @@ pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
             .hot()
             .lazy()
             .filter(|row| {
-                row.get("type").and_then(Value::as_str) == Some("season")
+                row.get("type").and_then(Field::as_str) == Some("season")
                     && row.get("_scanned").is_some_and(truthy)
-                    && (row.get("guid").and_then(Value::as_str).is_none_or(|guid| guid.is_empty() || guid.starts_with("local://"))
-                        || row.get("_poster_url").filter(present).is_none())
+                    && (row.get("guid").and_then(Field::as_str).is_none_or(|guid| guid.is_empty() || guid.starts_with("local://"))
+                        || row.get("_poster_url").filter(|value| !value.is_null() && value.as_str() != Some("")).is_none())
             })
             .filter_map(|season| {
                 let key = key_of(&season)?;
-                let index = season.get("index").and_then(Value::as_i64)?;
+                let index = season.get("index").and_then(Field::as_i64)?;
                 let show = guard.catalog.get(&season.get("parentRatingKey").map(string_value)?)?;
                 // A show an id names: `title:` ones are the retired name search's, left as they are.
                 let identity = show.get("_identity").filter(present).filter(|id| !string_value(id).starts_with("title:"))?.clone();
@@ -1585,10 +1585,10 @@ fn number_unplaced(runtime: &Runtime, plans: &mut [(Item, Library, Plan)]) {
     }
     let mut numbered: HashMap<(String, String), i64> = HashMap::new();
     for row in runtime.catalog.hot().lazy() {
-        let (Some(release), Some(index)) = (row.get("_release").and_then(Value::as_str), row.get("index").and_then(Value::as_i64)) else {
+        let (Some(release), Some(index)) = (row.get("_release").and_then(Field::as_str), row.get("index").and_then(Field::as_i64)) else {
             continue;
         };
-        if row.get("type").and_then(Value::as_str) == Some("episode") && row.get("parentIndex").and_then(Value::as_i64) == Some(1) {
+        if row.get("type").and_then(Field::as_str) == Some("episode") && row.get("parentIndex").and_then(Field::as_i64) == Some(1) {
             let section = row.get("librarySectionID").map(string_value).unwrap_or_default();
             let last = numbered.entry((section, release.to_string())).or_insert(0);
             *last = (*last).max(index);
@@ -1609,23 +1609,24 @@ fn number_unplaced(runtime: &Runtime, plans: &mut [(Item, Library, Plan)]) {
 /// every row of the library from the state file under the lock, as the listing once did (26 s
 /// on the production server, every Plex request waiting behind it).
 fn may_be_blank(catalog: &crate::catalog::Catalog, row: &(impl Row + ?Sized), stamp: i64) -> bool {
-    let has = |row: Option<&Value>| row.is_some_and(|value| !value.is_null() && value.as_str() != Some(""));
-    let due = row.get("_retry").and_then(|retry| retry.get("at")).and_then(Value::as_i64).is_none_or(|at| at <= stamp);
-    let kind = row.get("type").and_then(Value::as_str);
+    let has = |row: Option<Field<'_>>| row.is_some_and(|value| !value.is_null() && value.as_str() != Some(""));
+    // A hot row's `_retry` is its JSON text: 46 rows of the production server's 45,328 have one.
+    let due = row.get("_retry").and_then(|retry| retry.value().get("at").and_then(Field::as_i64)).is_none_or(|at| at <= stamp);
+    let kind = row.get("type").and_then(Field::as_str);
     if !due
         || !matches!(kind, Some("movie" | "episode"))
         || row.get("_sid").is_none()
         || row.get("deletedAt").is_some()
         || row.get("_probePending").is_some_and(truthy)
-        || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("tv.plex.agents.none://"))
+        || row.get("guid").and_then(Field::as_str).is_some_and(|guid| guid.starts_with("tv.plex.agents.none://"))
     {
         return false;
     }
     if kind == Some("episode") {
         let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| catalog.lazy_get(&show));
         return !has(show.as_ref().and_then(|show| show.get("_poster_url")))
-            || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"))
-            || placed_unmatched(row.get("guid"), row.get("_placed"), show.as_ref().and_then(|show| show.get("guid")));
+            || row.get("guid").and_then(Field::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"))
+            || placed_unmatched(row.get("guid"), row.get("_placed").map(Field::value).as_deref(), show.as_ref().and_then(|show| show.get("guid")));
     }
     !has(row.get("_poster_url"))
 }
@@ -1634,11 +1635,11 @@ fn may_be_blank(catalog: &crate::catalog::Catalog, row: &(impl Row + ?Sized), st
 /// Plex's agent named: Plex had no row for it when it came, and only a push named it again.
 /// Animaniacs' rows on the production server stayed unmatched after the agent's answers were read
 /// whole (43c6fd5c, 2026-10-23) until zurg's next snapshot, six hours on.
-fn placed_unmatched(guid: Option<&Value>, placed: Option<&Value>, show_guid: Option<&Value>) -> bool {
+fn placed_unmatched(guid: Option<Field<'_>>, placed: Option<&Value>, show_guid: Option<Field<'_>>) -> bool {
     let placed = placed.filter(|placed| super::scan::placed_numbers(Some(placed)).is_some() || super::scan::placed_tmdb_episode(Some(placed)).is_some());
-    guid.and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://"))
+    guid.and_then(Field::as_str).is_some_and(|guid| guid.starts_with("local://"))
         && placed.is_some()
-        && show_guid.and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://show/"))
+        && show_guid.and_then(Field::as_str).is_some_and(|guid| guid.starts_with("plex://show/"))
 }
 
 /// A row of several releases still on `local://`, each placed as its first: named by one, all are named
@@ -1707,13 +1708,13 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
             if !may_be_blank(&guard.catalog, &row, stamp) {
                 continue;
             }
-            let library = if row.get("type").and_then(Value::as_str) == Some("movie") { "movie" } else { "show" };
+            let library = if row.get("type").and_then(Field::as_str) == Some("movie") { "movie" } else { "show" };
             // Only what its source placed: rows pushed before DMM placed anything still carry ids
             // zurg's own Plex gave, an episode's among them (Pawn Stars' 1559521), and trusted
             // as they are those would name junk titles; they stay as they are, for Fix Match.
             if !guard.blank(row.body())
                 || version_placed(row.body(), 0).is_none()
-                || super::scan::identified_by(row.get("_ids").and_then(Value::as_object), version_placed(row.body(), 0), library).is_none()
+                || super::scan::identified_by(row.get("_ids").and_then(Field::as_object), version_placed(row.body(), 0), library).is_none()
             {
                 continue;
             }
@@ -1951,7 +1952,7 @@ fn join_parts(media: &mut [Value], theirs: &[Value]) -> bool {
 /// an episode's season and index, whatever guid identification gave it. None for an unmatched
 /// film (a `local://` guid is its own key's), one waiting for a probe, and a row no source pushed.
 fn version_slot(row: &(impl Row + ?Sized)) -> Option<String> {
-    let kind = row.get("type").and_then(Value::as_str).filter(|kind| matches!(*kind, "movie" | "episode"))?;
+    let kind = row.get("type").and_then(Field::as_str).filter(|kind| matches!(*kind, "movie" | "episode"))?;
     if row.get("_sid").is_none() || row.get("_probePending").is_some_and(truthy) {
         return None;
     }
@@ -1962,8 +1963,8 @@ fn version_slot(row: &(impl Row + ?Sized)) -> Option<String> {
     // `local://` rows of four releases on one season (the production server, 2026-10-17); a real
     // PMS makes every file of one episode one item.
     let guid = match kind {
-        "episode" => row.get("index").and_then(Value::as_i64).map(|_| "")?,
-        _ => row.get("guid").and_then(Value::as_str).filter(|guid| !guid.is_empty() && !guid.starts_with("local://"))?,
+        "episode" => row.get("index").and_then(Field::as_i64).map(|_| "")?,
+        _ => row.get("guid").and_then(Field::as_str).filter(|guid| !guid.is_empty() && !guid.starts_with("local://"))?,
     };
     Some([kind, &field("librarySectionID"), &field("parentRatingKey"), &field("index"), guid, &field("editionTitle")].join("\u{1}"))
 }
@@ -2197,7 +2198,7 @@ impl Runtime {
         }
         if kind == Some("episode") {
             let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| self.catalog.get(&show));
-            if placed_unmatched(row.get("guid"), version_placed(row, 0), show.and_then(|show| show.get("guid"))) {
+            if placed_unmatched(row.get("guid").map(Field::from), version_placed(row, 0), show.and_then(|show| show.get("guid")).map(Field::from)) {
                 return true;
             }
             // An episode with a film's guid is one `metadata::enrich` named after its show: every
@@ -2215,7 +2216,7 @@ impl Runtime {
     /// The folder a source's directories are libraries under: its `mount`, else where the seed
     /// put its own (`/mnt/zurg` of `/mnt/zurg/movies`), without a trailing `/`.
     pub(super) fn library_prefix(&self, source: &Source) -> String {
-        let playable = |section: &&Value| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show"));
+        let playable = |section: &&Value| matches!(section.get("type").and_then(Field::as_str), Some("movie" | "show"));
         let prefix = source.mount.clone().unwrap_or_else(|| {
             let seeded = self.catalog.sections.iter().filter(playable).flat_map(|section| self.locations(section)).next();
             seeded.and_then(|folder| folder.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string())).unwrap_or_else(|| crate::catalog_tool::DEFAULT_MOUNT.to_string())
@@ -2255,7 +2256,7 @@ impl Runtime {
                 let Some(title) = title else {
                     continue;
                 };
-                let of_kind = |section: &&Value| section.get("type").and_then(Value::as_str) == Some(kind);
+                let of_kind = |section: &&Value| section.get("type").and_then(Field::as_str) == Some(kind);
                 if self.catalog.sections.iter().filter(of_kind).any(|section| self.locations(section).iter().any(|folder| names(folder))) {
                     continue;
                 }
@@ -2313,14 +2314,14 @@ impl Runtime {
             title: string_value(section.get("title").unwrap_or(&Value::Null)),
             plex: self.plex.clone(),
         };
-        let playable = |section: &&Value| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show"));
+        let playable = |section: &&Value| matches!(section.get("type").and_then(Field::as_str), Some("movie" | "show"));
         let sections = self.catalog.sections.iter().filter(playable);
         let wanted = item.library.as_deref();
         if let Some(key) = wanted.filter(|wanted| !matches!(*wanted, "movie" | "show")) {
             return self.catalog.sections.iter().filter(playable).find(|section| section.get("key").map(string_value).as_deref() == Some(key)).map(library);
         }
         let of_kind: Vec<&Value> =
-            sections.filter(|section| wanted.is_none() || section.get("type").and_then(Value::as_str) == wanted).collect();
+            sections.filter(|section| wanted.is_none() || section.get("type").and_then(Field::as_str) == wanted).collect();
         let holds = |section: &Value| {
             self.locations(section).into_iter().find(|location| under(&item.file, location)).or_else(|| {
                 self.locations(section).into_iter().find(|location| names_directory(location, &item.path))
@@ -2336,7 +2337,7 @@ impl Runtime {
         // refusing it made every setup with such a folder seed its libraries by hand first.
         let of_its_kind = || {
             let kind = if episode() { "show" } else { "movie" };
-            of_kind.iter().find(|section| section.get("type").and_then(Value::as_str) == Some(kind))
+            of_kind.iter().find(|section| section.get("type").and_then(Field::as_str) == Some(kind))
         };
         let found = of_kind
             .iter()
@@ -2344,16 +2345,16 @@ impl Runtime {
             .or_else(|| of_kind.iter().find(|section| self.locations(section).iter().any(|location| names_directory(location, &item.path))))
             .or_else(|| wanted.and(of_kind.first()))
             .or_else(of_its_kind)?;
-        if wanted.is_none() && found.get("type").and_then(Value::as_str) == Some("show") && item.kind() == Some("movie") {
+        if wanted.is_none() && found.get("type").and_then(Field::as_str) == Some("show") && item.kind() == Some("movie") {
             if let Some(movies) = self.feed_library(&Item { library: Some("movie".to_string()), ..item.clone() }) {
                 return Some(movies);
             }
         }
-        if wanted.is_none() && found.get("type").and_then(Value::as_str) == Some("movie") && episode() {
+        if wanted.is_none() && found.get("type").and_then(Field::as_str) == Some("movie") && episode() {
             let parent = |location: &str| location.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string());
             let beside = holds(found).and_then(|location| parent(&location));
             let shows: Vec<&Value> =
-                self.catalog.sections.iter().filter(|section| section.get("type").and_then(Value::as_str) == Some("show")).collect();
+                self.catalog.sections.iter().filter(|section| section.get("type").and_then(Field::as_str) == Some("show")).collect();
             // A show library holding the folder too (a source's `directories` gives a folder a
             // movie and a show library on it) comes before one merely beside it.
             if let Some(show) = shows
@@ -2396,7 +2397,7 @@ impl Runtime {
                     .into_iter()
                     .filter(|row| {
                         row.get("_sid").is_none()
-                            && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+                            && matches!(row.get("type").and_then(Field::as_str), Some("movie" | "episode"))
                             && row_files(row).first().map(String::as_str) == Some(file)
                     })
                     .next_back()?;
@@ -2415,7 +2416,7 @@ impl Runtime {
                 row.get("_sid").is_none()
                     && row.get("_scanned").is_some_and(truthy)
                     && row.get("deletedAt").is_none()
-                    && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+                    && matches!(row.get("type").and_then(Field::as_str), Some("movie" | "episode"))
                     && row_files(row.body()).first().is_some_and(|file| source.path_under_mount(file).is_some())
             })
             .filter_map(|row| key_of(&row))
@@ -2502,7 +2503,7 @@ impl Runtime {
                     .into_iter()
                     .filter_map(|field| self.catalog.get(&string_value(body.get(field)?)))
                     .chain(std::iter::once(body))
-                    .find(|title| matches!(title.get("type").and_then(Value::as_str), Some("movie" | "show")))
+                    .find(|title| matches!(title.get("type").and_then(Field::as_str), Some("movie" | "show")))
                 else {
                     continue;
                 };
@@ -3083,9 +3084,9 @@ impl Runtime {
             let there = identity.and_then(|identity| {
                 self.catalog
                     .find_where(|row| {
-                        row.get("type").and_then(Value::as_str) == Some("show")
-                            && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == library.key
-                            && row.get("_identity") == Some(&identity)
+                        row.get("type").and_then(Field::as_str) == Some("show")
+                            && string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == library.key
+                            && row.get("_identity") == Some(Field::from(&identity))
                     })
                     .and_then(key_of)
             });
@@ -3099,9 +3100,9 @@ impl Runtime {
             let new_season = self
                 .catalog
                 .find_where(|row| {
-                    row.get("type").and_then(Value::as_str) == Some("season")
+                    row.get("type").and_then(Field::as_str) == Some("season")
                         && row.get("parentRatingKey").map(string_value).as_deref() == Some(new_show.as_str())
-                        && row.get("index") == index.as_ref()
+                        && row.get("index") == index.as_ref().map(Field::from)
                 })
                 .and_then(key_of)
                 .unwrap_or_else(|| self.mint_key());
@@ -3259,7 +3260,7 @@ impl Runtime {
         let guid_field = if show.is_some() { "_show_titleGuid" } else { "_titleGuid" };
         let title_field = if show.is_some() { "_show_title" } else { "title" };
         let authoritative = meta
-            .filter(|meta| meta.get(guid_field).and_then(Value::as_str).is_some() && meta.get(guid_field) == old.get("guid"))
+            .filter(|meta| meta.get(guid_field).and_then(Field::as_str).is_some() && meta.get(guid_field) == old.get("guid").map(Field::from))
             .and_then(|meta| meta.get(title_field)).cloned();
         let (title, metadata_title) = if let Some(title) = authoritative {
             (title, true)
@@ -3446,8 +3447,8 @@ impl Runtime {
         // a sponsor's rex took before its claim left every show on its release name (2026-10-24).
         let taken = self.catalog.hot().lazy().any(|row| {
             key_of(&row).as_deref() != Some(show)
-                && row.get("type").and_then(Value::as_str) == Some("show")
-                && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == library.key
+                && row.get("type").and_then(Field::as_str) == Some("show")
+                && string_value(row.get("librarySectionID").unwrap_or(Field::Null)) == library.key
                 && row.get("_identity").map(string_value).as_deref() == Some(identity.as_str())
         });
         let leaves = self.leaves(show);
@@ -3457,7 +3458,7 @@ impl Runtime {
             return;
         }
         let built = crate::hierarchy::build(vec![leaf.clone()]);
-        let Some(fresh) = built.iter().find(|row| row.get("type").and_then(Value::as_str) == Some("show")) else {
+        let Some(fresh) = built.iter().find(|row| row.get("type").and_then(Field::as_str) == Some("show")) else {
             return;
         };
         if let Some(row) = self.catalog.get_mut(show).and_then(Value::as_object_mut) {
@@ -3755,7 +3756,7 @@ mod tests {
         catalog.pack_pending();
         let before = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get);
         let mut tried = catalog.hot().lazy().filter(|row| may_be_blank(&catalog, row, 0)).filter_map(|row| key_of(&row)).collect::<Vec<_>>();
-        let releases = catalog.hot().lazy().filter_map(|row| row.get("_release").and_then(Value::as_str).map(str::to_string)).count();
+        let releases = catalog.hot().lazy().filter_map(|row| row.get("_release").and_then(Field::as_str).map(str::to_string)).count();
         let read = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get) - before;
         let _ = std::fs::remove_dir_all(&directory);
         tried.sort();

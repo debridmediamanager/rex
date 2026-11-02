@@ -220,7 +220,7 @@ impl Runtime {
     fn member_counts(&self, collection: &Collection) -> (usize, Vec<String>) {
         let mut years = Vec::new();
         let mut count = 0;
-        let mut take = |year: Option<&Value>| {
+        let mut take = |year: Option<Field<'_>>| {
             count += 1;
             if let Some(year) = year.filter(|value| truthy(value)) {
                 years.push(py_str(year));
@@ -228,7 +228,7 @@ impl Runtime {
         };
         if collection.smart {
             for row in self.collection_members(collection) {
-                take(row.get("year"));
+                take(row.get("year").map(Field::from));
             }
         } else {
             for row in collection.items.iter().filter_map(|key| self.catalog.lazy_get(key)) {
@@ -840,7 +840,7 @@ impl Runtime {
         }
         rows.into_iter()
             .filter(|row| {
-                row.get("type").and_then(Value::as_str) == Some(subtype)
+                row.get("type").and_then(Field::as_str) == Some(subtype)
                     && row.get("librarySectionID").map(string_value).as_deref() == Some(section)
             })
             .collect()
@@ -1358,12 +1358,12 @@ impl Runtime {
                 .hot()
                 .lazy()
                 .filter(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                    string_value(row.get("librarySectionID").unwrap_or(Field::Null))
                         == collection.section
                 })
                 .flat_map(|row| {
                     row.get("Collection")
-                        .and_then(Value::as_array)
+                        .and_then(Field::as_array)
                         .cloned()
                         .unwrap_or_default()
                 })
@@ -1733,7 +1733,7 @@ impl Runtime {
             let usable = rows
                 .iter()
                 .filter(|row| {
-                    row.get("type").and_then(Value::as_str) == Some(collection.subtype.as_str())
+                    row.get("type").and_then(Field::as_str) == Some(collection.subtype.as_str())
                 })
                 .filter_map(key_of)
                 .collect::<Vec<_>>();
@@ -2221,13 +2221,13 @@ pub(super) fn auto_collect(shared: &SharedRuntime, backfill: bool) {
             .catalog
             .hot()
             .lazy()
-            .filter(|row| backfill && row.get("type").and_then(Value::as_str) == Some("movie"))
+            .filter(|row| backfill && row.get("type").and_then(Field::as_str) == Some("movie"))
             .filter(|row| row.get("_collections").is_none() && row.get("deletedAt").is_none())
             .filter(|row| row.get("librarySectionID").is_some_and(|id| thresholds.contains_key(&string_value(id))))
             .filter_map(|row| {
                 let externals = row
                     .get("Guid")
-                    .and_then(Value::as_array)?
+                    .and_then(Field::as_array)?
                     .iter()
                     .filter_map(|entry| entry.get("id")?.as_str().map(str::to_string))
                     .collect::<Vec<_>>();
@@ -2270,7 +2270,7 @@ impl Runtime {
     fn group_auto_collections(&mut self, section: &str, threshold: usize, asked: bool) {
         let mut groups: std::collections::BTreeMap<String, (Value, Vec<String>)> = std::collections::BTreeMap::new();
         for row in self.catalog.hot().lazy() {
-            if row.get("type").and_then(Value::as_str) != Some("movie")
+            if row.get("type").and_then(Field::as_str) != Some("movie")
                 || row.get("deletedAt").is_some()
                 || row.get("librarySectionID").map(string_value).as_deref() != Some(section)
             {
@@ -2279,7 +2279,10 @@ impl Runtime {
             let Some(key) = key_of(&row) else {
                 continue;
             };
-            for entry in row.get("_collections").and_then(Value::as_array).into_iter().flatten() {
+            // A hot row's `_collections` is its JSON text, parsed for the 83 rows of the
+            // production server's 45,328 that have one.
+            let collections = row.get("_collections").map(Field::value);
+            for entry in collections.as_deref().and_then(Value::as_array).into_iter().flatten() {
                 let Some(guid) = entry.get("guid").and_then(Value::as_str) else {
                     continue;
                 };
@@ -2362,8 +2365,8 @@ mod tests {
         let grouped = catalog
             .hot()
             .lazy()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
-            .filter_map(|row| row.get("_collections").and_then(Value::as_array).map(Vec::len))
+            .filter(|row| row.get("type").and_then(Field::as_str) == Some("movie"))
+            .filter_map(|row| row.get("_collections").and_then(|collections| collections.value().as_array().map(Vec::len)))
             .sum::<usize>();
         let read = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get) - before;
         let _ = std::fs::remove_dir_all(&directory);

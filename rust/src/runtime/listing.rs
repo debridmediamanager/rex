@@ -150,7 +150,7 @@ impl Runtime {
                 None => self.filter_value(row, column),
             });
             let rank = (
-                row.get("addedAt").and_then(Value::as_i64).unwrap_or(0),
+                row.get("addedAt").and_then(Field::as_i64).unwrap_or(0),
                 key_of(row)
                     .and_then(|key| key.parse::<i64>().ok())
                     .unwrap_or(0),
@@ -274,7 +274,7 @@ impl Runtime {
             _ => "",
         });
         let of_type = |row: &dyn Row| {
-            let kind = row.get("type").and_then(Value::as_str);
+            let kind = row.get("type").and_then(Field::as_str);
             match wanted {
                 Some(wanted) => !wanted.is_empty() && kind == Some(wanted),
                 None => kind != Some("clip"),
@@ -307,7 +307,7 @@ impl Runtime {
         // the plan is asymmetric: type 3 returns its season, type 4 its episodes, and
         // `type=2&season.index=1` refuses with 500 even without the guid clause.
         if type_number.is_none() && scoped_guid {
-            source.retain(|row| row.get("type").and_then(Value::as_str) == Some("show"));
+            source.retain(|row| row.get("type").and_then(Field::as_str) == Some("show"));
         }
         if type_number == Some(2) && scoped("season", "index") {
             return Response::error(500, "rex: invalid scoped conjunction");
@@ -386,7 +386,7 @@ impl Runtime {
                         object.shift_remove("Media");
                         match row.get("_libraryAllDuration") {
                             Some(duration) if !duration.is_null() => {
-                                object.insert("duration".to_string(), duration.clone());
+                                object.insert("duration".to_string(), duration.to_value());
                             }
                             _ => {
                                 object.shift_remove("duration");

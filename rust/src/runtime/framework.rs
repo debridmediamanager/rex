@@ -1250,7 +1250,7 @@ impl Runtime {
             .unwrap_or_else(|| {
                 default
                     .iter()
-                    .filter(|row| row.get("enabled").and_then(Value::as_bool).unwrap_or(false))
+                    .filter(|row| row.get("enabled").and_then(Field::as_bool).unwrap_or(false))
                     .map(|row| string_value(row.get("identifier").unwrap_or(&Value::Null)))
                     .collect()
             });
@@ -1347,7 +1347,7 @@ impl Runtime {
                         .filter_map(|name| {
                             modern_all
                                 .iter()
-                                .find(|agent| agent.get("identifier") == Some(name))
+                                .find(|agent| agent.get("identifier") == Some(name.into()))
                                 .cloned()
                         })
                         .collect::<Vec<_>>()

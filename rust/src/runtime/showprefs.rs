@@ -30,14 +30,14 @@ impl Runtime {
             .get(kind)?
             .as_array()?
             .iter()
-            .find(|setting| setting.get("id").and_then(Value::as_str) == Some(name))
+            .find(|setting| setting.get("id").and_then(Field::as_str) == Some(name))
             .and_then(|setting| setting.get("value"))
             .map(string_value)
     }
 
     fn sidecar_setting_list(&self, sidecar: &str, kind: &str) -> Vec<Value> {
         shared_json_sidecar(&self.catalog_path, sidecar)
-            .and_then(|document| document.get(kind).and_then(Value::as_array).cloned())
+            .and_then(|document| document.get(kind).and_then(Field::as_array).cloned())
             .unwrap_or_default()
     }
 
@@ -47,10 +47,10 @@ impl Runtime {
     pub(super) fn show_pref(&self, show: &(impl Row + ?Sized), name: &str) -> String {
         let mut stored = show
             .get("_prefs")
-            .and_then(|prefs| prefs.get(name))
-            .map(string_value);
+            // A hot row's `_prefs` is its JSON text.
+            .and_then(|prefs| prefs.value().get(name).map(string_value));
         if stored.is_none() {
-            let kind = show.get("type").and_then(Value::as_str).unwrap_or("");
+            let kind = show.get("type").and_then(Field::as_str).unwrap_or("");
             stored = self.sidecar_setting_value("item_prefs.json", kind, name);
         }
         if let Some(stored) = stored.filter(|value| value != "-1") {

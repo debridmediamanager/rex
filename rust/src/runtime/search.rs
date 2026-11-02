@@ -59,7 +59,7 @@ fn score_text(rank: f64) -> String {
 }
 
 fn text_of<'a>(row: &'a (impl Row + ?Sized), field: &str) -> &'a str {
-    row.get(field).and_then(Value::as_str).unwrap_or("")
+    row.get(field).and_then(Field::as_str).unwrap_or("")
 }
 
 fn words(text: &str) -> Vec<String> {
@@ -75,7 +75,7 @@ fn tier_words(text: &str) -> Vec<String> {
 /// `key_of(row)` as a number (0 when it is none), without a `String` a row.
 fn numeric_key(row: &(impl Row + ?Sized)) -> i64 {
     match row.get("ratingKey") {
-        Some(Value::String(key)) => key.parse().ok(),
+        Some(Field::Str(key)) => key.parse().ok(),
         Some(other) => string_value(other).parse().ok(),
         None => None,
     }
@@ -176,7 +176,7 @@ pub(super) fn query_tier(row: &(impl Row + ?Sized), query: &TierQuery) -> &'stat
             return "exact";
         }
     }
-    let sort = row.get("titleSort").and_then(Value::as_str).filter(|s| !s.is_empty() && *s != title);
+    let sort = row.get("titleSort").and_then(Field::as_str).filter(|s| !s.is_empty() && *s != title);
     if title.is_ascii() && sort.is_none_or(str::is_ascii) {
         return ascii_tier(title, sort, terms);
     }
@@ -250,7 +250,7 @@ pub(super) fn search_score_value(row: &(impl Row + ?Sized), needle: &str) -> f64
 
 /// `search_score_value` for a row whose tier is already known.
 fn tier_score_value(row: &(impl Row + ?Sized), tier: &str) -> f64 {
-    let base = match row.get("type").and_then(Value::as_str) {
+    let base = match row.get("type").and_then(Field::as_str) {
         Some("episode") => 0.91,
         Some("playlist") => 0.92,
         _ => 0.93,
@@ -592,7 +592,7 @@ impl Runtime {
                 .unwrap_or_default();
         }
         HashSet::from([string_value(
-            row.get("librarySectionID").unwrap_or(&Value::Null),
+            row.get("librarySectionID").unwrap_or(Field::Null),
         )])
     }
 
@@ -646,7 +646,7 @@ impl Runtime {
             && corpus.rows.iter().any(|row| corpus.names.tags(row, 3).iter().any(|&(_, name)| tiers.tier(name).is_some()));
         let normal_gate = rows.iter().any(|row| {
             matches!(
-                row.get("type").and_then(Value::as_str),
+                row.get("type").and_then(Field::as_str),
                 Some("movie" | "show" | "artist" | "album" | "track")
             )
         }) || !playlist_rows.is_empty()
@@ -663,7 +663,7 @@ impl Runtime {
             let mut seen = rows.iter().filter_map(|row| key_of(row)).collect::<HashSet<_>>();
             for row in self.catalog.hot().lazy() {
                 if !matches!(
-                    row.get("type").and_then(Value::as_str),
+                    row.get("type").and_then(Field::as_str),
                     Some("movie" | "show")
                 ) {
                     continue;
@@ -688,7 +688,7 @@ impl Runtime {
                         (
                             hub.to_string(),
                             name.clone(),
-                            string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
+                            string_value(row.get("librarySectionID").unwrap_or(Field::Null)),
                         )
                     })
                     .collect::<HashSet<_>>();
@@ -736,7 +736,7 @@ impl Runtime {
                 }
                 let key = (
                     name.clone(),
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
+                    string_value(row.get("librarySectionID").unwrap_or(Field::Null)),
                 );
                 let entry = seen.entry(key, || TagEntry {
                     tag: (*tag).clone(),
@@ -758,7 +758,7 @@ impl Runtime {
                     .unwrap_or("")
                     .to_string();
                 if !entry.rows.iter().any(|row| {
-                    row.get("type").and_then(Value::as_str) == Some(section_type.as_str())
+                    row.get("type").and_then(Field::as_str) == Some(section_type.as_str())
                 }) {
                     continue;
                 }
@@ -781,7 +781,7 @@ impl Runtime {
         // server, 2026-10-11).
         let mut typed: Typed = HashMap::new();
         for row in rows {
-            let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
+            let kind = row.get("type").and_then(Field::as_str).unwrap_or("");
             match typed.get_mut(kind) {
                 Some(kind_rows) => kind_rows.push(row),
                 None => {
@@ -806,7 +806,7 @@ impl Runtime {
                 typed
                     .entry(
                         row.get("type")
-                            .and_then(Value::as_str)
+                            .and_then(Field::as_str)
                             .unwrap_or("")
                             .to_string(),
                     )
@@ -1175,7 +1175,7 @@ fn tag_hit(section_key: &str, section: &Value, section_id: Value, section_number
                 );
                 if tier == "fuzzy" {
                     if let Some(object) = entry.as_object_mut() {
-                        let reason = row.get("_searchReason").and_then(Value::as_array).cloned();
+                        let reason = row.get("_searchReason").and_then(Field::as_array).cloned();
                         if let Some(reason) = reason {
                             object.insert("reason".to_string(), reason[0].clone());
                             object.insert(
@@ -1790,7 +1790,7 @@ impl Runtime {
                 // answered the detail-derived listing row led by `ratingKey`, with
                 // neither `allowSync` nor the `librarySectionUUID` a client keys a hit
                 // to its library by.
-                let section_id = row.get("librarySectionID").cloned().unwrap_or(Value::Null);
+                let section_id = row.get("librarySectionID").map(Field::to_value).unwrap_or(Value::Null);
                 let section = self
                     .section(&string_value(&section_id))
                     .cloned()

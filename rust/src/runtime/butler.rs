@@ -171,27 +171,27 @@ impl Runtime {
         // Borrowed: every field read is a hot one, and copying the library twice per refresh
         // (old zurg builds send one per release) read every row from disk under the lock.
         for row in self.section_row_refs(section_id) {
-            let row_title = string_value(row.get("title").unwrap_or(&Value::Null));
+            let row_title = string_value(row.get("title").unwrap_or(Field::Null));
             let label = match row
                 .get("year")
-                .filter(|year| !year.is_null() && *year != &json!(0))
+                .filter(|year| !year.is_null() && *year != Field::Int(0))
             {
                 Some(year) => format!("{row_title} ({})", string_value(year)),
                 None => row_title,
             };
-            match row.get("type").and_then(Value::as_str) {
+            match row.get("type").and_then(Field::as_str) {
                 Some("movie") => steps.push((label.clone(), Some(label))),
                 Some("show") => {
                     steps.push((label.clone(), None));
                     let key = key_of(&row).unwrap_or_default();
                     let mut seasons = self.children_refs(&key);
                     seasons.sort_by_key(|season| {
-                        -season.get("index").and_then(Value::as_i64).unwrap_or(0)
+                        -season.get("index").and_then(Field::as_i64).unwrap_or(0)
                     });
                     for season in &seasons {
                         let name = format!(
                             "Season {:02}",
-                            season.get("index").and_then(Value::as_i64).unwrap_or(0)
+                            season.get("index").and_then(Field::as_i64).unwrap_or(0)
                         );
                         steps.push((format!("{label}/{name}"), Some(format!("{label} - {name}"))));
                     }
@@ -288,7 +288,7 @@ impl Runtime {
                         .iter()
                         .filter(|task| {
                             task.get("enabled")
-                                .and_then(Value::as_bool)
+                                .and_then(Field::as_bool)
                                 .unwrap_or(false)
                         })
                         .map(|task| string_value(task.get("name").unwrap_or(&Value::Null)))
@@ -331,7 +331,7 @@ impl Runtime {
                 .lazy()
                 .filter(|row| {
                     row.get("type")
-                        .and_then(Value::as_str)
+                        .and_then(Field::as_str)
                         .is_some_and(|value| kind.contains(&value))
                 })
                 .count()
@@ -349,7 +349,7 @@ impl Runtime {
             };
             if let Some(options) = processing {
                 let keys = self.catalog.hot().lazy()
-                    .filter(|row| matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")))
+                    .filter(|row| matches!(row.get("type").and_then(Field::as_str), Some("movie" | "episode")))
                     .filter_map(|row| key_of(&row)).collect::<Vec<_>>();
                 let queued = self.request_analysis(&keys, options);
                 self.notify_progress(&format!("Queued {queued} media analysis job(s)."));
@@ -967,7 +967,7 @@ impl Runtime {
                         .is_some_and(|art| !art.is_null() && string_value(art) != "")
                         && row
                             .get("Genre")
-                            .and_then(Value::as_array)
+                            .and_then(Field::as_array)
                             .is_some_and(|tags| {
                                 tags.iter().any(|tag| {
                                     string_value(tag.get("id").unwrap_or(&Value::Null))
@@ -994,7 +994,7 @@ impl Runtime {
                 .or_else(|| candidates.first());
             if let Some(pick) = fresh {
                 taken.insert(key_of(pick).unwrap_or_default());
-                arts.insert(id, string_value(pick.get("art").unwrap_or(&Value::Null)));
+                arts.insert(id, string_value(pick.get("art").unwrap_or(Field::Null)));
             }
         }
         let tiles = entries

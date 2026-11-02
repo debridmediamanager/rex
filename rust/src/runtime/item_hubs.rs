@@ -46,7 +46,7 @@ impl Runtime {
         let mut scored = candidates
             .iter()
             .filter(|other| {
-                other.get("type") == row.get("type") && key_of(other).unwrap_or_default() != key
+                other.get("type") == row.get("type").map(Field::from) && key_of(other).unwrap_or_default() != key
             })
             .filter_map(|other| {
                 let related = entries.get(other.hot.position).and_then(|entry| entry.related.as_deref())?;

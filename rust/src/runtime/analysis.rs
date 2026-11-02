@@ -209,7 +209,7 @@ impl Runtime {
         let keys = self.catalog.hot().rows().filter(|row| row.has_analysis).filter_map(|row| {
             let value = row.get("ratingKey")?;
             let key = match value {
-                Value::String(key) => std::borrow::Cow::Borrowed(key.as_str()),
+                Field::Str(key) => std::borrow::Cow::Borrowed(key),
                 _ => std::borrow::Cow::Owned(string_value(value)),
             };
             matches(&key).then(|| key.into_owned())
@@ -357,7 +357,7 @@ fn worker(shared: Weak<Mutex<Runtime>>, jobs: Arc<Jobs>) {
     let restored = if let Some(runtime) = shared.upgrade() {
         let guard = runtime.lock().unwrap(); let mut result = Vec::new();
         for row in guard.catalog.hot().lazy().filter(|row| row.hot.has_analysis) {
-            for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+            for media in row.get("Media").and_then(Field::as_array).into_iter().flatten() {
                 for (part,record) in media["_analysis"].as_object().into_iter().flat_map(|m|m.iter()) {
                     jobs.replace_artifacts(&Value::Null,record); result.extend(artifacts(record));
                     if let (Some(key),Some(error)) = (key_of(&row),record["failure"].as_str()) {

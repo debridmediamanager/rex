@@ -1592,7 +1592,7 @@ impl Runtime {
                 let height = row
                     .pointer("/Media/0/Part/0/Stream")
                     .and_then(Value::as_array)
-                    .and_then(|streams| streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(1)))
+                    .and_then(|streams| streams.iter().find(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(1)))
                     .and_then(|video| video.get("height").and_then(Value::as_i64))
                     .unwrap_or(0);
                 json!({"key": channel.number, "identifier": channel.number, "name": channel.title, "drm": false, "hd": height >= 720, "favorite": false})
@@ -1707,8 +1707,8 @@ impl Runtime {
         crate::catalog::unpack_streams(&mut row);
         let media = row.pointer("/Media/0").cloned().unwrap_or_default();
         let streams = media.pointer("/Part/0/Stream").and_then(Value::as_array).cloned().unwrap_or_default();
-        let video = streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(1));
-        let audio = streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2));
+        let video = streams.iter().find(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(1));
+        let audio = streams.iter().find(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(2));
         let field = |stream: Option<&Value>, name: &str| stream.and_then(|stream| stream.get(name)).cloned().unwrap_or(Value::Null);
         let height = field(video, "height");
         let mut out = Map::new();
@@ -1769,7 +1769,7 @@ impl Runtime {
         let mut row = guide.channels[channel].row.clone();
         crate::catalog::unpack_streams(&mut row);
         let streams = row.pointer("/Media/0/Part/0/Stream").and_then(Value::as_array).cloned().unwrap_or_default();
-        let video = streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(1));
+        let video = streams.iter().find(|stream| stream.get("streamType").and_then(Field::as_i64) == Some(1));
         let duration = self.tuned_programme(guide, channel, at).1.map_or(0, |airing| {
             let airing = &guide.airings[airing];
             (airing.ends - airing.begins) * 1000

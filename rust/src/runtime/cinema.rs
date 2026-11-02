@@ -46,7 +46,7 @@ impl Runtime {
         if self.prefs.get("CinemaTrailersFromLibrary").map_or(true, truthy) {
             let unwatched = self.prefs.get("CinemaTrailersType").map(string_value).as_deref() != Some("0");
             let mut movies = self.catalog.hot().lazy()
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
+                .filter(|row| row.get("type").and_then(Field::as_str) == Some("movie"))
                 .filter_map(|row| key_of(&row))
                 .collect::<Vec<_>>();
             movies.sort();
@@ -81,7 +81,7 @@ impl Runtime {
                 let media = row.get("Media")?.as_array()?.iter().find_map(|media| {
                     if media.get("deletedAt").is_some() { return None; }
                     let part = media.get("Part")?.as_array()?.iter().find(|part| {
-                        part.get("file").and_then(Value::as_str) == Some(path)
+                        part.get("file").and_then(Field::as_str) == Some(path)
                             && self.part_source(row, path).is_some()
                     })?;
                     let mut selected = media.clone();
