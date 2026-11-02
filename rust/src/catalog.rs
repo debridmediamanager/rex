@@ -1436,4 +1436,152 @@ mod tests {
         assert!(catalog.take_changes().all, "a row without a key is found by a full pass");
     }
 
+    /// A library shaped by the production server's field census (2026-11-01, 45,328 rows):
+    /// shows, seasons and episodes in `fun_show_shape.json`'s proportions to 35,390 episodes,
+    /// films to 45,328 rows; every hot field at the census's share of rows and text length,
+    /// the real episode row's (`fun_episode_row.json`) values, 68k releases from ten sources.
+    fn fun_shaped_library() -> Vec<Value> {
+        use serde_json::json;
+        let shape: Vec<Vec<usize>> = serde_json::from_str(include_str!("../tests/fixtures/fun_show_shape.json")).unwrap();
+        let episode: Value = serde_json::from_str(include_str!("../../tests/fixtures/fun_episode_row.json")).unwrap();
+        let sources = ["zurg", "zurg-rd", "zurg-ad", "zurg-tb", "zurg-usenet", "zurg-pm", "zurg-oc", "rex-youtube", "rex-stremio", "zurg-dl"];
+        let mut items: Vec<Value> = Vec::new();
+        let mut key = 100_000u64;
+        let mut next = || {
+            key += 1;
+            key
+        };
+        let hex = |n: u64| format!("{:024x}", n.wrapping_mul(0x9e37_79b9_7f4a_7c15));
+        // Every released row: its source id (133 bytes), its release (63, about four rows each),
+        // poster and placement, and on three rows in five a second version from another source.
+        let released = |row: &mut Value, n: u64, placed: Value| {
+            let source = sources[n as usize % sources.len()];
+            let sid = format!("shows/{:0>60}/Landman.S01E01.2160p.AMZN.WEB-DL.H.265.RGzsRutracker.{n:08}.mkv", n / 4);
+            let file = if n % 9 < 5 { format!("/mnt/{source}/{sid}") } else { format!("/mnt/{source}/__all__/{}/{n}.mkv", hex(n)) };
+            let object = row.as_object_mut().unwrap();
+            object.insert("_release".into(), json!(format!("Landman.S01.2160p.AMZN.WEB-DL.H.265.SDR.{:0>24}", n / 4)));
+            object.insert("_poster_url".into(), json!(format!("https://image.tmdb.org/t/p/original/{:x>27}.jpg", hex(n))));
+            object.insert("_placed".into(), placed);
+            object.insert("_scanned".into(), json!(true));
+            let mut media = vec![json!({"id": n, "Part": [{"id": n, "file": file}]})];
+            if n % 5 < 3 {
+                let other = sources[(n as usize + 3) % sources.len()];
+                let second = format!("{sid}.{other}");
+                media[0]["_source"] = json!(source);
+                media[0]["_sid"] = json!(sid);
+                media.push(json!({"id": n + 1, "_source": other, "_sid": second, "Part": [{"id": n + 1, "file": format!("/mnt/{other}/{second}")}]}));
+            }
+            object.insert("_source".into(), json!(source));
+            object.insert("_sid".into(), json!(sid));
+            object.insert("Media".into(), Value::Array(media));
+        };
+        let (mut shows, mut episodes) = (0usize, 0usize);
+        'library: for seasons in shape.iter().cycle() {
+            shows += 1;
+            let show = next();
+            let show_title = format!("{:0>16}", format!("Show {shows}"));
+            items.push(json!({"ratingKey": show.to_string(), "type": "show", "title": show_title, "guid": format!("plex://show/{}", hex(show)),
+                              "librarySectionID": 2, "addedAt": 1_791_651_463u64, "updatedAt": 1_791_651_463u64, "year": 2024,
+                              "childCount": seasons.len(), "leafCount": seasons.iter().sum::<usize>(), "contentRating": "TV-MA",
+                              "audienceRating": 8.2, "studio": "Paramount Network.", "_poster_url": format!("https://image.tmdb.org/t/p/original/{:x>27}.jpg", hex(show))}));
+            for (season_index, count) in seasons.iter().enumerate() {
+                let season = next();
+                items.push(json!({"ratingKey": season.to_string(), "type": "season", "title": format!("Season {}", season_index + 1),
+                                  "guid": format!("plex://season/{}", hex(season)), "index": season_index + 1, "parentRatingKey": show.to_string(),
+                                  "parentTitle": show_title, "librarySectionID": 2, "leafCount": count, "addedAt": 1_791_651_463u64, "contentRating": "TV-MA"}));
+                for index in 0..*count {
+                    let number = next();
+                    let mut row = json!({});
+                    for name in crate::hotrow::FIELDS {
+                        if let Some(value) = episode.get(*name) {
+                            row[*name] = value.clone();
+                        }
+                    }
+                    row["ratingKey"] = json!(number.to_string());
+                    row["guid"] = json!(format!("plex://episode/{}", hex(number)));
+                    row["title"] = json!(format!("{:0>22}", format!("Episode {number}")));
+                    row["grandparentTitle"] = json!(show_title);
+                    row["parentTitle"] = json!(format!("Season {}", season_index + 1));
+                    row["grandparentRatingKey"] = json!(show.to_string());
+                    row["parentRatingKey"] = json!(season.to_string());
+                    row["index"] = json!(index + 1);
+                    row["parentIndex"] = json!(season_index + 1);
+                    row["addedAt"] = json!(1_791_651_463 + number);
+                    if number % 3 == 0 {
+                        row["viewCount"] = json!(1);
+                        row["lastViewedAt"] = json!(1_791_700_000 + number);
+                    }
+                    released(&mut row, number, json!({"kind": "episode", "season": season_index + 1, "episode": index + 1, "tmdb_episode": 4_789_477 + number}));
+                    items.push(row);
+                    episodes += 1;
+                    if episodes == 35_390 {
+                        break 'library;
+                    }
+                }
+            }
+        }
+        while items.len() < 45_328 {
+            let number = next();
+            let mut row = json!({"ratingKey": number.to_string(), "type": "movie", "title": format!("{:0>22}", format!("Movie {number}")),
+                                 "guid": format!("plex://movie/{}", hex(number)), "librarySectionID": 1, "year": 2001, "duration": 7_200_000,
+                                 "addedAt": 1_791_651_463 + number, "updatedAt": 1_791_651_463 + number, "contentRating": "R",
+                                 "audienceRating": 7.4, "rating": 6.9, "originallyAvailableAt": "2001-12-19", "studio": "New Line Cinema.."});
+            let placed = if number % 7 < 4 { json!({"kind": "movie", "season": null, "episode": null, "tmdb_episode": 1}) } else { Value::Null };
+            released(&mut row, number, placed);
+            if row["_placed"].is_null() {
+                row.as_object_mut().unwrap().shift_remove("_placed");
+            }
+            items.push(row);
+        }
+        for (at, row) in items.iter_mut().enumerate().filter(|(at, _)| at % 980 == 0) {
+            row["_retry"] = json!({"n": 2, "at": 1_791_700_000 + at});
+        }
+        for (at, row) in items.iter_mut().enumerate().filter(|(at, _)| at % 545 == 7) {
+            row["_collections"] = json!([{"tag": "Saga", "guid": format!("plex://collection/{at}")}]);
+            row["_matched"] = json!(true);
+        }
+        items
+    }
+
+    /// What the index holds for each row's hot fields and releases, on a library shaped like the
+    /// production server's, and how long a pass over it reading five fields takes. Each field a
+    /// `Value` and each release three strings (de3d8be6): 2,874 bytes a row; the pass 18.7 ms,
+    /// 12.6 of it the four fields but `_placed`. Packed (`hotrow.rs`): 678 bytes; the pass 27.4
+    /// ms, 10.7 of it the four: the rest is parsing the JSON text of the 39,484 `_placed` for their
+    /// kind (2026-11-02, back to back on a Mac sharing its cores with other builds).
+    #[test]
+    fn a_hot_row_holds_a_few_hundred_bytes() {
+        let items = fun_shaped_library();
+        let count = items.len();
+        let catalog = Catalog::from_value(serde_json::json!({"items": items})).unwrap();
+        let hot = catalog.hot();
+        let releases: usize = hot.rows().map(|row| row.releases().count()).sum();
+        let time = |read: &dyn Fn(&RowRef<'_>) -> usize| {
+            (0..5)
+                .map(|_| {
+                    let started = std::time::Instant::now();
+                    std::hint::black_box(hot.lazy().map(|row| read(&row)).sum::<usize>());
+                    started.elapsed()
+                })
+                .min()
+                .unwrap()
+        };
+        let scalars = |row: &RowRef<'_>| {
+            row.get("type").and_then(Field::as_str).map_or(0, str::len)
+                + row.get("addedAt").and_then(Field::as_i64).is_some() as usize
+                + row.get("grandparentRatingKey").and_then(Field::as_str).map_or(0, str::len)
+                + row.get("title").and_then(Field::as_str).map_or(0, str::len)
+        };
+        let four = time(&scalars);
+        let pass = time(&|row| scalars(row) + row.get("_placed").and_then(|placed| placed.value().get("kind")?.as_str().map(str::len)).unwrap_or(0));
+        // Weighed as it is let go of: every hot row's buffers and the slots the index keeps them in.
+        let rows = std::mem::take(&mut catalog.index.0.borrow_mut().built.as_mut().unwrap().hot);
+        let slack = (rows.capacity() - rows.len()) * std::mem::size_of::<HotRow>();
+        let before = crate::test_alloc::held();
+        drop(rows);
+        let per_row = (before - crate::test_alloc::held()) as usize - slack;
+        let per_row = per_row / count;
+        eprintln!("{count} rows, {releases} releases: {per_row} bytes a hot row; a pass reading five fields {pass:?}, the four but `_placed` {four:?}; a Value is {} bytes", std::mem::size_of::<Value>());
+        assert!(per_row < 700, "{per_row} bytes a hot row");
+    }
 }

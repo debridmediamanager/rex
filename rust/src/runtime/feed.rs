@@ -2432,7 +2432,7 @@ impl Runtime {
             .hot()
             .lazy()
             .filter(|row| row.get("deletedAt").is_none())
-            .flat_map(|row| row.hot.releases.iter().filter(|release| &*release.source == source).map(|release| release.sid.to_string()))
+            .flat_map(|row| row.hot.releases().filter(|release| release.source == source).map(|release| release.sid.to_string()))
             .chain(self.feed_held.keys().filter_map(|key| key.strip_prefix(&prefix).map(str::to_string)))
             .collect()
     }
@@ -2443,7 +2443,7 @@ impl Runtime {
             .hot()
             .lazy()
             .flat_map(|row| {
-                row.hot.releases.iter().filter(|release| *release.source == *source.name).map(move |release| {
+                row.hot.releases().filter(|release| *release.source == *source.name).map(move |release| {
                     (release.sid.to_string(), key_of(&row), release.file(), row.get("deletedAt").is_some())
                 })
             })
@@ -2487,7 +2487,7 @@ impl Runtime {
     pub(super) fn feed_matches(&self, source: &Source) -> Value {
         let mut found: BTreeMap<(String, String), (Map<String, Value>, &str, i64)> = BTreeMap::new();
         for row in self.catalog.hot().lazy() {
-            if !row.hot.releases.iter().any(|release| *release.source == *source.name) {
+            if !row.hot.releases().any(|release| *release.source == *source.name) {
                 continue;
             }
             // The row, its season or its show: the first a person matched.
@@ -2496,7 +2496,7 @@ impl Runtime {
                 self.catalog.lazy_get(&key).filter(|row| row.get("_matched").is_some_and(truthy))
             });
             let held_at = holder.and_then(|holder| holder.get("_matched_at").or_else(|| holder.get("updatedAt"))?.as_i64());
-            for release in row.hot.releases.iter().filter(|release| *release.source == *source.name && (holder.is_some() || release.matched)) {
+            for release in row.hot.releases().filter(|release| *release.source == *source.name && (holder.is_some() || release.matched)) {
                 let body = row.body();
                 let Some(group) = version_group(body, release.index) else { continue };
                 // The title it was matched to: an episode's show, a clip's film or show, a film itself.

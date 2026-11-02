@@ -11,6 +11,18 @@
 //! read the row. Asking it for any other field panics: a pass that needs one reads the row.
 //! What `get` answers is a `Field`, borrowed from wherever the field is held, read with the
 //! names `Value` reads with.
+//!
+//! A hot row is one buffer: each field it holds as its id, its kind and its bytes, then its
+//! releases. Held as a `Value` each, hot rows were 104 MB of the production server's 193 MB idle
+//! heap (heaptrack, 45,328 rows, 2026-11-01): a `Value` is 72 bytes (`size_of`, with
+//! `preserve_order`), so a `true` or an `addedAt` took 72 and a row's 21.6 fields 1,555 bytes of
+//! slots for 455 bytes of JSON text; each string was an allocation of its own, a `_placed` (59
+//! bytes of text) a map of ~400, and each release three more strings, its id a copy of the
+//! row's `_sid`. On a library shaped like that one a hot row went from 2,874 bytes to 678
+//! (`catalog::tests::a_hot_row_holds_a_few_hundred_bytes`). Finding a field steps over the
+//! entries before it: four fields of each of 45k rows in 10.7 ms, 12.6 as `Value`s. An object or
+//! list is its JSON text, parsed only where a pass needs what is in it: 17 ms for every
+//! `_placed` of those rows, 6 ms read as maps, which no pass over the library does.
 
 use std::borrow::Cow;
 
@@ -77,31 +89,30 @@ fn field(name: &str) -> Option<u8> {
 pub struct HotRow {
     /// The row's position among the catalog's rows.
     pub position: usize,
-    /// Each field the row holds, by ascending id: the id, its kind and its value (`put`).
+    /// Each field the row holds, by ascending id: the id, its kind and its value (`put`); then,
+    /// from `releases_at`, its releases (`put_release`).
     bytes: Box<[u8]>,
-    /// The row's releases (`catalog::versions`): a source's listing and a snapshot's end walk
-    /// every row for them, and on the production server reading each row for its Media took
-    /// 26 s for one source's 40,335 rows, holding every Plex request (2026-10-18).
-    pub releases: Box<[Release]>,
+    releases_at: u32,
     /// Whether this row has generated analysis records to restore or retire.
     pub has_analysis: bool,
 }
 
-/// A release on a row: its source, its id there, its Media and the file that Media reads.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Release {
-    pub source: Box<str>,
-    pub sid: Box<str>,
+/// A release on a row (`HotRow::releases`): its source, its id there, its Media and the file
+/// that Media reads.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Release<'a> {
+    pub source: &'a str,
+    pub sid: &'a str,
     pub index: usize,
     /// Whether a person moved this Media onto its row by a merge (`_matched_at` on it): a
     /// source's matches listing finds it without reading the row.
     pub matched: bool,
     /// The file, or what comes before `sid` in it when it ends with `sid`: 56% of the production
     /// server's files are their mount and their id, so half the bytes are kept once.
-    file: Option<(Box<str>, bool)>,
+    file: Option<(&'a str, bool)>,
 }
 
-impl Release {
+impl Release<'_> {
     pub fn file(&self) -> Option<String> {
         self.file.as_ref().map(|(file, before_sid)| if *before_sid { format!("{file}{}", self.sid) } else { file.to_string() })
     }
@@ -117,22 +128,21 @@ impl HotRow {
                 }
             }
         }
-        let releases = crate::catalog::releases(row)
-            .into_iter()
-            .map(|(source, sid, index, part)| {
-                let file = row.pointer(&format!("/Media/{index}/Part/{part}/file")).and_then(Value::as_str).map(|file| {
-                    match file.strip_suffix(sid.as_str()) {
-                        Some(before) => (before.into(), true),
-                        None => (file.into(), false),
-                    }
-                });
-                let matched = row.pointer(&format!("/Media/{index}/_matched_at")).is_some();
-                Release { source: source.into(), sid: sid.into(), index, matched, file }
-            })
-            .collect();
+        let releases_at = u32::try_from(bytes.len()).expect("a row's hot fields fit in 4 GB");
+        let row_sid = row.get("_sid").and_then(Value::as_str);
+        for (source, sid, index, part) in crate::catalog::releases(row) {
+            let file = row.pointer(&format!("/Media/{index}/Part/{part}/file")).and_then(Value::as_str).map(|file| {
+                match file.strip_suffix(sid.as_str()) {
+                    Some(before) => (before, true),
+                    None => (file, false),
+                }
+            });
+            let matched = row.pointer(&format!("/Media/{index}/_matched_at")).is_some();
+            put_release(&mut bytes, Release { source: &source, sid: &sid, index, matched, file }, row_sid);
+        }
         let has_analysis = row.get("Media").and_then(Value::as_array).into_iter().flatten()
             .any(|media| media.get("_analysis").and_then(Value::as_object).is_some_and(|records| !records.is_empty()));
-        Self { position, bytes: bytes.into_boxed_slice(), releases, has_analysis }
+        Self { position, bytes: bytes.into_boxed_slice(), releases_at, has_analysis }
     }
 
     /// The field as the row holds it. Panics for a field a hot row does not keep.
@@ -147,7 +157,7 @@ impl HotRow {
     pub fn lookup(&self, name: &str) -> Option<Option<Field<'_>>> {
         let id = field(name)?;
         let mut at = 0;
-        while at < self.bytes.len() {
+        while at < self.releases_at as usize {
             let (held, kind, start, end) = entry(&self.bytes, at);
             if held >= id {
                 return Some((held == id).then(|| decode(kind, &self.bytes[start..end])));
@@ -156,6 +166,65 @@ impl HotRow {
         }
         Some(None)
     }
+
+    /// The row's releases (`catalog::releases`): a source's listing and a snapshot's end walk
+    /// every row for them, and on the production server reading each row for its Media took
+    /// 26 s for one source's 40,335 rows, holding every Plex request (2026-10-18).
+    pub fn releases(&self) -> impl Iterator<Item = Release<'_>> {
+        let row_sid = self.lookup("_sid").flatten().and_then(Field::as_str).unwrap_or_default();
+        let bytes = &self.bytes;
+        let mut at = self.releases_at as usize;
+        std::iter::from_fn(move || {
+            let flags = *bytes.get(at)?;
+            let (index, next) = read_varint(bytes, at + 1);
+            at = next;
+            let source = take_text(bytes, &mut at);
+            let sid = if flags & ROW_SID != 0 { row_sid } else { take_text(bytes, &mut at) };
+            let file = (flags & (FILE | BEFORE_SID) != 0).then(|| (take_text(bytes, &mut at), flags & BEFORE_SID != 0));
+            Some(Release { source, sid, index: index as usize, matched: flags & MATCHED != 0, file })
+        })
+    }
+}
+
+/// A release's flags: its id is the row's `_sid` (kept once, not again for its release), a
+/// person matched it, and its file whole or as what comes before its id.
+const ROW_SID: u8 = 1;
+const MATCHED: u8 = 2;
+const FILE: u8 = 4;
+const BEFORE_SID: u8 = 8;
+
+/// A release's entry: its flags, its Media's index, then its source, its id unless it is the
+/// row's `_sid` and its file, each text after its varint length. Ten sources name every release
+/// of the production server's library, a few bytes each written out here where an `Arc` to a
+/// shared copy would be 16.
+fn put_release(bytes: &mut Vec<u8>, release: Release<'_>, row_sid: Option<&str>) {
+    let same = row_sid == Some(release.sid);
+    let file = match release.file {
+        Some((_, true)) => BEFORE_SID,
+        Some((_, false)) => FILE,
+        None => 0,
+    };
+    bytes.push(if same { ROW_SID } else { 0 } | if release.matched { MATCHED } else { 0 } | file);
+    varint(bytes, release.index as u64);
+    put_text(bytes, release.source);
+    if !same {
+        put_text(bytes, release.sid);
+    }
+    if let Some((file, _)) = release.file {
+        put_text(bytes, file);
+    }
+}
+
+fn put_text(bytes: &mut Vec<u8>, text: &str) {
+    varint(bytes, text.len() as u64);
+    bytes.extend_from_slice(text.as_bytes());
+}
+
+/// The text at `at`, moving `at` past it.
+fn take_text<'a>(bytes: &'a [u8], at: &mut usize) -> &'a str {
+    let (len, start) = read_varint(bytes, *at);
+    *at = start + len as usize;
+    std::str::from_utf8(&bytes[start..*at]).expect("`put_text` writes text")
 }
 
 const NULL: u8 = 0;
@@ -171,8 +240,7 @@ const JSON: u8 = 6;
 fn put(bytes: &mut Vec<u8>, id: u8, value: &Value) {
     let text = |bytes: &mut Vec<u8>, kind: u8, text: &str| {
         bytes.extend([id, kind]);
-        varint(bytes, text.len() as u64);
-        bytes.extend_from_slice(text.as_bytes());
+        put_text(bytes, text);
     };
     match Field::from(value) {
         Field::Null => bytes.extend([id, NULL]),
@@ -564,19 +632,19 @@ mod tests {
             {"_source": "rd", "_sid": "movies/A/a.mkv", "Part": [{"file": "/mnt/zurg/movies/A/a.mkv"}]},
             {"_source": "ad", "_sid": "x1", "Part": [{"file": "/mnt/zurg/movies/B/b.mkv"}]},
             {"_source": "tb", "_sid": "x2"}]});
-        let releases = HotRow::of(0, &row).releases;
-        let got: Vec<_> = releases.iter().map(|r| (&*r.source, &*r.sid, r.index, r.file())).collect();
+        let hot = HotRow::of(0, &row);
+        let got: Vec<_> = hot.releases().map(|r| (r.source, r.sid, r.index, r.file())).collect();
         assert_eq!(got, vec![("rd", "movies/A/a.mkv", 0, Some("/mnt/zurg/movies/A/a.mkv".into())),
                              ("ad", "x1", 1, Some("/mnt/zurg/movies/B/b.mkv".into())),
                              ("tb", "x2", 2, None)]);
         // A row tagged on itself, not on its Media.
         let row = serde_json::json!({"_source": "zurg", "_sid": "s", "Media": [{"Part": [{"file": "/f/s"}]}]});
-        let got: Vec<_> = HotRow::of(0, &row).releases.iter().map(|r| (r.sid.to_string(), r.file())).collect();
+        let got: Vec<_> = HotRow::of(0, &row).releases().map(|r| (r.sid.to_string(), r.file())).collect();
         assert_eq!(got, vec![("s".to_string(), Some("/f/s".to_string()))]);
         // An episode its source sent in parts: each Part its own release, on its own file.
         let row = serde_json::json!({"Media": [{"_source": "zurg", "_sid": "e13", "Part": [
             {"_source": "zurg", "_sid": "e13", "file": "/f/e13"}, {"_source": "zurg", "_sid": "e14", "file": "/f/e14"}]}]});
-        let got: Vec<_> = HotRow::of(0, &row).releases.iter().map(|r| (r.sid.to_string(), r.index, r.file())).collect();
+        let got: Vec<_> = HotRow::of(0, &row).releases().map(|r| (r.sid.to_string(), r.index, r.file())).collect();
         assert_eq!(got, vec![("e13".to_string(), 0, Some("/f/e13".to_string())), ("e14".to_string(), 0, Some("/f/e14".to_string()))]);
     }
 
