@@ -619,6 +619,58 @@ fn dolby_vision_profile(media: &Value) -> Option<&Value> {
         .flatten()
 }
 
+/// The protocols a profile declares on its conversion targets, in declaration order
+/// (the same targets `conversion` walks: `VideoProfile`, not `static`).
+fn declared_protocols(profile: &Profile) -> Vec<&str> {
+    entries(profile, "targets")
+        .into_iter()
+        .filter(|target| {
+            text(target.get("tag")) == Some("VideoProfile")
+                && text(target.get("context")) != Some("static")
+        })
+        .filter_map(|target| text(target.get("protocol")))
+        .collect()
+}
+
+/// A client may send `protocol=*` (Plex for Android opening a live HLS channel from a library
+/// row) or a list (`*,hls`, `hls,http`), where `conversion` compares the string against a
+/// target's one declared protocol and so finds none: 4005 "No conversion profile found for
+/// protocol *". Resolve such a value to one protocol: the first listed entry the profile
+/// declares, else the profile's first declared protocol, else `hls` for an HLS-container
+/// source, else `http`. A single concrete value (`http`, `hls`, `dash`, ...) is returned
+/// untouched, so every client that works today decides exactly as before.
+pub fn effective_protocol<'a>(
+    profile: Option<&'a Profile>,
+    requested: &'a str,
+    media: Option<&Value>,
+) -> &'a str {
+    if !requested.contains(['*', ',']) && !requested.contains(char::is_whitespace) {
+        return requested;
+    }
+    let declared = profile.map(declared_protocols).unwrap_or_default();
+    if let Some(listed) = requested
+        .split(',')
+        .map(str::trim)
+        .find(|entry| !entry.is_empty() && *entry != "*" && declared.contains(entry))
+    {
+        return listed;
+    }
+    if let Some(first) = declared.first() {
+        return first;
+    }
+    let hls_source = media
+        .and_then(|media| media.get("Part"))
+        .and_then(Value::as_array)
+        .and_then(|parts| parts.first())
+        .and_then(|part| text(part.get("container")))
+        == Some("hls");
+    if hls_source {
+        "hls"
+    } else {
+        "http"
+    }
+}
+
 pub fn conversion(profile: &Profile, protocol: &str, media: Option<&Value>) -> Outcome {
     let source_codec = if media
         .and_then(dolby_vision_profile)
@@ -999,5 +1051,32 @@ mod tests {
             assert_eq!(target["codec"], video, "{label}");
         }
         assert_eq!(rows.len(), 6);
+    }
+
+    /// `protocol=*` and lists must resolve to a protocol the profile converts to; a single
+    /// concrete value must come back untouched (Plex for Android's live HLS channel, 4005).
+    #[test]
+    fn an_unrecognised_protocol_falls_back_and_a_concrete_one_is_untouched() {
+        let profiles = parse_profiles(PROFILES).expect("profile fixture parses");
+        let android = resolve(&profiles, "Android").expect("Android profile");
+        let hls_media = serde_json::json!({"Part": [{"container": "hls"}]});
+        let file_media = serde_json::json!({"Part": [{"container": "mkv"}]});
+        // single recognised values, whatever the profile or media: exactly as before.
+        for value in ["http", "hls", "dash", "mp4"] {
+            assert_eq!(effective_protocol(Some(android), value, Some(&hls_media)), value);
+            assert_eq!(effective_protocol(None, value, None), value);
+        }
+        // `*` and lists: the profile's own declared protocol.
+        for value in ["*", "*,*", " * ", "*,hls", "hls,http", "http,hls", "dash,*"] {
+            assert_eq!(effective_protocol(Some(android), value, Some(&file_media)), "hls", "{value}");
+        }
+        // no profile: hls for an hls source, else the old default.
+        assert_eq!(effective_protocol(None, "*", Some(&hls_media)), "hls");
+        assert_eq!(effective_protocol(None, "*", Some(&file_media)), "http");
+        assert_eq!(effective_protocol(None, "*", None), "http");
+        // and conversion now succeeds for `*` where it refused before.
+        let wide = effective_protocol(Some(android), "*", Some(&hls_media));
+        assert_eq!(conversion(android, "*", Some(&hls_media)), Outcome::Neither);
+        assert_eq!(conversion(android, wide, Some(&hls_media)), Outcome::Convert);
     }
 }

@@ -11659,6 +11659,14 @@ impl Runtime {
             .map(String::as_str)
             .filter(|value| !value.is_empty())
             .unwrap_or("http");
+        // `protocol=*` / `*,hls` (Plex for Android, a live HLS channel opened from the library
+        // row) names no protocol a target declares: resolve it to one the profile converts to.
+        // A single concrete value comes back untouched.
+        let protocol = decision::effective_protocol(
+            decision::resolve(&self.decision_profiles, &profile_name),
+            protocol,
+            Some(&selected_media),
+        );
         let session = query
             .get("X-Plex-Session-Identifier")
             .or_else(|| headers.get("x-plex-session-identifier"))
