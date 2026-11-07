@@ -11662,8 +11662,21 @@ impl Runtime {
         // `protocol=*` / `*,hls` (Plex for Android, a live HLS channel opened from the library
         // row) names no protocol a target declares: resolve it to one the profile converts to.
         // A single concrete value comes back untouched.
+        // The client's X-Plex-Client-Profile-Extra (an `add-transcode-target` on the empty Generic
+        // profile, say) is applied once, and that one profile picks the protocol AND decides below.
+        let extra = query
+            .get("X-Plex-Client-Profile-Extra")
+            .or_else(|| headers.get("x-plex-client-profile-extra"))
+            .map_or("", String::as_str);
+        let effective_profile = decision::resolve(&self.decision_profiles, &profile_name).map(|profile| {
+            if extra.is_empty() {
+                std::borrow::Cow::Borrowed(profile)
+            } else {
+                std::borrow::Cow::Owned(decision::with_extra(profile, extra))
+            }
+        });
         let protocol = decision::effective_protocol(
-            decision::resolve(&self.decision_profiles, &profile_name),
+            effective_profile.as_deref(),
             protocol,
             Some(&selected_media),
         );
@@ -11745,18 +11758,9 @@ impl Runtime {
         };
         let mde = query.get("hasMDE") == Some(&"1".to_string());
         if refusal.is_none() && !mde {
-            let extra = query
-                .get("X-Plex-Client-Profile-Extra")
-                .or_else(|| headers.get("x-plex-client-profile-extra"))
-                .map_or("", String::as_str);
-            let answer = match decision::resolve(&self.decision_profiles, &profile_name) {
-                Some(profile) if !extra.is_empty() => decision::decide_profile(
-                    &decision::with_extra(profile, extra),
-                    &selected_for_engine,
-                    protocol,
-                    true,
-                ),
-                _ => decision::decide(
+            let answer = match effective_profile.as_deref() {
+                Some(profile) => decision::decide_profile(profile, &selected_for_engine, protocol, true),
+                None => decision::decide(
                     &self.decision_profiles,
                     &profile_name,
                     &selected_for_engine,

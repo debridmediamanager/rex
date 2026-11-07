@@ -1079,4 +1079,30 @@ mod tests {
         assert_eq!(conversion(android, "*", Some(&hls_media)), Outcome::Neither);
         assert_eq!(conversion(android, wide, Some(&hls_media)), Outcome::Convert);
     }
+
+    /// Review (PR 21, CodeRabbit): the protocol must come from the profile the decision is made
+    /// with, i.e. WITH the client's `X-Plex-Client-Profile-Extra` applied. The empty Generic
+    /// profile declares no protocol, so a file-backed item with `protocol=*` used to resolve to
+    /// `http` and then match no target of the extra's HLS transcode.
+    #[test]
+    fn protocol_star_on_a_file_item_uses_the_extra_applied_profile() {
+        let profiles = parse_profiles(PROFILES).expect("profile fixture parses");
+        let generic = resolve(&profiles, "Generic").expect("Generic profile");
+        let extra = "add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mpegts&videoCodec=h264&audioCodec=aac)";
+        for container in ["mkv", "mp4"] {
+            let file_media = serde_json::json!({"Part": [{"container": container}]});
+            // before the fix: base profile -> http -> nothing to convert to.
+            let base = effective_protocol(Some(generic), "*", Some(&file_media));
+            assert_eq!(base, "http", "{container}");
+            assert_eq!(decide_profile(&with_extra(generic, extra), &file_media, base, false).outcome, Outcome::Neither, "{container}");
+            // after: one extra-applied profile picks the protocol and decides.
+            let profile = with_extra(generic, extra);
+            let protocol = effective_protocol(Some(&profile), "*", Some(&file_media));
+            assert_eq!(protocol, "hls", "{container}");
+            assert_eq!(decide_profile(&profile, &file_media, protocol, false).outcome, Outcome::Convert, "{container}");
+            // a single concrete protocol is untouched, extra or not.
+            assert_eq!(effective_protocol(Some(&profile), "http", Some(&file_media)), "http", "{container}");
+            assert_eq!(effective_protocol(Some(&profile), "hls", Some(&file_media)), "hls", "{container}");
+        }
+    }
 }
