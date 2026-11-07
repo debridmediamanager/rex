@@ -4,6 +4,7 @@
 //! measured per-family order with `Date` last (cycles 16, 29, 33, 35, 44, 49).
 
 use super::*;
+use std::borrow::Cow;
 
 /// What the writer needs to know about the request a response answers.
 pub(super) struct Wire {
@@ -599,14 +600,15 @@ fn gzip(body: &[u8]) -> Option<Vec<u8>> {
 }
 
 /// The finished envelope: (status, ordered header lines, body, keep the socket).
-pub(super) fn envelope(
-    response: &Response,
+/// Borrow unchanged bytes, including ranges: a TV reads each segment in many small requests.
+pub(super) fn envelope<'a>(
+    response: &'a Response,
     wire: &Wire,
     keep: bool,
-) -> (u16, Vec<(String, String)>, Vec<u8>, bool) {
+) -> (u16, Vec<(String, String)>, Cow<'a, [u8]>, bool) {
     let mut status = response.status;
     let mut content_type = response.content_type.clone();
-    let mut body = response.body.clone();
+    let mut body = Cow::Borrowed(response.body.as_slice());
     let raw = response.headers.iter().any(|(name, _)| name == RAW_MARK);
     let untyped = response.headers.iter().any(|(name, _)| name == UNTYPED_MARK);
     let mut extra: Vec<(String, String)> = response
@@ -662,10 +664,9 @@ pub(super) fn envelope(
             if code == 416 {
                 status = 416;
             } else {
-                body = body
-                    .get(first..=last.min(body.len().saturating_sub(1)))
-                    .map(<[u8]>::to_vec)
-                    .unwrap_or_default();
+                body = Cow::Borrowed(
+                    response.body.get(first..=last.min(body.len().saturating_sub(1))).unwrap_or_default()
+                );
                 status = code;
                 content_range = range;
             }
@@ -678,7 +679,7 @@ pub(super) fn envelope(
         range_container = !extra.iter().any(|(name, _)| name.eq_ignore_ascii_case("accept-ranges"))
             && (content_type.contains("xml") || content_type.contains("json"));
         content_type = "text/html".to_string();
-        body = error_document(416);
+        body = Cow::Owned(error_document(416));
         extra.retain(|(name, _)| {
             !matches!(
                 name.to_ascii_lowercase().as_str(),
@@ -741,7 +742,7 @@ pub(super) fn envelope(
                     "X-Plex-Content-Compressed-Length".to_string(),
                     squeezed.len().to_string(),
                 ));
-                body = squeezed;
+                body = Cow::Owned(squeezed);
             }
         }
     } else if let Some(range) = &content_range {
@@ -788,7 +789,7 @@ pub(super) fn envelope(
         lines.insert(after, line);
     }
     if wire.method == "HEAD" {
-        body.clear();
+        body = Cow::Borrowed(&[]);
     }
     (status, lines, body, keep)
 }
@@ -1008,4 +1009,21 @@ pub(super) fn exclude_container(
 fn is_web_route(path: &str) -> bool {
     let route = path.split('?').next().unwrap_or_default();
     route == "/web" || route.starts_with("/web/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn media_ranges_borrow_the_original_payload() {
+        let mut response = Response::bytes(200, "video/mp4");
+        response.body = vec![42; 1024 * 1024];
+        let mut wire = Wire::bare();
+        wire.range = Some("bytes=65536-131071".into());
+        let (status, _, body, _) = envelope(&response, &wire, true);
+        assert_eq!(status, 206);
+        assert_eq!(body.len(), 65536);
+        assert_eq!(body.as_ptr(), response.body[65536..].as_ptr());
+    }
 }
