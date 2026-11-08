@@ -11668,15 +11668,12 @@ impl Runtime {
             .get("X-Plex-Client-Profile-Extra")
             .or_else(|| headers.get("x-plex-client-profile-extra"))
             .map_or("", String::as_str);
-        let effective_profile = decision::resolve(&self.decision_profiles, &profile_name).map(|profile| {
-            if extra.is_empty() {
-                std::borrow::Cow::Borrowed(profile)
-            } else {
-                std::borrow::Cow::Owned(decision::with_extra(profile, extra))
-            }
-        });
+        // The default hls target for a profile with no streaming target is applied here, once;
+        // transcode_plan builds its profile with the same `decision::effective_profile`.
+        let effective_profile = decision::resolve(&self.decision_profiles, &profile_name)
+            .map(|profile| decision::effective_profile(profile, extra, Some(&selected_media)));
         let protocol = decision::effective_protocol(
-            effective_profile.as_deref(),
+            effective_profile.as_ref(),
             protocol,
             Some(&selected_media),
         );
@@ -11758,7 +11755,7 @@ impl Runtime {
         };
         let mde = query.get("hasMDE") == Some(&"1".to_string());
         if refusal.is_none() && !mde {
-            let answer = match effective_profile.as_deref() {
+            let answer = match effective_profile.as_ref() {
                 Some(profile) => decision::decide_profile(profile, &selected_for_engine, protocol, true),
                 None => decision::decide(
                     &self.decision_profiles,
@@ -11823,8 +11820,9 @@ impl Runtime {
             fields.insert("size".to_string(), json!(0));
             // The answer's own two texts: rex-fun's 52 refusals said nothing of why (2026-11).
             info!(
-                "DECISION refused for path={} -- {refusal} {convert}",
-                query.get("path").map_or("", String::as_str)
+                "DECISION refused for path={} profile={profile_name} extra={} protocol={protocol} -- {refusal} {convert}",
+                query.get("path").map_or("", String::as_str),
+                if extra.is_empty() { "empty" } else { "sent" }
             );
             return Response::json(200, self.container(fields, false));
         }

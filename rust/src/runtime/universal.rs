@@ -3278,7 +3278,7 @@ impl Runtime {
             .or_else(|| headers.get("x-plex-client-profile-extra"))
             .cloned()
             .unwrap_or_default();
-        let profile = &decision::with_extra(decision::resolve(&self.decision_profiles, profile_name)?, &extra);
+        let profile = &decision::effective_profile(decision::resolve(&self.decision_profiles, profile_name)?, &extra, Some(media));
         // A real PMS refuses Dolby Vision profile 5 (2003): its IPT colour has no HDR10 base.
         // tonemapx applies the RPU (measured 2026-10-17: Jellyfin's P5 clip tonemaps to its
         // P8.1 and HDR10 twins' colours; untonemapped it is green), so with it rex converts one.

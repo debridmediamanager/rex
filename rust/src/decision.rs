@@ -685,8 +685,27 @@ pub fn effective_protocol<'a>(
     }
 }
 
+/// The standard HLS streaming target given to a profile that declares none (see
+/// `effective_profile`). The single source of truth for that default.
+pub const DEFAULT_HLS_EXTRA: &str = "add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mpegts&videoCodec=h264&audioCodec=aac)";
+
+/// The profile a decision and its transcode plan both use: the profile with the client's
+/// `X-Plex-Client-Profile-Extra` applied. When the client sent no Extra, the item is an HLS
+/// source and the profile declares no streaming target at all (Generic has none; Universal TV
+/// only static ones), `DEFAULT_HLS_EXTRA` stands in so the profile can convert. A TV that is
+/// cast to behaves like these profiles and otherwise refuses every item (4005, protocol http).
+pub fn effective_profile(profile: &Profile, extra: &str, media: Option<&Value>) -> Profile {
+    if extra.is_empty() {
+        if is_hls_source(media) && declared_protocols(profile).is_empty() {
+            return with_extra(profile, DEFAULT_HLS_EXTRA);
+        }
+        return profile.clone();
+    }
+    with_extra(profile, extra)
+}
+
 /// True when the item's first Part is an HLS playlist rather than a file.
-fn is_hls_source(media: Option<&Value>) -> bool {
+pub fn is_hls_source(media: Option<&Value>) -> bool {
     media
         .and_then(|media| media.get("Part"))
         .and_then(Value::as_array)
@@ -1197,5 +1216,52 @@ mod tests {
         for value in ["hls", "dash", "mp4"] {
             assert_eq!(effective_protocol(Some(&hls_only), value, Some(&hls_media)), value);
         }
+    }
+
+    /// Generic (no targets) and Universal TV (static targets only) declare no streaming target.
+    /// With no Extra on an HLS item they get the default hls target and convert; everything
+    /// else is unchanged.
+    #[test]
+    fn a_profile_with_no_streaming_target_gets_a_default_hls_target_for_hls_items() {
+        let profiles = parse_profiles(PROFILES).expect("profile fixture parses");
+        let hls_media = serde_json::json!({"Part": [{"container": "hls"}]});
+        let mkv_media = serde_json::json!({"Part": [{"container": "mkv"}]});
+        let profile_of = |value: Value| -> Profile { value.as_object().cloned().expect("profile object") };
+        let universal_like = profile_of(serde_json::json!({"targets": [
+            {"tag": "VideoProfile", "context": "static", "protocol": "http", "container": "mp4", "videoCodec": "h264", "audioCodec": "aac"},
+            {"tag": "SubtitleProfile", "context": "streaming", "protocol": "http", "container": "srt"}
+        ]}));
+        let mut declaring_none = vec![universal_like];
+        for name in ["Generic", "Universal TV"] {
+            declaring_none.push(resolve(&profiles, name).unwrap_or_else(|| panic!("{name} profile")).clone());
+        }
+        for raw in &declaring_none {
+            assert!(declared_protocols(raw).is_empty());
+            let profile = effective_profile(raw, "", Some(&hls_media));
+            for requested in ["http", "hls"] {
+                let protocol = effective_protocol(Some(&profile), requested, Some(&hls_media));
+                assert_eq!(protocol, "hls");
+                assert_eq!(decide_profile(&profile, &hls_media, protocol, false).outcome, Outcome::Convert);
+            }
+            // a file-backed item gets no default: unchanged.
+            assert_eq!(effective_profile(raw, "", Some(&mkv_media)), *raw);
+            assert_eq!(effective_profile(raw, "", None), *raw);
+            assert_eq!(effective_protocol(Some(raw), "http", Some(&mkv_media)), "http");
+            // the client's own Extra wins; the default is not added on top.
+            let own = effective_profile(raw, DEFAULT_HLS_EXTRA, Some(&hls_media));
+            assert_eq!(own, with_extra(raw, DEFAULT_HLS_EXTRA));
+            let other = "add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mpegts&videoCodec=hevc&audioCodec=aac)";
+            assert_eq!(effective_profile(raw, other, Some(&hls_media)), with_extra(raw, other));
+        }
+        // profiles that already declare a streaming target are unchanged without an Extra.
+        for name in ["Android", "Roku", "Chromecast", "tvOS", "Samsung", "Plex Desktop"] {
+            let raw = resolve(&profiles, name).unwrap_or_else(|| panic!("{name} profile"));
+            assert!(!declared_protocols(raw).is_empty(), "{name}");
+            assert_eq!(effective_profile(raw, "", Some(&hls_media)), *raw, "{name}");
+            let protocol = effective_protocol(Some(raw), "http", Some(&hls_media));
+            assert_eq!(protocol, effective_protocol(Some(&raw.clone()), "http", Some(&hls_media)), "{name}");
+        }
+        let roku = resolve(&profiles, "Roku").expect("Roku");
+        assert_eq!(effective_protocol(Some(roku), "http", Some(&hls_media)), "http");
     }
 }
