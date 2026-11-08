@@ -638,13 +638,33 @@ fn declared_protocols(profile: &Profile) -> Vec<&str> {
 /// protocol *". Resolve such a value to one protocol: the first listed entry the profile
 /// declares, else the profile's first declared protocol, else `hls` for an HLS-container
 /// source, else `http`. A single concrete value (`http`, `hls`, `dash`, ...) is returned
-/// untouched, so every client that works today decides exactly as before.
+/// untouched, so every client that works today decides exactly as before, with ONE exception:
+///
+/// Casting. When a Plex app casts to another Plex client the receiving device becomes the
+/// client, and a TV asks for `protocol=http` (or sends none, which defaults to `http`) for an
+/// HLS-container item (a playlist source, not a file). Generic, Android, tvOS, Samsung and
+/// Universal TV declare only an HLS streaming target, so `conversion` finds no `http` target
+/// and refuses every item ("No conversion profile found for protocol http"). For exactly that
+/// case, `http` on an `hls` Part container resolves to `hls` when the profile does NOT convert
+/// on `http` today but DOES convert on `hls`. Profiles that already convert on `http` (Roku,
+/// Chromecast, Plex Desktop, an asf-only target's Refuse) are detected by asking `conversion`
+/// itself, so "has an http target" can never drift from what `conversion` really does; they
+/// keep exactly today's path. File containers (mkv, mp4, ...) are never touched.
 pub fn effective_protocol<'a>(
     profile: Option<&'a Profile>,
     requested: &'a str,
     media: Option<&Value>,
 ) -> &'a str {
     if !requested.contains(['*', ',']) && !requested.contains(char::is_whitespace) {
+        if requested == "http"
+            && is_hls_source(media)
+            && profile.is_some_and(|profile| {
+                conversion(profile, "http", media) == Outcome::Neither
+                    && conversion(profile, "hls", media) == Outcome::Convert
+            })
+        {
+            return "hls";
+        }
         return requested;
     }
     let declared = profile.map(declared_protocols).unwrap_or_default();
@@ -658,17 +678,21 @@ pub fn effective_protocol<'a>(
     if let Some(first) = declared.first() {
         return first;
     }
-    let hls_source = media
-        .and_then(|media| media.get("Part"))
-        .and_then(Value::as_array)
-        .and_then(|parts| parts.first())
-        .and_then(|part| text(part.get("container")))
-        == Some("hls");
-    if hls_source {
+    if is_hls_source(media) {
         "hls"
     } else {
         "http"
     }
+}
+
+/// True when the item's first Part is an HLS playlist rather than a file.
+fn is_hls_source(media: Option<&Value>) -> bool {
+    media
+        .and_then(|media| media.get("Part"))
+        .and_then(Value::as_array)
+        .and_then(|parts| parts.first())
+        .and_then(|part| text(part.get("container")))
+        == Some("hls")
 }
 
 pub fn conversion(profile: &Profile, protocol: &str, media: Option<&Value>) -> Outcome {
@@ -1061,10 +1085,16 @@ mod tests {
         let android = resolve(&profiles, "Android").expect("Android profile");
         let hls_media = serde_json::json!({"Part": [{"container": "hls"}]});
         let file_media = serde_json::json!({"Part": [{"container": "mkv"}]});
-        // single recognised values, whatever the profile or media: exactly as before.
+        // single recognised values, whatever the profile or media: exactly as before. The one
+        // deliberate exception is `http` on an HLS item for a profile with no http target (a cast
+        // to a TV): Android declares only hls, so that resolves to hls; see
+        // `cast_http_on_an_hls_item_resolves_to_hls_when_the_profile_has_no_http_target`.
         for value in ["http", "hls", "dash", "mp4"] {
-            assert_eq!(effective_protocol(Some(android), value, Some(&hls_media)), value);
+            let expected = if value == "http" { "hls" } else { value };
+            assert_eq!(effective_protocol(Some(android), value, Some(&hls_media)), expected);
+            assert_eq!(effective_protocol(Some(android), value, Some(&file_media)), value);
             assert_eq!(effective_protocol(None, value, None), value);
+            assert_eq!(effective_protocol(None, value, Some(&hls_media)), value);
         }
         // `*` and lists: the profile's own declared protocol.
         for value in ["*", "*,*", " * ", "*,hls", "hls,http", "http,hls", "dash,*"] {
@@ -1103,6 +1133,69 @@ mod tests {
             // a single concrete protocol is untouched, extra or not.
             assert_eq!(effective_protocol(Some(&profile), "http", Some(&file_media)), "http", "{container}");
             assert_eq!(effective_protocol(Some(&profile), "hls", Some(&file_media)), "hls", "{container}");
+        }
+    }
+
+    /// Cast playback: a receiving TV asks for `protocol=http` on an HLS-container item under a
+    /// profile that declares only an HLS target. That used to refuse ("No conversion profile
+    /// found for protocol http"); it must now resolve to `hls` and convert. Profiles that
+    /// already convert on `http`, and file containers, must be left exactly as they were.
+    #[test]
+    fn cast_http_on_an_hls_item_resolves_to_hls_when_the_profile_has_no_http_target() {
+        let profiles = parse_profiles(PROFILES).expect("profile fixture parses");
+        let hls_media = serde_json::json!({"Part": [{"container": "hls"}]});
+        let profile_of = |value: Value| -> Profile { value.as_object().cloned().expect("profile object") };
+        let hls_only = profile_of(serde_json::json!({"targets": [
+            {"tag": "VideoProfile", "context": "streaming", "protocol": "hls", "container": "mpegts", "videoCodec": "h264", "audioCodec": "aac"}
+        ]}));
+        // (a) an hls-only streaming profile: refused on http before, converts on hls now.
+        assert_eq!(conversion(&hls_only, "http", Some(&hls_media)), Outcome::Neither);
+        let protocol = effective_protocol(Some(&hls_only), "http", Some(&hls_media));
+        assert_eq!(protocol, "hls");
+        assert_eq!(conversion(&hls_only, protocol, Some(&hls_media)), Outcome::Convert);
+        // the extra-applied Generic profile (an hls transcode target) behaves the same way.
+        let generic = resolve(&profiles, "Generic").expect("Generic profile");
+        let extra = "add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mpegts&videoCodec=h264&audioCodec=aac)";
+        let with_hls = with_extra(generic, extra);
+        let protocol = effective_protocol(Some(&with_hls), "http", Some(&hls_media));
+        assert_eq!(protocol, "hls");
+        assert_eq!(decide_profile(&with_hls, &hls_media, protocol, false).outcome, Outcome::Convert);
+        // (b) a Roku-like profile that declares http keeps http and still converts.
+        let roku_like = profile_of(serde_json::json!({"targets": [
+            {"tag": "VideoProfile", "context": "streaming", "protocol": "http", "container": "mkv", "videoCodec": "h264", "audioCodec": "aac"},
+            {"tag": "VideoProfile", "context": "streaming", "protocol": "hls", "container": "mpegts", "videoCodec": "h264", "audioCodec": "aac"}
+        ]}));
+        assert_eq!(effective_protocol(Some(&roku_like), "http", Some(&hls_media)), "http");
+        assert_eq!(conversion(&roku_like, "http", Some(&hls_media)), Outcome::Convert);
+        // a target with no protocol at all also answers http in `conversion`: left alone.
+        let undeclared = profile_of(serde_json::json!({"targets": [
+            {"tag": "VideoProfile", "context": "streaming", "container": "mkv", "videoCodec": "h264", "audioCodec": "aac"}
+        ]}));
+        assert_eq!(effective_protocol(Some(&undeclared), "http", Some(&hls_media)), "http");
+        // the shipped profiles that already convert on http are untouched, and the five that
+        // refused now resolve to hls and convert.
+        for name in ["Roku", "Chromecast", "Plex Desktop"] {
+            let profile = resolve(&profiles, name).unwrap_or_else(|| panic!("{name} profile"));
+            assert_eq!(conversion(profile, "http", Some(&hls_media)), Outcome::Convert, "{name}");
+            assert_eq!(effective_protocol(Some(profile), "http", Some(&hls_media)), "http", "{name}");
+        }
+        for name in ["Generic", "Android", "tvOS", "Samsung", "Universal TV"] {
+            let profile = resolve(&profiles, name).unwrap_or_else(|| panic!("{name} profile"));
+            let profile = with_extra(profile, extra);
+            let protocol = effective_protocol(Some(&profile), "http", Some(&hls_media));
+            assert_eq!(protocol, "hls", "{name}");
+            assert_eq!(conversion(&profile, protocol, Some(&hls_media)), Outcome::Convert, "{name}");
+        }
+        // (c) a non-HLS item (mkv) asking for http is unchanged, whatever the profile.
+        let mkv_media = serde_json::json!({"Part": [{"container": "mkv"}]});
+        for profile in [&hls_only, &roku_like, &undeclared, &with_hls] {
+            assert_eq!(effective_protocol(Some(profile), "http", Some(&mkv_media)), "http");
+        }
+        assert_eq!(effective_protocol(Some(&hls_only), "http", None), "http");
+        assert_eq!(effective_protocol(None, "http", Some(&hls_media)), "http");
+        // (d) other single concrete values stay untouched on an HLS item.
+        for value in ["hls", "dash", "mp4"] {
+            assert_eq!(effective_protocol(Some(&hls_only), value, Some(&hls_media)), value);
         }
     }
 }
