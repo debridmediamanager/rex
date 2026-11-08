@@ -1013,7 +1013,21 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         push(&mut args, &["-metadata:s:s:0", &format!("language={language}")]);
     }
     match video {
-        Some(video) if video.copy => push(&mut args, &["-c:v", "copy"]),
+        Some(video) if video.copy => {
+            push(&mut args, &["-c:v", "copy"]);
+            // A YouTube HLS source (MPEG-TS) delivers the first P-frame after each keyframe with
+            // no pts and no dts. A copied packet keeps that, and Matroska refuses it: "Can't write
+            // packet with unknown timestamp", reported on whichever stream was being interleaved
+            // (the re-encoded audio), ended every Chromecast cast ~9 s in (rex-fun, 2026-11-08;
+            // items 151159, 151160, 151163). Only a packet without a time is touched, so a source
+            // with every timestamp passes through unchanged. A missing dts follows the packet
+            // before it; a missing pts is that dts plus the source's reorder delay, five frames
+            // for the I P B B B P shape these sources use (exact on two of three measured; the
+            // third gets a duplicate pts per GOP, which Matroska takes and decoders play).
+            if http && plan.matroska {
+                push(&mut args, &["-bsf:v", MISSING_TIMESTAMPS]);
+            }
+        }
         Some(video) => {
             if burn.is_none() && canvas.is_none() {
                 push(&mut args, &["-vf", video_filter.as_deref().unwrap_or_default()]);
@@ -1146,6 +1160,10 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     ]);
     args
 }
+
+/// `setts` for a copied video stream: fills a packet's missing dts and pts, and leaves every
+/// packet that has them alone (`ffmpeg_args`).
+const MISSING_TIMESTAMPS: &str = r"setts=dts=if(eq(DTS\,NOPTS)\,PREV_INDTS+DURATION\,DTS):pts=if(eq(PTS\,NOPTS)\,PREV_INDTS+5*DURATION\,PTS)";
 
 fn audio_filter(plan: &Plan) -> String {
     let mut filters = Vec::new();
@@ -4237,6 +4255,31 @@ mod tests {
         let args = ffmpeg_args(&stream, Path::Software, &Hardware::software(), 42, std::path::Path::new("/tmp/s"));
         let at = args.iter().position(|arg| arg == "-output_ts_offset").unwrap();
         assert_eq!(args[at + 1], "42");
+    }
+
+    #[test]
+    fn a_copied_video_in_a_matroska_stream_gets_the_timestamps_its_source_left_out() {
+        // YouTube's HLS has a P-frame per GOP with no pts or dts; Matroska refuses it with
+        // "Can't write packet with unknown timestamp" and the cast stream died ~9 s in.
+        let mut stream = plan(true, 600_000);
+        stream.protocol = Protocol::Http;
+        stream.matroska = true;
+        let args = ffmpeg_args(&stream, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/s"));
+        let at = args.iter().position(|arg| arg == "-bsf:v").expect("a copied video in a Matroska stream is re-timed");
+        // FFmpeg's own escape for a comma inside a filter expression is one backslash.
+        assert_eq!(args[at + 1], r"setts=dts=if(eq(DTS\,NOPTS)\,PREV_INDTS+DURATION\,DTS):pts=if(eq(PTS\,NOPTS)\,PREV_INDTS+5*DURATION\,PTS)");
+        assert!(at < args.iter().position(|arg| arg == "-f").unwrap(), "{args:?}");
+        // Only a copied stream has the source's timestamps; a converted one makes its own.
+        let mut converted = plan(false, 600_000);
+        converted.protocol = Protocol::Http;
+        converted.matroska = true;
+        let args = ffmpeg_args(&converted, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/s"));
+        assert!(!args.iter().any(|arg| arg == "-bsf:v"), "{args:?}");
+        // And only the Matroska stream: the HLS and DASH muxers take what they are given.
+        let mut hls = plan(true, 600_000);
+        hls.matroska = false;
+        let args = ffmpeg_args(&hls, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/s"));
+        assert!(!args.iter().any(|arg| arg == "-bsf:v"), "{args:?}");
     }
 
     #[test]
