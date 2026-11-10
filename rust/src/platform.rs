@@ -1,7 +1,7 @@
 //! What rex asks of the operating system beyond `std`: local time, measured CPU and
 //! memory counters, the host name, a thread's id as Python reports it, pausing and
-//! killing a child, the GDM socket, random bytes, and the manager's process groups and
-//! signals (Unix only).
+//! killing a child, the GDM socket, the interface SSDP's multicast leaves by, random bytes,
+//! and the manager's process groups and signals (Unix only).
 //!
 //! rex was measured on Unix and the Unix half is that code, moved here unchanged. The
 //! Windows half lets the server run there; it declares the few Win32 calls it needs itself
@@ -644,6 +644,36 @@ pub(crate) fn gdm_socket(port: u16) -> io::Result<UdpSocket> {
     UdpSocket::bind(("0.0.0.0", port))
 }
 
+/// The interface a socket's multicast leaves by (`IP_MULTICAST_IF`): the DLNA server's SSDP
+/// NOTIFYs go out on the LAN interface, not whichever one the default multicast route names (a
+/// VPN's, a container bridge's).
+#[cfg(unix)]
+pub(crate) fn multicast_interface_v4(socket: &UdpSocket, interface: std::net::Ipv4Addr) -> io::Result<()> {
+    use std::os::fd::AsRawFd;
+    let address = libc::in_addr { s_addr: u32::from_ne_bytes(interface.octets()) };
+    // SAFETY: setsockopt reads `address` for the size given; the descriptor is the socket's own.
+    let result = unsafe {
+        libc::setsockopt(
+            socket.as_raw_fd(),
+            libc::IPPROTO_IP,
+            libc::IP_MULTICAST_IF,
+            (&address as *const libc::in_addr).cast(),
+            std::mem::size_of::<libc::in_addr>() as libc::socklen_t,
+        )
+    };
+    if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
+}
+
+#[cfg(windows)]
+pub(crate) fn multicast_interface_v4(socket: &UdpSocket, interface: std::net::Ipv4Addr) -> io::Result<()> {
+    use std::os::windows::io::AsRawSocket;
+    // ws2ipdef.h: IPPROTO_IP is 0 and IP_MULTICAST_IF 9; the value is the interface's IN_ADDR.
+    let address = u32::from_ne_bytes(interface.octets());
+    // SAFETY: setsockopt reads the 4 bytes of `address`; the socket is the caller's own.
+    let result = unsafe { win::setsockopt(socket.as_raw_socket() as usize, 0, 9, (&address as *const u32).cast(), 4) };
+    if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
+}
+
 #[cfg(windows)]
 #[allow(non_snake_case)]
 mod win {
@@ -701,6 +731,11 @@ mod win {
     pub(super) const PROCESS_TERMINATE: u32 = 0x0001;
     pub(super) const PROCESS_SUSPEND_RESUME: u32 = 0x0800;
     pub(super) const COMPUTER_NAME_PHYSICAL_DNS_HOSTNAME: u32 = 5;
+
+    #[link(name = "ws2_32")]
+    extern "system" {
+        pub(super) fn setsockopt(socket: usize, level: i32, name: i32, value: *const i8, length: i32) -> i32;
+    }
 
     #[link(name = "kernel32")]
     extern "system" {

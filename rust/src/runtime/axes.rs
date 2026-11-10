@@ -196,6 +196,19 @@ fn ascii_non_letter(text: &str) -> bool {
     text.is_ascii() && !text.chars().all(|c| c.is_alphabetic())
 }
 
+/// The By First Letter entry a row counts under: its sort title's first character, upper-cased,
+/// every ASCII non-letter under `#` (cycle 41). The DLNA server's folder of the same name too.
+pub(super) fn first_letter(row: &(impl Row + ?Sized)) -> String {
+    let title = row
+        .get("titleSort")
+        .filter(|value| truthy(value))
+        .or_else(|| row.get("title").filter(|value| truthy(value)))
+        .map(string_value)
+        .unwrap_or_default();
+    let first = first_upper(&title);
+    if ascii_non_letter(&first) { "#".to_string() } else { first }
+}
+
 impl Runtime {
     /// The rows a listing or a secondary axis is over, scoped by `?type=`. A type the
     /// library holds no rows of answers nothing; repeated `type=` parameters AND.
@@ -414,17 +427,7 @@ impl Runtime {
             // non-ASCII punctuation keeps its own key.
             let mut counts: Vec<(String, i64)> = Vec::new();
             for row in rows {
-                let basis = self.first_character_basis(row);
-                let title = basis
-                    .get("titleSort")
-                    .filter(|value| truthy(value))
-                    .or_else(|| basis.get("title").filter(|value| truthy(value)))
-                    .map(string_value)
-                    .unwrap_or_default();
-                let mut first = first_upper(&title);
-                if ascii_non_letter(&first) {
-                    first = "#".to_string();
-                }
+                let first = first_letter(&self.first_character_basis(row));
                 match counts.iter_mut().find(|(key, _)| *key == first) {
                     Some((_, count)) => *count += 1,
                     None => counts.push((first, 1)),

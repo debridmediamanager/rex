@@ -41,9 +41,10 @@ DURATION = 30
 PROFILES = json.load(open(os.path.join(ROOT, "data/client_profiles.json")))
 RECORDED = json.load(open(os.path.join(ROOT, "tests/fixtures/transcode/http_mkv_s1434.json")))
 # The profiles whose streaming targets name no protocol (an MPEG-TS or ASF file, no `protocol`
-# attribute): PMS's DLNA renderer profiles, which its DLNA server streams to. rex runs no DLNA
-# server, so no request of theirs reaches the universal transcoder. Listed by name so that a new
-# one is a failure to look at, not a silent gap.
+# attribute): PMS's DLNA renderer profiles, which its DLNA server streams to. rex's DLNA server
+# (`runtime/dlna.rs`) serves every renderer the original file, as plexlab's served VLC, a Samsung TV
+# and Windows Media Player (`fixtures/dlna/`), so no request of theirs reaches the universal
+# transcoder. Listed by name so that a new one is a failure to look at, not a silent gap.
 NO_PROTOCOL = {
     "Asus Transformer Prime TF201", "Panasonic Viera 3D TV", "PlayStation 3", "Roku-5000X-6.0",
     "RokuDLNA-3.1", "RokuDLNA-4400X-7.x", "RokuDLNA-5.1", "RokuDLNA-5000X-6.x", "RokuDLNA-5000X-7.x",

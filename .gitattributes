@@ -1,2 +1,4 @@
 # Real VobSub pairs: an .idx is CRLF text and a .sub bitmaps, both kept to the byte.
 tests/fixtures/subtitles/vobsub/** -text
+# The DLNA service descriptions, plexlab's CRLF text served byte for byte.
+data/dlna_*.xml -text

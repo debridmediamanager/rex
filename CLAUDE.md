@@ -80,7 +80,8 @@ image -- and live in `data/`. The descriptors (`server_prefs.json`, `regional_se
 `section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `section_meta_artist.json`, `section_meta_photo.json`, `item_prefs.json`,
 `section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
 `legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`, `refusal_strings.json`,
-`client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`); the strings a
+`client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`, and the DLNA server's three
+service descriptions `dlna_*.xml`, plexlab's text byte for byte); the strings a
 real PMS localises per `X-Plex-Language` (`activity_strings.json`, `item_language_names.json`,
 `stream_words.json`, `title_templates.json`); the image's own tables
 (`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
@@ -134,7 +135,8 @@ Where things live in `rust/src/`:
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
 | `runtime/rexdirect.rs` | rex-direct, a plex.direct of rex's own (`docs/rex-direct-api.md`): on by default, once claimed it registers the machineIdentifier with the claim's server token at its provider (`REX_DIRECT_URL`, DMM's by default, `off`, https or loopback only; `REX_DIRECT_KEY` an optional bearer key), serves the certificate it answers by SNI beside `--tls-cert`'s (`Certificates`, the TLS port's cert resolver), appends `https://<name>:<REX_DIRECT_PORT or --port>` to the announce, keeps the answer in `rex-direct.json`, and registers again every 6 h (10 min after a failure, a 202's `retryAfter` within 15 s..10 min); unclaimed it waits in `PlexTv::direct` for the claim (`plextv::finish_claim`) |
 | `runtime/accounts.rs` | Which plex.tv account each request comes from (the access-token list: owner 1, a share its plex.tv id, with its libraries, filters, flags and track settings) and what that account keeps and sees: its watch state, ratings, hides and track picks shown over the rows while its request runs (`rows::Overlay`), its own playlists and history, the share's libraries and filters pruned from every answer, the owner's routes refused (findings, "Each account its own") |
-| `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
+| `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket (SSDP's too), the interface a multicast leaves by. A Unix half and a Windows half; nothing else may call `libc` for these |
+| `runtime/dlna.rs` | The DLNA server a real PMS runs while `DlnaEnabled` is on, turned on and off with the pref: SSDP (udp/1900, `REX_SSDP_PORT`) and UPnP (tcp/32469, `REX_DLNA_PORT`), only to peers on private networks; the movie and show libraries as plexlab's tree, each item's first Part through the part read (`open_part`) (findings, "DLNA server") |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | Plex's filter grammar (the operator is part of the KEY), flat leaves to show/season/episode, Plex's description of a title and `plex://` guids, ffprobe JSON to `Media`/`Part`/`Stream`, a plain-form decision against the client's own profile, Plex XML, the direct-play gate, the catalog |
 | `store.rs` | The state file: a SQLite database written by the row, holding the catalog too when the catalog is a database |
@@ -611,6 +613,9 @@ The native-only suites, all black-box unless noted:
 ```bash
 python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals
 python3 tests/test_native_gdm.py            # native GDM answers and the /servers self row
+python3 tests/test_dlna.py                  # the DLNA server against plexlab's recordings: DlnaEnabled on and off with no restart,
+                                            # NOTIFYs and M-SEARCH, the descriptions, every action and fault, the tree, streams
+                                            # from a stub source, the byebye of a SIGTERM
 python3 tests/test_pms_identity.py          # current PMS identity, wire/framework captures and every bundled resource's bytes
 REX_NATIVE_BIN=rust/target/release/rex python3 tests/test_native_phase2.py
                                             # the core modules against the oracle's recorded answers, row by row

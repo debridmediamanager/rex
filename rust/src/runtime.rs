@@ -40,6 +40,7 @@ mod cinema;
 mod collections;
 mod detail;
 mod diskcache;
+mod dlna;
 mod downloads;
 mod edit;
 mod frames;
@@ -22492,25 +22493,7 @@ impl Runtime {
     ) -> Response {
         let size = part.get("size").and_then(Value::as_u64).unwrap_or(0);
         let range = request.headers.get("range").cloned();
-        // Cycle 44: the MEASURED grammar decides the window rather than the upstream's
-        // own leniency; with no size in the catalog there is nothing to compute a window
-        // from, so the client's header passes through and the source's answer is echoed.
-        let window = if size == 0 {
-            PartWindow::Passthrough(range.clone())
-        } else {
-            match parse_range(range.as_deref(), size) {
-                RangeResult::Unsatisfiable => PartWindow::Unsatisfiable,
-                RangeResult::Partial(window) => PartWindow::Partial {
-                    first: window.start,
-                    last: window.end,
-                    content_range: format!(
-                        "bytes {}-{}/{}",
-                        window.advertised_start, window.advertised_end, size
-                    ),
-                },
-                RangeResult::Whole => PartWindow::Whole(size),
-            }
-        };
+        let window = part_window(range.as_deref(), size);
         let mut response = Response::bytes(200, part_content_type(part));
         response
             .headers
@@ -23535,6 +23518,21 @@ extern "C" fn on_sigterm(_signal: libc::c_int) {
     TERMINATE.store(true, std::sync::atomic::Ordering::SeqCst);
 }
 
+/// SIGTERM sets `TERMINATE` instead of ending the process: the state saver, and the DLNA server's
+/// byebye (`dlna.rs`), run first.
+fn install_sigterm() {
+    // SAFETY: the handler only stores to an atomic, which is async-signal-safe.
+    unsafe {
+        libc::signal(
+            libc::SIGTERM,
+            on_sigterm as *const () as libc::sighandler_t,
+        );
+    }
+}
+
+/// Whether the state saver runs, which exits the process once `TERMINATE` is set.
+static SAVER: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Where a restored state came from: the database itself, or a legacy JSON file.
 enum StateSource {
     Database(PathBuf),
@@ -23643,13 +23641,8 @@ fn start_state_saver(runtime: SharedRuntime) {
     if !enabled {
         return;
     }
-    // SAFETY: the handler only stores to an atomic, which is async-signal-safe.
-    unsafe {
-        libc::signal(
-            libc::SIGTERM,
-            on_sigterm as *const () as libc::sighandler_t,
-        );
-    }
+    install_sigterm();
+    SAVER.store(true, std::sync::atomic::Ordering::SeqCst);
     let _ = thread::Builder::new().name("state-saver".to_string()).spawn(move || {
         // `run()` waits for the dirty flag and then a whole interval, so a write is
         // saved two seconds after the first request that dirtied the state.
@@ -23663,6 +23656,7 @@ fn start_state_saver(runtime: SharedRuntime) {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if terminate {
                 drop(guard);
+                dlna::bye();
                 analysis::shutdown(&runtime);
                 guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
                 guard.stop_downloads();
@@ -23925,6 +23919,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         );
     }
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
+    // Off until `DlnaEnabled` is turned on, as a real PMS's is.
+    dlna::start(&runtime, &host);
     // Announced with the claim's token only; unclaimed the heartbeat waits for the claim
     // (`plextv::start_heartbeat`).
     if heartbeat {
@@ -25281,6 +25277,17 @@ fn read_request<S: Read>(
     pending: &mut Vec<u8>,
     first_request: bool,
 ) -> Result<Option<Request>, String> {
+    read_request_bounded(stream, pending, first_request, 10)
+}
+
+/// `read_request` with the method token bounded at `max_method` bytes: PMS's own port refuses an
+/// eleventh, while its DLNA port answers UPnP's `UNSUBSCRIBE` (`dlna.rs`).
+fn read_request_bounded<S: Read>(
+    stream: &mut S,
+    pending: &mut Vec<u8>,
+    first_request: bool,
+    max_method: usize,
+) -> Result<Option<Request>, String> {
     let mut first_byte_at = (!pending.is_empty()).then(std::time::Instant::now);
     let header_end = loop {
         // A LOWER-CASE first byte on a connection's first request draws no answer at
@@ -25309,10 +25316,10 @@ fn read_request<S: Read>(
                 if delimiter == 0 {
                     return Err("silence".to_string());
                 }
-                if delimiter > 10 {
+                if delimiter > max_method {
                     return Err("method length".to_string());
                 }
-            } else if pending.len() > 10 {
+            } else if pending.len() > max_method {
                 return Err("method length".to_string());
             }
             // Cycle 27: a request line ended by a bare LF, with no CR, is a 400 on plexlab
@@ -25386,7 +25393,7 @@ fn read_request<S: Read>(
         return Err("bad request line".to_string());
     }
     let parts = first.split(' ').collect::<Vec<_>>();
-    if parts.first().is_some_and(|method| method.len() > 10) {
+    if parts.first().is_some_and(|method| method.len() > max_method) {
         return Err("method length".to_string());
     }
     let legacy_http09 =
@@ -28463,6 +28470,24 @@ struct RangeWindow {
     advertised_end: u64,
 }
 
+/// A part read's window over a Part of `size` bytes. Cycle 44: the MEASURED grammar decides the
+/// window rather than the upstream's own leniency; with no size in the catalog there is nothing to
+/// compute a window from, so the client's header passes through and the source's answer is echoed.
+fn part_window(range: Option<&str>, size: u64) -> PartWindow {
+    if size == 0 {
+        return PartWindow::Passthrough(range.map(str::to_string));
+    }
+    match parse_range(range, size) {
+        RangeResult::Unsatisfiable => PartWindow::Unsatisfiable,
+        RangeResult::Partial(window) => PartWindow::Partial {
+            first: window.start,
+            last: window.end,
+            content_range: format!("bytes {}-{}/{}", window.advertised_start, window.advertised_end, size),
+        },
+        RangeResult::Whole => PartWindow::Whole(size),
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum RangeResult {
     Whole,
@@ -28821,39 +28846,28 @@ fn insert_after_accept_ranges(response: &mut Response, content_range: String) {
         .insert(at, ("Content-Range".to_string(), content_range));
 }
 
-/// Carry out a `PartProxy`: open the file on its source, write the head, stream the body.
-/// Answers whether the connection stays open (a part read never keeps it).
-fn serve_part_proxy<S: Write>(
-    stream: &mut S,
-    runtime: &SharedRuntime,
-    mut response: Response,
-    plan: PartProxy,
-    envelope: &wire::Wire,
-    keep: bool,
-) -> Result<bool, String> {
-    let part_id = plan.part_id.clone();
-    // `_send_error` logs its sentence as it answers, here as for any other refusal.
-    let refuse = |stream: &mut S, status: u16, sentence: &str| {
-        info!("{status} {} {} -- {sentence}", plan.method, plan.route);
-        wire::write_enveloped(stream, &Response::error(status, sentence), envelope, keep)
-    };
+/// What opening a `PartProxy` on its source came to (`open_part`); every refusal is logged there.
+enum PartOpened {
+    /// The window lies past the file's end: the measured 416.
+    Unsatisfiable,
+    /// A refusal: its status and the sentence a part read answers with.
+    Refused(u16, &'static str),
+    /// `--part-mode redirect`: the source's link, for the client to fetch itself.
+    Elsewhere(String),
+    /// The bytes: the status to answer, a Content-Range to add, the body's length when known,
+    /// how many bytes to send (`None`: to the source's end) and the source's answer.
+    Body { status: u16, content_range: Option<String>, length: Option<u64>, want: Option<u64>, upstream: upstream::Upstream },
+}
+
+/// Open a part read's file on its source with the measured window, before any status is written:
+/// the PMS port's part reads (`serve_part_proxy`) and the DLNA server's (`dlna.rs`) alike.
+fn open_part(plan: &PartProxy) -> PartOpened {
+    let part_id = &plan.part_id;
     let mut headers: Vec<(&'static str, String)> = Vec::new();
     let want = match &plan.window {
         PartWindow::Unsatisfiable => {
             info!("416 {} {} -- rex: range not satisfiable", plan.method, plan.route);
-            let refusal = Response {
-                status: 416,
-                content_type: "text/html".to_string(),
-                body: error_document(416),
-                headers: vec![
-                    ("X-Plex-Protocol".to_string(), "1.0".to_string()),
-                    ("Cache-Control".to_string(), "no-cache".to_string()),
-                    ("Date".to_string(), http_date()),
-                ],
-                close: false,
-                doc: None,
-            };
-            return wire::write_enveloped(stream, &refusal, envelope, keep);
+            return PartOpened::Unsatisfiable;
         }
         PartWindow::Partial { first, last, .. } => {
             headers.push(("Range", format!("bytes={first}-{last}")));
@@ -28874,21 +28888,11 @@ fn serve_part_proxy<S: Write>(
                 // bytes never pass through rex. Only the host is logged: the link is a credential.
                 let host = location.split("://").nth(1).and_then(|rest| rest.split(['/', '?']).next()).unwrap_or("");
                 info!("PART {part_id} range={} -> 302 to {host}", plan.range.as_deref().unwrap_or("-"));
-                let mut redirect = Response::bytes(302, "");
-                redirect.headers = response
-                    .headers
-                    .iter()
-                    .filter(|(name, _)| matches!(name.as_str(), "X-Plex-Protocol" | "Access-Control-Allow-Origin" | "Vary" | "Date"))
-                    .cloned()
-                    .collect();
-                redirect.headers.push(("Location".to_string(), location));
-                redirect.close = true;
-                wire::write_enveloped(stream, &redirect, envelope, keep)?;
-                return Ok(false);
+                return PartOpened::Elsewhere(location);
             }
             Ok(upstream::Opened::Here(upstream)) if plan.redirect_only && upstream.status < 400 => {
                 info!("PART {part_id} range={} -> 403: the source answered with the bytes, not a link", plan.range.as_deref().unwrap_or("-"));
-                return refuse(stream, 403, "rex: this server only sends clients to a source's link");
+                return PartOpened::Refused(403, "rex: this server only sends clients to a source's link");
             }
             Ok(upstream::Opened::Here(upstream)) => Ok(upstream),
             Err(error) => Err(error),
@@ -28902,7 +28906,7 @@ fn serve_part_proxy<S: Write>(
         // answers for a part it cannot open (the 1.42.2 reference's part 23595).
         Ok(refused) if refused.status == 404 => {
             error!("part {part_id} is unavailable upstream: {}", plan.path);
-            return refuse(stream, 404, "rex: not found");
+            return PartOpened::Refused(404, "rex: not found");
         }
         Ok(refused) => {
             error!(
@@ -28910,11 +28914,11 @@ fn serve_part_proxy<S: Write>(
                 refused.status,
                 logging::py_opt(plan.range.as_ref())
             );
-            return refuse(stream, refused.status, "rex: upstream refused");
+            return PartOpened::Refused(refused.status, "rex: upstream refused");
         }
         Err(error) => {
             error!("PART {part_id} upstream failed: <urlopen error {error}>");
-            return refuse(stream, 502, "rex: upstream failed");
+            return PartOpened::Refused(502, "rex: upstream failed");
         }
     };
     // A source may ignore `Range` and answer 200 with the whole file (Python's
@@ -28923,36 +28927,30 @@ fn serve_part_proxy<S: Write>(
         let skipped = std::io::copy(&mut (&mut upstream).take(*first), &mut std::io::sink()).unwrap_or(0);
         if skipped < *first {
             error!("PART {part_id} upstream ended at {skipped} skipping to {first}");
-            return refuse(stream, 502, "rex: upstream failed");
+            return PartOpened::Refused(502, "rex: upstream failed");
         }
     }
-    let length = match (&plan.window, want) {
-        (PartWindow::Partial { content_range, .. }, Some(want)) => {
-            response.status = 206;
-            insert_after_accept_ranges(&mut response, content_range.clone());
-            Some(want)
-        }
-        (_, Some(want)) => Some(want),
-        (_, None) => {
-            response.status = upstream.status;
-            if let Some(range) = upstream.header("content-range") {
-                insert_after_accept_ranges(&mut response, range.to_string());
-            }
-            upstream
-                .header("content-length")
-                .and_then(|value| value.trim().parse::<u64>().ok())
-        }
+    let (status, content_range, length) = match (&plan.window, want) {
+        (PartWindow::Partial { content_range, .. }, Some(want)) => (206, Some(content_range.clone()), Some(want)),
+        (_, Some(want)) => (200, None, Some(want)),
+        (_, None) => (
+            upstream.status,
+            upstream.header("content-range").map(str::to_string),
+            upstream.header("content-length").and_then(|value| value.trim().parse::<u64>().ok()),
+        ),
     };
     info!(
         "PART {part_id} range={} -> {} len={}",
         plan.range.as_deref().unwrap_or("-"),
-        response.status,
+        status,
         length.map_or_else(|| "None".to_string(), |length| length.to_string())
     );
-    let still_open = wire::write_enveloped_head(stream, &response, envelope, keep, length)?;
-    if plan.head {
-        return Ok(still_open);
-    }
+    PartOpened::Body { status, content_range, length, want, upstream }
+}
+
+/// Send an opened part read's body: `want` bytes, or to the source's end. A seek or a stop
+/// closes the socket mid-body, which is normal. What was written counts as served bytes.
+fn pump_part<S: Write>(stream: &mut S, runtime: &SharedRuntime, upstream: &mut upstream::Upstream, want: Option<u64>, part_id: &str) {
     let mut written = 0_u64;
     let mut buffer = vec![0_u8; 256 * 1024];
     loop {
@@ -28964,7 +28962,6 @@ fn serve_part_proxy<S: Write>(
             Ok(0) | Err(_) => break,
             Ok(count) => count,
         };
-        // A seek or a stop closes the socket mid-body. Normal.
         if stream.write_all(&buffer[..count]).is_err() {
             debug!("PART {part_id} client closed");
             break;
@@ -28975,9 +28972,66 @@ fn serve_part_proxy<S: Write>(
     if written > 0 {
         runtime.lock().unwrap_or_else(PoisonError::into_inner).count_part_bytes(written);
     }
-    Ok(false)
 }
 
+/// Carry out a `PartProxy`: open the file on its source, write the head, stream the body.
+/// Answers whether the connection stays open (a part read never keeps it).
+fn serve_part_proxy<S: Write>(
+    stream: &mut S,
+    runtime: &SharedRuntime,
+    mut response: Response,
+    plan: PartProxy,
+    envelope: &wire::Wire,
+    keep: bool,
+) -> Result<bool, String> {
+    match open_part(&plan) {
+        PartOpened::Unsatisfiable => {
+            let refusal = Response {
+                status: 416,
+                content_type: "text/html".to_string(),
+                body: error_document(416),
+                headers: vec![
+                    ("X-Plex-Protocol".to_string(), "1.0".to_string()),
+                    ("Cache-Control".to_string(), "no-cache".to_string()),
+                    ("Date".to_string(), http_date()),
+                ],
+                close: false,
+                doc: None,
+            };
+            wire::write_enveloped(stream, &refusal, envelope, keep)
+        }
+        // `_send_error` logs its sentence as it answers, here as for any other refusal.
+        PartOpened::Refused(status, sentence) => {
+            info!("{status} {} {} -- {sentence}", plan.method, plan.route);
+            wire::write_enveloped(stream, &Response::error(status, sentence), envelope, keep)
+        }
+        PartOpened::Elsewhere(location) => {
+            let mut redirect = Response::bytes(302, "");
+            redirect.headers = response
+                .headers
+                .iter()
+                .filter(|(name, _)| matches!(name.as_str(), "X-Plex-Protocol" | "Access-Control-Allow-Origin" | "Vary" | "Date"))
+                .cloned()
+                .collect();
+            redirect.headers.push(("Location".to_string(), location));
+            redirect.close = true;
+            wire::write_enveloped(stream, &redirect, envelope, keep)?;
+            Ok(false)
+        }
+        PartOpened::Body { status, content_range, length, want, mut upstream } => {
+            response.status = status;
+            if let Some(range) = content_range {
+                insert_after_accept_ranges(&mut response, range);
+            }
+            let still_open = wire::write_enveloped_head(stream, &response, envelope, keep, length)?;
+            if plan.head {
+                return Ok(still_open);
+            }
+            pump_part(stream, runtime, &mut upstream, want, &plan.part_id);
+            Ok(false)
+        }
+    }
+}
 
 fn base64_decode_bytes(text: &str) -> Option<Vec<u8>> {
     let mut value = 0_u32;
