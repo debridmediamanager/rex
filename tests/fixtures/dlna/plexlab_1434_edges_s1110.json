@@ -1,0 +1,625 @@
+{
+ "label": "plexlab-1.43.4-edges",
+ "recorded": "2026-11-10T16:12:43Z",
+ "search": [
+  {
+   "to": [
+    "172.31.7.3",
+    1900
+   ],
+   "mx": 1,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 0.0,
+     "from": [
+      "172.31.7.3",
+      39545
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:43 GMT\r\n\r\n"
+    },
+    {
+     "after": 0.201,
+     "from": [
+      "172.31.7.3",
+      39545
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:43 GMT\r\n\r\n"
+    }
+   ]
+  },
+  {
+   "to": [
+    "127.0.0.1",
+    1900
+   ],
+   "mx": 1,
+   "st": "upnp:rootdevice",
+   "answers": []
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 1,
+   "st": "urn:schemas-upnp-org:device:MediaRenderer:1",
+   "answers": []
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 1,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 0.001,
+     "from": [
+      "172.31.7.3",
+      38313
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:51 GMT\r\n\r\n"
+    },
+    {
+     "after": 0.201,
+     "from": [
+      "172.31.7.3",
+      38313
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:52 GMT\r\n\r\n"
+    }
+   ]
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 2,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 1.002,
+     "from": [
+      "172.31.7.3",
+      37476
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:55 GMT\r\n\r\n"
+    },
+    {
+     "after": 1.202,
+     "from": [
+      "172.31.7.3",
+      37476
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:55 GMT\r\n\r\n"
+    }
+   ]
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 2,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 0.001,
+     "from": [
+      "172.31.7.3",
+      56125
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:58 GMT\r\n\r\n"
+    },
+    {
+     "after": 0.201,
+     "from": [
+      "172.31.7.3",
+      56125
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:12:58 GMT\r\n\r\n"
+    }
+   ]
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 3,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 1.001,
+     "from": [
+      "172.31.7.3",
+      45835
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:02 GMT\r\n\r\n"
+    },
+    {
+     "after": 1.202,
+     "from": [
+      "172.31.7.3",
+      45835
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:03 GMT\r\n\r\n"
+    }
+   ]
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 3,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 0.001,
+     "from": [
+      "172.31.7.3",
+      33429
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:06 GMT\r\n\r\n"
+    },
+    {
+     "after": 0.201,
+     "from": [
+      "172.31.7.3",
+      33429
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:06 GMT\r\n\r\n"
+    }
+   ]
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 5,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 2.002,
+     "from": [
+      "172.31.7.3",
+      39383
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:13 GMT\r\n\r\n"
+    },
+    {
+     "after": 2.202,
+     "from": [
+      "172.31.7.3",
+      39383
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:13 GMT\r\n\r\n"
+    }
+   ]
+  },
+  {
+   "to": [
+    "239.255.255.250",
+    1900
+   ],
+   "mx": 8,
+   "st": "upnp:rootdevice",
+   "answers": [
+    {
+     "after": 1.002,
+     "from": [
+      "172.31.7.3",
+      44678
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:18 GMT\r\n\r\n"
+    },
+    {
+     "after": 1.202,
+     "from": [
+      "172.31.7.3",
+      44678
+     ],
+     "text": "HTTP/1.1 200 OK\r\nLocation: http://172.31.7.3:32469/DeviceDescription.xml\r\nCache-Control: max-age=1800\r\nServer: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13\r\nEXT: \r\nBOOTID.UPNP.ORG: 1794325020\r\nCONFIGID.UPNP.ORG: 9821517\r\nUSN: uuid:78a364ad-8877-87f7-4e83-4a5c48c987d3::upnp:rootdevice\r\nST: upnp:rootdevice\r\nDate: Tue, 10 Nov 2026 16:13:18 GMT\r\n\r\n"
+    }
+   ]
+  }
+ ],
+ "browse": {
+  "item_metadata": {
+   "request": [
+    "POST /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/control.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "SOAPACTION: \"urn:schemas-upnp-org:service:ContentDirectory:1#Browse\"",
+    "Connection: close",
+    "Content-Length: 464"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Ext: ",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 2144",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><u:BrowseResponse xmlns:u=\"urn:schemas-upnp-org:service:ContentDirectory:1\"><Result>&lt;DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\" xmlns:dlna=\"urn:schemas-dlna-org:metadata-1-0/\"&gt;&lt;item id=\"41c446bafeed2dd66013\" parentID=\"41c446bafeed2dd66013\" restricted=\"1\"&gt;&lt;dc:title&gt;Big Buck Bunny (2008)&lt;/dc:title&gt;&lt;dc:creator&gt;Sacha Goedegebure&lt;/dc:creator&gt;&lt;dc:date&gt;2008-04-10&lt;/dc:date&gt;&lt;upnp:genre&gt;Animation&lt;/upnp:genre&gt;&lt;upnp:genre&gt;Comedy&lt;/upnp:genre&gt;&lt;upnp:genre&gt;Family&lt;/upnp:genre&gt;&lt;upnp:genre&gt;Short&lt;/upnp:genre&gt;&lt;upnp:albumArtURI dlna:profileID=\"JPEG_MED\"&gt;http://127.0.0.1:32469/proxy/15b7d05119eb998f87e8/albumart.jpg&lt;/upnp:albumArtURI&gt;&lt;dc:description&gt;Big Buck Bunny (2008)&lt;/dc:description&gt;&lt;upnp:longDescription&gt;In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?&lt;/upnp:longDescription&gt;&lt;upnp:icon&gt;http://127.0.0.1:32469/proxy/64660660b7fb59ef839a/icon.jpg&lt;/upnp:icon&gt;&lt;res duration=\"0:00:10.000\" size=\"6273654\" resolution=\"1920x1080\" bitrate=\"624875\" nrAudioChannels=\"1\" protocolInfo=\"http-get:*:video/x-matroska:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01500000000000000000000000000000\"&gt;http://127.0.0.1:32469/object/41c446bafeed2dd66013/file.mkv&lt;/res&gt;&lt;upnp:class&gt;object.item.videoItem.movie&lt;/upnp:class&gt;&lt;/item&gt;&lt;/DIDL-Lite&gt;</Result><NumberReturned>1</NumberReturned><TotalMatches>1</TotalMatches><UpdateID>89716360</UpdateID></u:BrowseResponse></s:Body></s:Envelope>",
+   "closed_by_server": true,
+   "seconds": 0.01
+  },
+  "episode_metadata": {
+   "request": [
+    "POST /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/control.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "SOAPACTION: \"urn:schemas-upnp-org:service:ContentDirectory:1#Browse\"",
+    "Connection: close",
+    "Content-Length: 464"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Ext: ",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 3143",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><u:BrowseResponse xmlns:u=\"urn:schemas-upnp-org:service:ContentDirectory:1\"><Result>&lt;DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\" xmlns:dlna=\"urn:schemas-dlna-org:metadata-1-0/\"&gt;&lt;item id=\"ca292076b0e2a5704f56\" parentID=\"721300bac7f80047106f\" restricted=\"1\"&gt;&lt;dc:title&gt;Firefly - S1 E1 - The Train Job&lt;/dc:title&gt;&lt;dc:creator&gt;Joss Whedon&lt;/dc:creator&gt;&lt;dc:date&gt;2002-09-20&lt;/dc:date&gt;&lt;upnp:actor&gt;Nathan Fillion&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Gina Torres&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Alan Tudyk&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Morena Baccarin&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Adam Baldwin&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Jewel Staite&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Sean Maher&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Summer Glau&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Ron Glass&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Michael Fairman&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Tom Towles&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Andrew Bryniarski&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Gregg Henry&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Valerie Red-Horse&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Lina Patel&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Kevin Will&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Eric Lange&lt;/upnp:actor&gt;&lt;upnp:actor&gt;David Reynolds&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Jeff Ricketts&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Dennis Cockrum&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Rene Hamilton&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Michelle Ferrara&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Melody White&lt;/upnp:actor&gt;&lt;upnp:actor&gt;Rick Williamson&lt;/upnp:actor&gt;&lt;upnp:genre&gt;Unknown&lt;/upnp:genre&gt;&lt;upnp:albumArtURI dlna:profileID=\"JPEG_MED\"&gt;http://127.0.0.1:32469/proxy/40e39f7f642537a43bee/albumart.jpg&lt;/upnp:albumArtURI&gt;&lt;dc:description&gt;Firefly - S1 E1 - The Train Job&lt;/dc:description&gt;&lt;upnp:longDescription&gt;The crew of Serenity take on a train heist commissioned by a crime lord. They steal the goods, only to find it is medicine that&amp;apos;s desperately needed by the town.&lt;/upnp:longDescription&gt;&lt;upnp:icon&gt;http://127.0.0.1:32469/proxy/b8fc60eb1590f046c00d/icon.jpg&lt;/upnp:icon&gt;&lt;upnp:programTitle&gt;Firefly - S1 E1 - The Train Job&lt;/upnp:programTitle&gt;&lt;upnp:episodeNumber&gt;1&lt;/upnp:episodeNumber&gt;&lt;res duration=\"0:00:10.000\" size=\"6280847\" resolution=\"1920x1080\" bitrate=\"625625\" nrAudioChannels=\"1\" protocolInfo=\"http-get:*:video/x-matroska:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01500000000000000000000000000000\"&gt;http://127.0.0.1:32469/object/ca292076b0e2a5704f56/file.mkv&lt;/res&gt;&lt;upnp:class&gt;object.item.videoItem&lt;/upnp:class&gt;&lt;/item&gt;&lt;/DIDL-Lite&gt;</Result><NumberReturned>1</NumberReturned><TotalMatches>1</TotalMatches><UpdateID>89716360</UpdateID></u:BrowseResponse></s:Body></s:Envelope>",
+   "closed_by_server": true,
+   "seconds": 0.01
+  },
+  "item_children": {
+   "request": [
+    "POST /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/control.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "SOAPACTION: \"urn:schemas-upnp-org:service:ContentDirectory:1#Browse\"",
+    "Connection: close",
+    "Content-Length: 470"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Ext: ",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 2144",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><u:BrowseResponse xmlns:u=\"urn:schemas-upnp-org:service:ContentDirectory:1\"><Result>&lt;DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\" xmlns:dlna=\"urn:schemas-dlna-org:metadata-1-0/\"&gt;&lt;item id=\"41c446bafeed2dd66013\" parentID=\"41c446bafeed2dd66013\" restricted=\"1\"&gt;&lt;dc:title&gt;Big Buck Bunny (2008)&lt;/dc:title&gt;&lt;dc:creator&gt;Sacha Goedegebure&lt;/dc:creator&gt;&lt;dc:date&gt;2008-04-10&lt;/dc:date&gt;&lt;upnp:genre&gt;Animation&lt;/upnp:genre&gt;&lt;upnp:genre&gt;Comedy&lt;/upnp:genre&gt;&lt;upnp:genre&gt;Family&lt;/upnp:genre&gt;&lt;upnp:genre&gt;Short&lt;/upnp:genre&gt;&lt;upnp:albumArtURI dlna:profileID=\"JPEG_MED\"&gt;http://127.0.0.1:32469/proxy/15b7d05119eb998f87e8/albumart.jpg&lt;/upnp:albumArtURI&gt;&lt;dc:description&gt;Big Buck Bunny (2008)&lt;/dc:description&gt;&lt;upnp:longDescription&gt;In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?&lt;/upnp:longDescription&gt;&lt;upnp:icon&gt;http://127.0.0.1:32469/proxy/64660660b7fb59ef839a/icon.jpg&lt;/upnp:icon&gt;&lt;res duration=\"0:00:10.000\" size=\"6273654\" resolution=\"1920x1080\" bitrate=\"624875\" nrAudioChannels=\"1\" protocolInfo=\"http-get:*:video/x-matroska:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01500000000000000000000000000000\"&gt;http://127.0.0.1:32469/object/41c446bafeed2dd66013/file.mkv&lt;/res&gt;&lt;upnp:class&gt;object.item.videoItem.movie&lt;/upnp:class&gt;&lt;/item&gt;&lt;/DIDL-Lite&gt;</Result><NumberReturned>1</NumberReturned><TotalMatches>1</TotalMatches><UpdateID>89716360</UpdateID></u:BrowseResponse></s:Body></s:Envelope>",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "root_metadata_paged": {
+   "request": [
+    "POST /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/control.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "SOAPACTION: \"urn:schemas-upnp-org:service:ContentDirectory:1#Browse\"",
+    "Connection: close",
+    "Content-Length: 445"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Ext: ",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 904",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><u:BrowseResponse xmlns:u=\"urn:schemas-upnp-org:service:ContentDirectory:1\"><Result>&lt;DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\" xmlns:dlna=\"urn:schemas-dlna-org:metadata-1-0/\"&gt;&lt;container id=\"0\" parentID=\"\" restricted=\"1\" searchable=\"0\"&gt;&lt;dc:title&gt;&lt;/dc:title&gt;&lt;dc:creator&gt;Unknown&lt;/dc:creator&gt;&lt;upnp:genre&gt;Unknown&lt;/upnp:genre&gt;&lt;upnp:class&gt;object.container.storageFolder&lt;/upnp:class&gt;&lt;/container&gt;&lt;/DIDL-Lite&gt;</Result><NumberReturned>1</NumberReturned><TotalMatches>1</TotalMatches><UpdateID>89716360</UpdateID></u:BrowseResponse></s:Body></s:Envelope>",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "root_children_past_end": {
+   "request": [
+    "POST /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/control.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "SOAPACTION: \"urn:schemas-upnp-org:service:ContentDirectory:1#Browse\"",
+    "Connection: close",
+    "Content-Length: 452"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Ext: ",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 632",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><u:BrowseResponse xmlns:u=\"urn:schemas-upnp-org:service:ContentDirectory:1\"><Result>&lt;DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\" xmlns:dlna=\"urn:schemas-dlna-org:metadata-1-0/\"&gt;&lt;/DIDL-Lite&gt;</Result><NumberReturned>0</NumberReturned><TotalMatches>3</TotalMatches><UpdateID>89716360</UpdateID></u:BrowseResponse></s:Body></s:Envelope>",
+   "closed_by_server": true,
+   "seconds": 0.0
+  }
+ },
+ "http": {
+  "unknown_path": {
+   "request": [
+    "GET /nothing-here HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close"
+   ],
+   "head": [
+    "HTTP/1.1 404 Not Found",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 0",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_description": {
+   "request": [
+    "HEAD /DeviceDescription.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 3724",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_description_http10": {
+   "request": [
+    "HEAD /DeviceDescription.xml HTTP/1.0",
+    "Host: 127.0.0.1:32469"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 3724",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_description_keepalive": {
+   "request": [
+    "HEAD /DeviceDescription.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: keep-alive"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Date: Tue, 10 Nov 2026 16:13:27 GMT",
+    "Content-Length: 3724",
+    "Content-Type: text/xml; charset=\"utf-8\"",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": false,
+   "seconds": 3.0
+  },
+  "unsubscribe_unknown_sid": {
+   "request": [
+    "UNSUBSCRIBE /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/event.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close",
+    "SID: uuid:00000000-0000-0000-0000-000000000000"
+   ],
+   "head": [
+    "HTTP/1.1 412 Precondition Failed",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Content-Length: 0",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "control_get": {
+   "request": [
+    "GET /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/control.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close"
+   ],
+   "head": [
+    "HTTP/1.1 404 Not Found",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Content-Length: 0",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "soap_without_soapaction": {
+   "request": [
+    "POST /ContentDirectory/78a364ad-8877-87f7-4e83-4a5c48c987d3/control.xml HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close",
+    "Content-Type: text/xml",
+    "Content-Length: 195"
+   ],
+   "head": [
+    "HTTP/1.1 500 Bad Request",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Content-Length: 0",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "unknown_object": {
+   "request": [
+    "GET /object/nosuchid/file.mkv HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close"
+   ],
+   "head": [
+    "HTTP/1.1 404 Not Found",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Content-Length: 0",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "range_past_end": {
+   "request": [
+    "GET /object/41c446bafeed2dd66013/file.mkv HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close",
+    "Range: bytes=99999999-"
+   ],
+   "head": [
+    "HTTP/1.1 416 Requested Range Not Satisfiable",
+    "Content-Length: 129",
+    "Content-Type: video/x-matroska",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Cache-Control: no-cache",
+    "Accept-Ranges: bytes",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "<html><head><title>Requested Range Not Satisfiable</title></head><body><h1>416 Requested Range Not Satisfiable</h1></body></html>",
+   "closed_by_server": true,
+   "seconds": 0.01
+  },
+  "head_no_dlna_headers": {
+   "request": [
+    "HEAD /object/41c446bafeed2dd66013/file.mkv HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Content-Length: 6273654",
+    "Content-Type: video/x-matroska",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Accept-Ranges: bytes",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_dlna_headers": {
+   "request": [
+    "HEAD /object/41c446bafeed2dd66013/file.mkv HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close",
+    "getcontentFeatures.dlna.org: 1",
+    "transferMode.dlna.org: Streaming"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Content-Length: 6273654",
+    "Content-Type: video/x-matroska",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "transferMode.dlna.org: Streaming",
+    "contentFeatures.dlna.org: DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01500000000000000000000000000000",
+    "Accept-Ranges: bytes",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_getcontentfeatures_only": {
+   "request": [
+    "HEAD /object/41c446bafeed2dd66013/file.mkv HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close",
+    "getcontentFeatures.dlna.org: 1"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Content-Length: 6273654",
+    "Content-Type: video/x-matroska",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "contentFeatures.dlna.org: DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01500000000000000000000000000000",
+    "Accept-Ranges: bytes",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_transfermode_interactive": {
+   "request": [
+    "HEAD /object/41c446bafeed2dd66013/file.mkv HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close",
+    "transferMode.dlna.org: Interactive"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Content-Length: 6273654",
+    "Content-Type: video/x-matroska",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "transferMode.dlna.org: Interactive",
+    "Accept-Ranges: bytes",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_albumart": {
+   "request": [
+    "HEAD /proxy/15b7d05119eb998f87e8/albumart.jpg HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Content-Length: 0",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  },
+  "head_icon": {
+   "request": [
+    "HEAD /proxy/fecb6a9349c859983f3e/260x260.png HTTP/1.1",
+    "Host: 127.0.0.1:32469",
+    "Connection: close"
+   ],
+   "head": [
+    "HTTP/1.1 200 OK",
+    "Date: Tue, 10 Nov 2026 16:13:30 GMT",
+    "Content-Length: 0",
+    "Connection: close",
+    "Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13"
+   ],
+   "body": "",
+   "closed_by_server": true,
+   "seconds": 0.0
+  }
+ }
+}
