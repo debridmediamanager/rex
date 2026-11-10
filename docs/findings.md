@@ -9611,7 +9611,8 @@ from their own values, so nothing here is version-split; the CLAIM is what split
   machineIdentifier the 1.42.2 reference already held.
 * **Nothing else on the LAN.** Bonjour/mDNS advertises no Plex service at all, and TCP
   8324 (Companion), 32469 (DLNA) and 1900 (SSDP) are refused on the 1.42.2 reference: GDM is the
-  whole of LAN discovery.
+  whole of LAN discovery. (Its DLNA server was off, the default; with `DlnaEnabled` on a PMS answers
+  both, findings "DLNA server", 2026-11-10.)
 
 ##### Two more things the discovery surface exposed
 
@@ -12599,7 +12600,9 @@ on from about 12 s after load) and FFmpeg's reader (`tests/test_http_mkv.py`).
 `tests/test_http_mkv.py` walks every profile in `data/client_profiles.json`: each streaming
 target's protocol must convert a live channel and a capped file and start media FFmpeg decodes.
 The 21 profiles whose targets name no protocol are PMS's DLNA renderer profiles, listed by name;
-rex runs no DLNA server, and a new one, or a protocol rex does not serve, fails the suite.
+no request of theirs reaches the universal transcoder (rex's DLNA server, added 2026-11-10, serves
+every renderer the original file, as plexlab's did; "DLNA server"), and a new one, or a protocol
+rex does not serve, fails the suite.
 
 ### Live DASH start-up, a silent source's hang-up, live AAC (2026-10-27)
 
@@ -15834,3 +15837,113 @@ and answered over IPv6 with a valid certificate; app.plex.tv played the film at 
   router). Measured in network namespaces on a Hetzner box, a feed PUT from `::3` to rex at `::2`
   in the same /64: with IPv4 192.168.77.2, main a1474bc7 401 and the fix 200; with IPv4
   198.51.100.2 (a VPS), 401 on both.
+
+## DLNA server (2026-11-10)
+
+plexlab (PMS 1.43.4, unclaimed) with `DlnaEnabled` on, recorded from its own network namespace:
+`probes/record_dlna.py` (`tests/fixtures/dlna/plexlab_1434_s1110.json`: the NOTIFYs of turning the
+pref off and on, each search target, the device and service descriptions, every action, a whole
+Browse walk and the streams of six items, walked again under VLC's, a Samsung TV's and Windows Media
+Player's User-Agents) and `probes/record_dlna_edges.py` (`plexlab_1434_edges_s1110.json`: search
+timing, Browse of an item, the HTTP edges). Every client got the same tree byte for byte and the
+original file: PMS converted nothing for any of them. rex runs the same server while the pref is on
+(`runtime/dlna.rs`, `tests/test_dlna.py`).
+
+- **The pref is the switch, with no restart.** Turned off, plexlab sent `ssdp:byebye` for each of its
+  six NTs twice, at once; turned on, `ssdp:alive` twice, 50 ms apart and the rounds 250 ms apart,
+  `Cache-Control: max-age=` `DlnaAnnouncementLeaseTime` (1800). How often it renews was not seen in
+  the 20 s recorded; rex renews at half the lease. rex reads the pref every second, sends the byebye
+  when it is turned off and when SIGTERM stops it, and closes both ports.
+- **SSDP.** A search for `ssdp:all` draws six answers in the NOTIFYs' order (rootdevice, the UDN,
+  MediaServer:1, X_MS_MediaReceiverRegistrar, ContentDirectory, ConnectionManager); each of those STs
+  draws its own; any other draws none. Every answer is sent again 200 ms later, from a port of its
+  own, after whole seconds below MX (MX 1: 0 s; 2: 0 and 1; 3: 0, 1 and 2; 5: 0 and 2; 8: 1 and 3).
+  A search sent to plexlab's LAN address was answered and one sent to loopback was not. An answer
+  carries `EXT:`, `BOOTID.UPNP.ORG` (the second the server started) and `CONFIGID.UPNP.ORG` (24 bits,
+  9821517 there; rex's is a digest of what its description says, so it changes with it). LOCATION is
+  the address facing the searcher; rex's NOTIFYs leave by its LAN interface (`IP_MULTICAST_IF`), and a
+  rex with no private IPv4 sends none.
+- **The description.** The UDN is the machineIdentifier's first 32 characters as a UUID, the
+  `friendlyName` `Plex Media Server: <FriendlyName>`, `modelNumber` the version less its hash; six
+  icons from `DlnaDescriptionIcons` (PNG and JPEG at 260, 120 and 48), which rex lists and draws as
+  its own plain stand-ins, never PMS's. The three SCPDs are plexlab's text (`data/dlna_*.xml`).
+- **The HTTP side is Platinum's** (`Server: UPnP/1.0 DLNADOC/1.50 Platinum/1.0.5.13`, last):
+  `Date`, `Content-Length`, `Content-Type`, then `Connection: close` only for a request that asked
+  for it or spoke HTTP/1.0, otherwise the connection is kept. A SOAP answer starts with `Ext:`. An
+  unknown path, a control URL read with GET and an eventSubURL read with GET are a bare 404;
+  SUBSCRIBE is 200 with a SID and `TIMEOUT: Second-1800` whatever was asked; UNSUBSCRIBE of a SID it
+  does not hold 412 (rex sends no events, so it holds none: every UNSUBSCRIBE is that 412, and an
+  11-letter method PMS's own port refuses); a POST with no SOAPACTION `500 Bad Request` with no body;
+  HEAD of an icon or a poster a bare 200 with `Content-Length: 0`.
+- **The actions.** GetSearchCapabilities and GetSortCapabilities answer empty (there is no Search
+  action: fault 401 `Invalid Action`, as any unknown action); GetProtocolInfo's Source is
+  `DlnaDefaultProtocolInfo` as stored, its missing colons (`http-get:*image/jpeg:*`) included;
+  GetCurrentConnectionIDs `0` and fixed connection info; the registrar authorizes and validates
+  every device. GetSystemUpdateID and Browse's UpdateID were 89716252 and grew as the walk read
+  files; rex answers its catalog's generation. An unknown object is fault 701 `No such object`, a
+  BrowseFlag of neither kind 701 `Invalid Name`, both `s:Client` `UPnPError` with status 500.
+- **Browse.** RequestedCount 0 is every child; a page past the end is none of N in an empty
+  DIDL-Lite; BrowseMetadata answers 1 of 1 whatever the paging; BrowseDirectChildren of an ITEM
+  answers the item itself with its own id as its parent. Text is escaped in the DIDL (`'` as
+  `&apos;`) and the DIDL again inside `Result` (`&`, `<`, `>` only).
+- **The tree.** The root holds Video, Music and Photos. Video holds each library (a
+  `playlistContainer`; a show library's carries its own title as `upnp:seriesTitle`), Video Channels
+  and Preferences. A movie library holds All Movies, Unwatched, Recently Released, Recently Added,
+  Recently Viewed, Continue Watching, By Collection, By Edition, By Genre, By Year, By Decade, By
+  Director, By Starring Actor, By Country, By Content Rating, By Rating, By Resolution, By First
+  Letter, By Folder; a show library All Shows, Unwatched, Recently Released, Recently Added, Recently
+  Viewed Episodes, Recently Viewed Shows, Continue Watching, By Collection, By Edition, By First
+  Letter, By Genre (after By First Letter, where a movie library has it before), By Year, By Content
+  Rating, By Folder. A genre is `object.container.genre.musicGenre`, in a video library too; years
+  and decades (`2010s`) newest first, genres and letters in order, a bucket's titles by title;
+  Recently Added newest first, Recently Released by date, Recently Viewed by last view.
+- **The objects.** A film is `Title (Year)`, `object.item.videoItem.movie`; an episode
+  `Show - S1 E3 - Title` in its season and in Recently Added and `S1 E3 - Title` in All episodes,
+  `object.item.videoItem`, its `upnp:seriesTitle` the show's in a season and the LIBRARY's in All
+  episodes and Recently Added (none under By Folder). In order: `dc:title`, `dc:creator` (the first
+  director; a show's studio; else `Unknown`), `dc:date` (`originallyAvailableAt`; All episodes and a
+  season the first day of their year), `upnp:actor` each, `upnp:genre` each (`Unknown` when none, as
+  every episode), `upnp:albumArtURI dlna:profileID="JPEG_MED"`, `dc:description` (the title again),
+  `upnp:longDescription` (the summary, when there is one), `upnp:icon`, an episode's
+  `upnp:programTitle`, `upnp:seriesTitle` and `upnp:episodeNumber`, `res`, `upnp:class`. A show is a
+  `playlistContainer` with `childCount` its episodes; it holds All episodes (a `storageFolder` drawn
+  with the show's poster) and then its seasons (`playlistContainer`s), each `childCount` its episodes.
+- **`res`.** `duration` `H:MM:SS.000`, whole seconds (a Media of 10,030 ms is `0:00:10.000`),
+  `size` the Part's, `resolution` `WxH`, `bitrate` in BYTES per second (the Media's kbps × 125:
+  4999 is 624875), `nrAudioChannels`, and `protocolInfo`
+  `http-get:*:<type>:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01500000000000000000000000000000`.
+  The one mp4 (H.264 High, 1080p at 24, AAC) added `DLNA.ORG_PN=AVC_MP4_HP_HD_24_AAC;`; no Matroska
+  named a profile. rex names that profile for exactly that combination, the only one measured, and
+  none for anything else (DLNA makes the profile optional). A row of several Media or Parts offers its
+  first Part.
+- **Ids.** PMS's are 20-hex hashes (UUIDs for the fixed folders): one item has one id in every
+  folder, while a show listed under Unwatched has another, and BrowseMetadata names as parent wherever
+  the object was last listed (after the walk, By Folder). rex's are the path from the root (`s1/all/1007`,
+  a genre or letter hex-encoded): stable across restarts, and the parent is always the folder the
+  client came from.
+- **Streams** are `/object/<id>/file.<ext>`, GET and HEAD: `Content-Length`, `Content-Type`, `Date`,
+  `Content-Range` on a 206, `transferMode.dlna.org` echoing the request's (`Streaming`,
+  `Interactive`) only when it sent one, `contentFeatures.dlna.org` only to
+  `getcontentFeatures.dlna.org: 1`, `Accept-Ranges: bytes`. A Range past the end is a 416 with the
+  Part's type, `Cache-Control: no-cache` and the HTML refusal. rex reads the bytes through its own
+  part read (`open_part`): any source, Range by the PMS port's grammar, a redirect source's link sent
+  on with a 302 under `--part-mode redirect`.
+- **The Preferences trap.** Under Video's Preferences (and Music's) each setting is a folder of its
+  options, ids `<uuid>_<value>`, the current one titled `[x] ...`: Direct Play, Direct Stream, Local,
+  Remote and Online resolution and quality, subtitle size, audio boost, music bitrate. BROWSING an
+  option SETS it for the client: the recording's first walk left plexlab's DLNA client preferences at
+  the last option it read, and they were restored by hand. A recorder must not browse them.
+- **What rex leaves out, and why.** Preferences: its options choose what PMS converts to, and rex
+  converts nothing for DLNA, so they would set nothing. Music and Photos are empty (PMS lists Music
+  Channels and a music Preferences, and Photo Channels). The person, country, content rating, rating,
+  resolution, collection, edition and folder axes, and a show library's Recently Released, Recently
+  Viewed and Continue Watching, are not built. rex sends no UPnP events. The recently-* folders are
+  not capped: five films cannot show PMS's cap.
+- **What rex does that PMS does not.** DLNA has no authentication, so rex answers its HTTP port only
+  to a peer on a private network, by the socket address (`feed::source_peer`), and answers no search
+  from anyone else: an SSDP answer to a forged public source is a reflection attack. Like plexlab,
+  it answers no search sent from loopback.
+- **Cost.** 10,000 films with a state file: a page of 50 in 23-97 ms (All Movies, a genre, a letter,
+  Recently Added), By Genre's list in 41 ms, all 10,000 at once (RequestedCount 0) in 1.1 s. The
+  listing reads its titles' hot fields and the search index's genres (`corpus.rs`), and only the
+  page's rows (`Catalog::read_listed`).

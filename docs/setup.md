@@ -510,7 +510,7 @@ services:
     image: ghcr.io/debridmediamanager/rex:nightly
     container_name: rex
     restart: unless-stopped
-    network_mode: host        # LAN discovery (GDM), and each source's registered address reachable as on the host
+    network_mode: host        # LAN discovery (GDM, DLNA), and each source's registered address reachable as on the host
     devices:
       - /dev/dri:/dev/dri     # an Intel or AMD GPU for converting; leave out where there is none
     volumes:
@@ -635,6 +635,7 @@ eligibility, still apply. Music, photos and Live TV come from sources that send 
 | Music | A source's tracks as artists and albums, named by Plex from their MusicBrainz release, played in Plexamp, Plex Web and Plex for Android with lyrics and loudness when the source sends them. Audiobooks too, with their chapters: turn on **Store track progress** in the library's Advanced settings for a player to resume where it stopped |
 | Live TV | A source's live channels and guide in Plex Web's and Plex for Android's Live TV: What's On, the guide, search and watching a channel |
 | Photos | A source's pictures as albums of its folders (a comic book is one), browsed, viewed and played as a slideshow in Plex Web. Plex for Android lists no photo library, a real Plex server's either, and Plezy lists them but opens none |
+| DLNA | TVs and players on your LAN that speak DLNA (VLC, Windows Media Player, most smart TVs) browse the movie and TV libraries and play each file as it is, nothing converted. Turn it on in Plex: Settings, DLNA, **Enable the DLNA server**. It works on the LAN only, and in Docker it needs host networking |
 
 ### Analysis and disk use
 

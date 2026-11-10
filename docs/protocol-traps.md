@@ -4295,3 +4295,35 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   subtitle onset both at PTS 0, FFmpeg 8.1.2 can overlay an initial transparent canvas;
   subsequent frames carry the subtitle. Decode a bounded interval inside the active cue
   and compare against the source at the unchanged crop (`transcode/pgs_onset_ffmpeg.json`).
+
+## The DLNA server
+
+Measured on plexlab with `DlnaEnabled` on (findings, "DLNA server"; `tests/fixtures/dlna/`).
+
+- **Never browse an option under DLNA's `Preferences`.** Each option is a folder (`<uuid>_<value>`)
+  and reading it SETS that option for the client: a recorder walking the whole tree leaves the lab's
+  DLNA client preferences at the last option it read. rex lists no Preferences folder at all.
+- **`DlnaEnabled` turns the server on and off with no restart**: byebye for each NT twice, then alive
+  twice. Off, neither 32469 nor 1900 answers, which is why the 1.42.2 reference refused both.
+- **No answer to an M-SEARCH sent to loopback.** Search at the LAN address (or the group); each
+  answer comes twice, 200 ms apart, after whole seconds below MX, from a port of its own.
+- **`Connection: close` only when the request sent it** (or spoke HTTP/1.0); otherwise the
+  connection is kept and the header is absent. A recorder using urllib always sees it.
+- **`UNSUBSCRIBE` is eleven letters**, one more than the PMS port's method bound, which drops the
+  request unanswered; the DLNA port reads up to 16 (`read_request_bounded`).
+- **`transferMode.dlna.org` is echoed, `contentFeatures.dlna.org` asked for.** A stream answers the
+  first only when the request sent it, with its value, and the second only to
+  `getcontentFeatures.dlna.org: 1`.
+- **`res@bitrate` is bytes per second** (kbps × 125) and **`res@duration` whole seconds**
+  (`0:00:10.000` for 10,030 ms).
+- **An episode's title and series title depend on the folder**: `Show - S1 E3 - Title` and the
+  show in a season, `S1 E3 - Title` and the LIBRARY's title in All episodes, the library's in
+  Recently Added.
+- **A genre folder is `object.container.genre.musicGenre`** in a video library too, and a show library
+  lists By First Letter before By Genre where a movie library lists it after.
+- **BrowseDirectChildren of an item is the item itself**, its own id as its parent; BrowseMetadata
+  is always 1 of 1; RequestedCount 0 is everything.
+- **PMS's parentID is wherever the object was last listed**, not where the client found it. rex's
+  ids are paths, so its parent is the folder the client came from.
+- **The protocol list is stored text**: GetProtocolInfo answers `DlnaDefaultProtocolInfo` as it is,
+  its `http-get:*image/jpeg:*` (missing colon) included.
