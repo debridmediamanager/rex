@@ -46,6 +46,7 @@ Pick the guide for what you have.
 | Files your own app serves over HTTP | [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/) |
 | Stremio addons | [rex with your Stremio addons](https://notes.debridmediamanager.com/rex/stremio/), free, with no sponsorship |
 | Only a phone or a TV box | [rex for Android](https://github.com/debridmediamanager/rex-android), with [addons](#small-addons-rex-addons) for YouTube, Spotify and more |
+| A phone or a TV box, and your debrid library or Usenet | [zurg+rex for Android](#zurg-and-rex-in-one-app-zurgrex-for-android), for sponsors |
 | Your debrid library or Usenet, through zurg | [rex with zurg](https://notes.debridmediamanager.com/rex/with-zurg/) |
 | A Plex server today | [Move from Plex to rex](https://notes.debridmediamanager.com/rex/from-plex/) |
 
@@ -91,6 +92,10 @@ rex reads no media from disk. A source (an addon, your own app or zurg) tells re
 ### rex on a phone or TV box: rex for Android
 
 [rex for Android](https://github.com/debridmediamanager/rex-android) turns a phone, tablet, Android TV, Google TV or Fire TV into the server. One app runs rex and rex-addons, so the Plex apps on that device and on your home network play from it with no computer involved. There is no release build yet: until the first one, build it from the repository.
+
+### zurg and rex in one app: zurg+rex for Android
+
+zurg+rex is the same idea with zurg inside: one app runs zurg, rex and rex-addons, so your debrid library or Usenet and your addons fill one library on the phone or TV box. It installs addons the same way rex for Android does, from zurg nightly 2026.11.12. It is a sponsor app: you need an active sponsorship, and [gatekeeper](https://gatekeeper.debridmediamanager.com/) gives your account the download.
 
 ## Limits
 
