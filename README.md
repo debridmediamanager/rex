@@ -93,9 +93,20 @@ rex reads no media from disk. A source (an addon, your own app or zurg) tells re
 
 [rex for Android](https://github.com/debridmediamanager/rex-android) turns a phone, tablet, Android TV, Google TV or Fire TV into the server. One app runs rex and rex-addons, so the Plex apps on that device and on your home network play from it with no computer involved. There is no release build yet: until the first one, build it from the repository.
 
+<p align="center">
+  <img src="docs/images/android-rex-status.webp" width="30%" alt="rex for Android's Status page: rex running, signed in to Plex">
+  <img src="docs/images/android-rex-addons.webp" width="30%" alt="rex for Android's Addons page with the Internet Archive and Spotify addons">
+  <img src="docs/images/android-rex-plexamp.webp" width="30%" alt="Plexamp playing the Spotify addon's albums from rex on the phone">
+</p>
+
 ### zurg and rex in one app: zurg+rex for Android
 
 zurg+rex is the same idea with zurg inside: one app runs zurg, rex and rex-addons, so your debrid library or Usenet and your addons fill one library on the phone or TV box. It installs addons the same way rex for Android does, from zurg nightly 2026.11.12. It is a sponsor app: you need an active sponsorship, and [gatekeeper](https://gatekeeper.debridmediamanager.com/) gives your account the download.
+
+<p align="center">
+  <img src="docs/images/android-zurgrex-status.webp" width="30%" alt="zurg+rex's Status page: the library ready, with rex for the Plex apps">
+  <img src="docs/images/android-zurgrex-addons.webp" width="30%" alt="zurg+rex's Addons page: addons beside your library">
+</p>
 
 ## Limits
 
