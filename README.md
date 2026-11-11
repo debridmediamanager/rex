@@ -45,6 +45,7 @@ Pick the guide for what you have.
 |---|---|
 | Files your own app serves over HTTP | [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/) |
 | Stremio addons | [rex with your Stremio addons](https://notes.debridmediamanager.com/rex/stremio/), free, with no sponsorship |
+| Only a phone or a TV box | [rex for Android](https://github.com/debridmediamanager/rex-android), with [addons](#small-addons-rex-addons) for YouTube, Spotify and more |
 | Your debrid library or Usenet, through zurg | [rex with zurg](https://notes.debridmediamanager.com/rex/with-zurg/) |
 | A Plex server today | [Move from Plex to rex](https://notes.debridmediamanager.com/rex/from-plex/) |
 
@@ -74,6 +75,22 @@ rex reads no media from disk. A source (an addon, your own app or zurg) tells re
 | Your own | [Building rex addons](https://notes.debridmediamanager.com/rex/addons/) walks through one |
 
 <p align="center"><img src="docs/images/rex-stremio-catalogs.webp" width="640" alt="rex-stremio's settings page: Stremio catalogs, each going into a rex library"></p>
+
+### Small addons: rex-addons
+
+[rex-addons](https://github.com/debridmediamanager/rex-addons) runs addons written in plain JavaScript, each in its own sandbox that can reach only the websites it lists. It runs beside rex on a computer, or inside rex for Android. You add a repository, pick the addons you want and sign in where one needs your account.
+
+| Addon | What it brings |
+|---|---|
+| Internet Archive | Public domain films from archive.org |
+| Stremio addons | Your Stremio addons' catalogs, played from your stream addons |
+| YouTube | Your playlists, Liked videos and Watch later, up to 1080p. Sign in with a code |
+| Spotify | Your playlists, liked songs and saved albums as music for Plexamp. You connect from the Spotify app; the sound plays from YouTube, so it needs the YouTube addon |
+| Your own | [Writing an addon](https://github.com/debridmediamanager/rex-addons/blob/main/docs/writing-addons.md): two files, no build step |
+
+### rex on a phone or TV box: rex for Android
+
+[rex for Android](https://github.com/debridmediamanager/rex-android) turns a phone, tablet, Android TV, Google TV or Fire TV into the server. One app runs rex and rex-addons, so the Plex apps on that device and on your home network play from it with no computer involved. There is no release build yet: until the first one, build it from the repository.
 
 ## Limits
 
