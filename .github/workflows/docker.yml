@@ -24,10 +24,17 @@ permissions:
   packages: write
 
 jobs:
-  image:
-    # dmm, as CI is (ci.yml): its binfmt already runs arm64, and an exhausted Actions budget
-    # does not stop a self-hosted runner.
+  # Self-hosted, as CI is (ci.yml), so an exhausted Actions budget cannot stop it: on a
+  # temporary Hetzner VM of the run's own, whose binfmt runs arm64. It ran on dmm until
+  # 2026-11-12, where QEMU's apt-get loaded the host that serves the production database.
+  build-vm:
     runs-on: [self-hosted, Linux, X64, dmm]
+    steps:
+      - run: ~/bin/hz-ci up rex ${{ github.run_id }} cx33,cpx32,cpx42
+
+  image:
+    needs: build-vm
+    runs-on: [self-hosted, "hz-${{ github.run_id }}"]
     timeout-minutes: 30
     env:
       TAG: ${{ inputs.tag }}
@@ -92,3 +99,10 @@ jobs:
           # rex.db holds the sources' logins: it must not be readable by others on the host.
           test "$(docker exec rex-smoke stat -c %a /config/rex.db)" = 600
           docker stop rex-smoke
+
+  build-vm-down:
+    needs: [build-vm, image]
+    if: always() && needs.build-vm.result == 'success'
+    runs-on: [self-hosted, Linux, X64, dmm]
+    steps:
+      - run: ~/bin/hz-ci down rex ${{ github.run_id }} ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'keep' || '' }}

@@ -20,16 +20,21 @@ name: CI
 # 2026-10-12 above the flat number every asset gets from whatever fetches them all: linux
 # amd64 and arm64, macOS amd64 and arm64, Windows amd64.
 #
-# Self-hosted, as zurg's: every Linux job runs on the repo-scoped `dmm` runner and the Windows
-# tests on `winbox` (ben@windows), so neither the minutes nor an exhausted Actions budget can
-# stop a nightly. dmm is a production host (the database and the uploaders), so everything is
-# compiled and tested inside .github/ci/Dockerfile's image through .github/ci/in-image.sh: Ubuntu
-# 22.04 (glibc 2.35, so the Linux binaries run on 22.04 and newer), capped at 6 CPUs and
-# 16 GB, its suites on the container's own loopback. Windows is cross-compiled with MinGW and
+# Self-hosted, as zurg's, so neither the minutes nor an exhausted Actions budget can stop a
+# nightly: the Windows tests on `winbox` (ben@windows), the light jobs on the repo-scoped `dmm`
+# runner, and the build jobs on a temporary Hetzner VM of this run's own, which `build-vm`
+# starts from dmm and `collect` deletes (hz-ci, in the private setup repository's ci-runners/).
+# They ran on dmm until 2026-11-12, but dmm serves the production database, and compiling there
+# took DMM's p99 latency from 2 s to over 20. Hetzner bills each started hour, so one VM runs
+# every build job of a run; cpx42 (8 cores) first, since rex's build stops getting faster
+# beyond 8. Everything is compiled and tested inside .github/ci/Dockerfile's image through
+# .github/ci/in-image.sh: Ubuntu 22.04 (glibc 2.35, so the Linux binaries run on 22.04 and
+# newer), its suites on the container's own loopback. Windows is cross-compiled with MinGW and
 # macOS with cargo-zigbuild; the macOS binaries are checked for their architecture and run no
-# suite, since no runner is a Mac. Binaries pass between jobs through REX_STAGE on dmm instead
-# of artifact storage, which an exhausted budget also refuses (zurg's build.yml, 2026-09-14);
-# the Windows runner reads its two over SSH with a key dmm lets read that directory only.
+# suite, since no runner is a Mac. Binaries pass between jobs through REX_STAGE instead of
+# artifact storage, which an exhausted budget also refuses (zurg's build.yml, 2026-09-14): on the
+# VM while it builds, then `collect` copies the run's directory to dmm, where the Windows runner
+# reads its two over SSH with a key dmm lets read that directory only.
 
 on:
   push:
@@ -130,10 +135,17 @@ jobs:
           echo "build=$build" >> "$GITHUB_OUTPUT"
           if [ "$build" = true ]; then echo "stage=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"; fi
 
-  test:
+  build-vm:
     needs: gate
     if: needs.gate.outputs.build == 'true'
     runs-on: [self-hosted, Linux, X64, dmm]
+    steps:
+      - run: ~/bin/hz-ci up rex ${{ github.run_id }} cpx42,cpx52,cx33
+
+  test:
+    needs: [gate, build-vm]
+    if: needs.gate.outputs.build == 'true'
+    runs-on: [self-hosted, "hz-${{ github.run_id }}"]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -218,12 +230,12 @@ jobs:
   linux-arm64:
     needs: [gate, test]
     if: needs.gate.outputs.build == 'true'
-    runs-on: [self-hosted, Linux, X64, dmm]
+    runs-on: [self-hosted, "hz-${{ github.run_id }}"]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
-      # It runs under emulation (dmm's binfmt qemu-aarch64, F flag, so it works in a container):
+      # It runs under emulation (the VM's binfmt qemu-aarch64, F flag, so it works in a container):
       # the CLI and the server answering on a port are what a cross build can get wrong that the
       # amd64 suites would not see.
       - name: Build and smoke test under qemu
@@ -242,7 +254,7 @@ jobs:
   darwin:
     needs: [gate, test]
     if: needs.gate.outputs.build == 'true'
-    runs-on: [self-hosted, Linux, X64, dmm]
+    runs-on: [self-hosted, "hz-${{ github.run_id }}"]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -268,7 +280,7 @@ jobs:
   windows-amd64:
     needs: [gate, test]
     if: needs.gate.outputs.build == 'true'
-    runs-on: [self-hosted, Linux, X64, dmm]
+    runs-on: [self-hosted, "hz-${{ github.run_id }}"]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -288,8 +300,22 @@ jobs:
       - name: Stage
         run: install -D -m 755 -t "$REX_STAGE/${{ github.run_id }}" out/rex-windows-amd64.exe out/rex-tests.exe
 
+  # Always, so a failed or cancelled run deletes its VM too; a failed one keeps it 50 minutes,
+  # long enough to re-run the failed jobs on it, and dmm's `hz-ci sweep` cron deletes it then.
+  collect:
+    needs: [build-vm, test, linux-arm64, darwin, windows-amd64]
+    if: always() && needs.build-vm.result == 'success'
+    runs-on: [self-hosted, Linux, X64, dmm]
+    steps:
+      - name: Copy the run's stage directory to dmm
+        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        run: ~/bin/hz-ci pull rex ${{ github.run_id }} "$REX_STAGE/${{ github.run_id }}"
+      - name: Delete the build VM
+        if: always()
+        run: ~/bin/hz-ci down rex ${{ github.run_id }} ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'keep' || '' }}
+
   windows-test:
-    needs: windows-amd64
+    needs: [windows-amd64, collect]
     # ben@windows, repo-scoped like zurg's winbox runner, running as NETWORK SERVICE, whose PATH
     # has no bash: `shell: bash` failed "bash: command not found". Git for Windows' by its 8.3
     # path, since the runner splits a custom shell at its first space.

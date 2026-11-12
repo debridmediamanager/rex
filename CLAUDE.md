@@ -802,19 +802,24 @@ precisely how the Seasons bug survived a fix attempt.
 pushes spent the org's Actions budget, which ran out on 2026-10-19 and blocked every run.
 Prove a push locally with `cargo test` and the suites ci.yml lists.
 
-It runs self-hosted, as zurg's does, so neither minutes nor the budget can stop it: every Linux
-job on the repo-scoped `dmm` runner (`~/actions-runner-rex` on dmm, beside zurg's) and the
-Windows tests on `winbox` (`C:\actions-runner-rex` on ben@windows, as NETWORK SERVICE). dmm is a
-production host, so each job compiles and tests inside `.github/ci/Dockerfile`'s image through
-`.github/ci/in-image.sh` (Ubuntu 22.04, glibc 2.35; 6 CPUs, 16 GB; the cargo cache and target dir in
-`~/rex-ci-cache`, rebuilt when zurg's nightly prunes the image). Each run does a release build,
+It runs self-hosted, as zurg's does, so neither minutes nor the budget can stop it. The light jobs
+(`gate`, `collect`, `release`) run on the repo-scoped `dmm` runner (`~/actions-runner-rex` on dmm,
+beside zurg's), the Windows tests on `winbox` (`C:\actions-runner-rex` on ben@windows, as NETWORK
+SERVICE), and the build jobs on a temporary Hetzner VM of the run's own: `build-vm` has dmm's
+`~/bin/hz-ci` start one from a snapshot and register it as a runner for that run alone (label
+`hz-<run id>`), and `collect` copies its stage directory to dmm and deletes it (a failed run keeps it 50
+minutes, so re-running the failed jobs finds it; re-run everything after that). Since 2026-11-12:
+compiling on dmm, which serves the production database, took DMM's p99 latency from 2 s to over 20.
+hz-ci lives in the private setup repository's `ci-runners/`. Each job compiles and tests inside
+`.github/ci/Dockerfile`'s image through `.github/ci/in-image.sh` (Ubuntu 22.04, glibc 2.35; the cargo
+cache and target dir in `~/rex-ci-cache`, a warm copy of which the snapshot carries). Each run does a release build,
 `cargo test`, the black-box suites that need no credentials and the transcoder suite; builds
-linux arm64 (smoke-tested under dmm's qemu binfmt), macOS arm64 and amd64 with cargo-zigbuild
+linux arm64 (smoke-tested under the VM's qemu binfmt), macOS arm64 and amd64 with cargo-zigbuild
 (checked for their architecture only: no runner is a Mac; the first ones passed test_cli, the
 native smoke, test_build_catalog, test_sources and test_feed on an Apple Silicon Mac), and
 Windows amd64 with MinGW, then tests that on Windows (the unit tests and every suite but
 `test_manager`, since `rex manager` is Unix only). Binaries pass between jobs through
-`~/rex-ci-stage/<run id>` on dmm, not artifact storage; the Windows runner reads its two with
+`~/rex-ci-stage/<run id>`, not artifact storage: on the VM while it builds, then on dmm; the Windows runner reads its two with
 `ci-pull\id_ed25519`, a key dmm's `authorized_keys` binds to `~/bin/rex-ci-pull`, which prints
 one staged file and nothing else. Those are the platforms zurg's own releases are downloaded for.
 
