@@ -91,7 +91,7 @@ rex reads no media from disk. A source (an addon, your own app or zurg) tells re
 
 ### rex on a phone or TV box: rex for Android
 
-[rex for Android](https://github.com/debridmediamanager/rex-android) turns a phone, tablet, Android TV, Google TV or Fire TV into the server. One app runs rex and rex-addons, so the Plex apps on that device and on your home network play from it with no computer involved. There is no release build yet: until the first one, build it from the repository.
+[rex for Android](https://github.com/debridmediamanager/rex-android) turns a phone, tablet, Android TV, Google TV or Fire TV into the server. One app runs rex and rex-addons, so the Plex apps on that device and on your home network play from it with no computer involved. It is free: [download it](https://github.com/debridmediamanager/rex-android/releases/latest).
 
 <p align="center">
   <img src="docs/images/android-rex-status.webp" width="30%" alt="rex for Android's Status page: rex running, signed in to Plex">

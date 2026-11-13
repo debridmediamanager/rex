@@ -14,7 +14,7 @@ HTTPS address. rex starts once (step 4), with the flags the later steps need, so
 
 | | |
 |---|---|
-| A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
+| A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies. On a phone or TV box, [rex for Android](https://github.com/debridmediamanager/rex-android) runs it instead |
 | 1 GB of RAM | with 4,062 movies and 656 shows (34,678 episodes) rex used under 500 MB while it started and about 730 MB while the library was browsed; converting video takes more |
 | rex nightly 2026.10.25 or newer | download it ([step 1](#1-get-it)), run the [Docker image](#docker) on Linux, or build it with Rust 1.89 or newer (rustup) |
 | One or more sources | anything that serves the files over HTTP and pushes them to rex's feed: [rex-stremio](https://github.com/debridmediamanager/rex-stremio) for Stremio addons, [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer for a debrid account or Usenet (zurg v1.0.0 has no rex feed), or your own |
