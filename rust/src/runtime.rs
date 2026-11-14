@@ -23974,6 +23974,8 @@ fn accept(listener: TcpListener, runtime: SharedRuntime, tls_config: Option<Arc<
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                // Sequential DASH range requests must not wait for delayed ACKs.
+                let _ = stream.set_nodelay(true);
                 let shared = Arc::clone(&runtime);
                 let tls_config = tls_config.clone();
                 // PMS drops an incomplete request twenty seconds after its
