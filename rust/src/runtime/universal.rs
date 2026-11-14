@@ -1019,7 +1019,21 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         push(&mut args, &["-metadata:s:s:0", &format!("language={language}")]);
     }
     match video {
-        Some(video) if video.copy => push(&mut args, &["-c:v", "copy"]),
+        Some(video) if video.copy => {
+            push(&mut args, &["-c:v", "copy"]);
+            // A YouTube HLS source (MPEG-TS) delivers the first P-frame after each keyframe with
+            // no pts and no dts. A copied packet keeps that, and Matroska refuses it: "Can't write
+            // packet with unknown timestamp", reported on whichever stream was being interleaved
+            // (the re-encoded audio), ended every Chromecast cast ~9 s in (rex-fun, 2026-11-08;
+            // items 151159, 151160, 151163). Only a packet without a time is touched, so a source
+            // with every timestamp passes through unchanged. A missing dts follows the packet
+            // before it; a missing pts is that dts plus the source's reorder delay, five frames
+            // for the I P B B B P shape these sources use (exact on two of three measured; the
+            // third gets a duplicate pts per GOP, which Matroska takes and decoders play).
+            if http && plan.matroska {
+                push(&mut args, &["-bsf:v", MISSING_TIMESTAMPS]);
+            }
+        }
         Some(video) => {
             if burn.is_none() && canvas.is_none() {
                 push(&mut args, &["-vf", video_filter.as_deref().unwrap_or_default()]);
@@ -1155,6 +1169,13 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     ]);
     args
 }
+
+/// `setts` for a copied video stream: fills a packet's missing dts and pts, and leaves every
+/// packet that has them alone (`ffmpeg_args`). The fill follows `PREV_OUTDTS`, the dts the
+/// previous packet LEFT with: `PREV_INDTS` is the dts it ARRIVED with, which for the second of
+/// two packets in a row with none is still missing (measured, FFmpeg 8.1: the run froze on one
+/// dts).
+const MISSING_TIMESTAMPS: &str = r"setts=dts=if(eq(DTS\,NOPTS)\,PREV_OUTDTS+DURATION\,DTS):pts=if(eq(PTS\,NOPTS)\,PREV_OUTDTS+5*DURATION\,PTS)";
 
 fn audio_filter(plan: &Plan) -> String {
     let mut filters = Vec::new();
@@ -3300,7 +3321,7 @@ impl Runtime {
             .or_else(|| headers.get("x-plex-client-profile-extra"))
             .cloned()
             .unwrap_or_default();
-        let profile = &decision::with_extra(decision::resolve(&self.decision_profiles, profile_name)?, &extra);
+        let profile = &decision::effective_profile(decision::resolve(&self.decision_profiles, profile_name)?, &extra, Some(media));
         // A real PMS refuses Dolby Vision profile 5 (2003): its IPT colour has no HDR10 base.
         // tonemapx applies the RPU (measured 2026-10-17: Jellyfin's P5 clip tonemaps to its
         // P8.1 and HDR10 twins' colours; untonemapped it is green), so with it rex converts one.
@@ -4262,6 +4283,32 @@ mod tests {
     }
 
     #[test]
+    fn a_copied_video_in_a_matroska_stream_gets_the_timestamps_its_source_left_out() {
+        // YouTube's HLS has a P-frame per GOP with no pts or dts; Matroska refuses it with
+        // "Can't write packet with unknown timestamp" and the cast stream died ~9 s in.
+        let mut stream = plan(true, 600_000);
+        stream.protocol = Protocol::Http;
+        stream.matroska = true;
+        let args = ffmpeg_args(&stream, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/s"));
+        let at = args.iter().position(|arg| arg == "-bsf:v").expect("a copied video in a Matroska stream is re-timed");
+        // FFmpeg's own escape for a comma inside a filter expression is one backslash.
+        assert_eq!(args[at + 1], MISSING_TIMESTAMPS);
+        assert!(args[at + 1].contains("PREV_OUTDTS") && !args[at + 1].contains("PREV_INDTS"));
+        assert!(at < args.iter().position(|arg| arg == "-f").unwrap(), "{args:?}");
+        // Only a copied stream has the source's timestamps; a converted one makes its own.
+        let mut converted = plan(false, 600_000);
+        converted.protocol = Protocol::Http;
+        converted.matroska = true;
+        let args = ffmpeg_args(&converted, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/s"));
+        assert!(!args.iter().any(|arg| arg == "-bsf:v"), "{args:?}");
+        // And only the Matroska stream: the HLS and DASH muxers take what they are given.
+        let mut hls = plan(true, 600_000);
+        hls.matroska = false;
+        let args = ffmpeg_args(&hls, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/s"));
+        assert!(!args.iter().any(|arg| arg == "-bsf:v"), "{args:?}");
+    }
+
+    #[test]
     fn fitted_copy_gaps_leave_a_second_of_margin_without_conversion() {
         for (gap, seconds) in [(0, 5), (4499, 5), (4500, 6), (4920, 6), (5000, 6), (12_001, 14), (20_000, 21), (90_000, 91), (120_000, 121), (120_001, 5), (7_200_000, 5)] {
             let mut copy = plan(true, 90_000);
@@ -4777,6 +4824,46 @@ mod tests {
         assert_eq!(std::fs::read(&output).unwrap(), before);
         assert!(!transcoder.root.exists(), "conversion must not depend on startup-cleared transcode root");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires REX_TRANSCODER pointing to FFmpeg with libx264 and lavfi"]
+    fn a_run_of_packets_without_dts_is_repaired_one_frame_apart() {
+        // Two or more video packets in a row with no dts: `PREV_INDTS` is the dts the previous
+        // packet ARRIVED with, so the second of the pair was still missing and the run froze on
+        // one dts (CodeRabbit, PR 21). `PREV_OUTDTS` is the one it LEFT with.
+        let ffmpeg = PathBuf::from(std::env::var("REX_TRANSCODER").expect("set REX_TRANSCODER"));
+        let root = std::env::temp_dir().join(format!("rex-missing-dts-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let raw = root.join("raw.h264");
+        // A raw H.264 stream carries no timestamps at all, as the source's demuxer delivers it.
+        let made = Command::new(&ffmpeg).args(["-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25", "-frames:v", "14", "-c:v", "libx264", "-bf", "0", "-g", "25", "-f", "h264"]).arg(&raw).status().unwrap();
+        assert!(made.success());
+        // Stamp every packet but 4..=7 (a run of four) with a dts and pts one frame (48000 ticks of
+        // the raw stream's 1/1200000 base) apart, then repair what is left. `framecrc` writes
+        // what the muxer is given without refusing a packet that has no time, which Matroska does.
+        let stamp = r"setts=dts=if(between(N\,4\,7)\,NOPTS\,N*48000):pts=if(between(N\,4\,7)\,NOPTS\,N*48000)";
+        let output = Command::new(&ffmpeg)
+            .args(["-v", "error", "-f", "h264", "-framerate", "25", "-i"]).arg(&raw)
+            .args(["-frames:v", "12", "-c:v", "copy", "-bsf:v", &format!("{stamp},{MISSING_TIMESTAMPS}"), "-f", "framecrc", "-"])
+            .output().unwrap();
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        let text = String::from_utf8_lossy(&output.stdout);
+        let packets: Vec<(i64, i64)> = text.lines().filter(|line| !line.starts_with('#'))
+            .map(|line| {
+                let field: Vec<&str> = line.split(',').map(str::trim).collect();
+                (field[1].parse().expect("a packet with no dts reached the muxer"), field[2].parse().expect("a packet with no pts reached the muxer"))
+            })
+            .collect();
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(packets.len(), 12);
+        let dts: Vec<i64> = packets.iter().map(|packet| packet.0).collect();
+        // Every packet in the run follows the one before it by a frame, none repeats it.
+        assert_eq!(dts, (0..12).map(|n| n * 48_000).collect::<Vec<i64>>(), "{packets:?}");
+        // Packets that already had times are left as they were (0..=3 and 8..).
+        for n in (0..4).chain(8..12) {
+            assert_eq!(packets[n], (n as i64 * 48_000, n as i64 * 48_000), "packet {n}: {packets:?}");
+        }
     }
 
     #[test]

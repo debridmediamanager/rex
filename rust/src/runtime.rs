@@ -11660,6 +11660,24 @@ impl Runtime {
             .map(String::as_str)
             .filter(|value| !value.is_empty())
             .unwrap_or("http");
+        // `protocol=*` / `*,hls` (Plex for Android, a live HLS channel opened from the library
+        // row) names no protocol a target declares: resolve it to one the profile converts to.
+        // A single concrete value comes back untouched.
+        // The client's X-Plex-Client-Profile-Extra (an `add-transcode-target` on the empty Generic
+        // profile, say) is applied once, and that one profile picks the protocol AND decides below.
+        let extra = query
+            .get("X-Plex-Client-Profile-Extra")
+            .or_else(|| headers.get("x-plex-client-profile-extra"))
+            .map_or("", String::as_str);
+        // The default hls target for a profile with no streaming target is applied here, once;
+        // transcode_plan builds its profile with the same `decision::effective_profile`.
+        let effective_profile = decision::resolve(&self.decision_profiles, &profile_name)
+            .map(|profile| decision::effective_profile(profile, extra, Some(&selected_media)));
+        let protocol = decision::effective_protocol(
+            effective_profile.as_ref(),
+            protocol,
+            Some(&selected_media),
+        );
         let session = query
             .get("X-Plex-Session-Identifier")
             .or_else(|| headers.get("x-plex-session-identifier"))
@@ -11738,18 +11756,9 @@ impl Runtime {
         };
         let mde = query.get("hasMDE") == Some(&"1".to_string());
         if refusal.is_none() && !mde {
-            let extra = query
-                .get("X-Plex-Client-Profile-Extra")
-                .or_else(|| headers.get("x-plex-client-profile-extra"))
-                .map_or("", String::as_str);
-            let answer = match decision::resolve(&self.decision_profiles, &profile_name) {
-                Some(profile) if !extra.is_empty() => decision::decide_profile(
-                    &decision::with_extra(profile, extra),
-                    &selected_for_engine,
-                    protocol,
-                    true,
-                ),
-                _ => decision::decide(
+            let answer = match effective_profile.as_ref() {
+                Some(profile) => decision::decide_profile(profile, &selected_for_engine, protocol, true),
+                None => decision::decide(
                     &self.decision_profiles,
                     &profile_name,
                     &selected_for_engine,
@@ -11812,8 +11821,9 @@ impl Runtime {
             fields.insert("size".to_string(), json!(0));
             // The answer's own two texts: rex-fun's 52 refusals said nothing of why (2026-11).
             info!(
-                "DECISION refused for path={} -- {refusal} {convert}",
-                query.get("path").map_or("", String::as_str)
+                "DECISION refused for path={} profile={profile_name} extra={} protocol={protocol} -- {refusal} {convert}",
+                query.get("path").map_or("", String::as_str),
+                if extra.is_empty() { "empty" } else { "sent" }
             );
             return Response::json(200, self.container(fields, false));
         }
