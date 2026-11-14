@@ -83,11 +83,13 @@ rex reads no media from disk. A source (an addon, your own app or zurg) tells re
 
 | Addon | What it brings |
 |---|---|
-| Internet Archive | Public domain films from archive.org |
+| Internet Archive | Public domain films from archive.org, in the rex-addons repository |
 | Stremio addons | Your Stremio addons' catalogs, played from your stream addons |
 | YouTube | Your playlists, Liked videos and Watch later, up to 1080p. Sign in with a code |
 | Spotify | Your playlists, liked songs and saved albums as music for Plexamp. You connect from the Spotify app; the sound plays from YouTube, so it needs the YouTube addon |
 | Your own | [Writing an addon](https://github.com/debridmediamanager/rex-addons/blob/main/docs/writing-addons.md): two files, no build step |
+
+The Stremio, YouTube and Spotify addons are in [rex-community-addons](https://github.com/debridmediamanager/rex-community-addons): add that repository to get them.
 
 ### rex on a phone or TV box: rex for Android
 
