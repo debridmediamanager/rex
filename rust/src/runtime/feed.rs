@@ -1649,7 +1649,23 @@ pub(super) const DESCRIBE_BATCH: usize = 50;
 /// request in ten waited half a second and some up to six (2026-11-04). Finding nothing from where it stood, it goes round once more from the first row,
 /// for rows that moved. Answers how many rows were given some.
 pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
-    let mut given = 0;
+    let named = |row: &crate::catalog::RowRef<'_>| {
+        let kind = row.get("type").and_then(Field::as_str).unwrap_or_default();
+        matches!(kind, "movie" | "show" | "episode")
+            && row.get("_scanned").is_some_and(truthy)
+            && row.get("_described").and_then(Field::as_i64) != Some(crate::metadata::DESCRIBED)
+            && row.get("guid").and_then(Field::as_str).is_some_and(|guid| guid.starts_with(&format!("plex://{kind}/")))
+    };
+    // Counted off the hot fields alone: a start with nothing to describe says nothing.
+    let total = { let guard = lock(shared); if guard.plex.is_some() { guard.catalog.hot().lazy().filter(named).count() } else { 0 } };
+    if total == 0 {
+        return 0;
+    }
+    let adds = crate::metadata::DESCRIBED_ADDS;
+    let what = adds.split(' ').next().unwrap_or(adds);
+    info!("FEED updating {adds} of {total} item(s) from cached Plex metadata, once, in the background");
+    let started = std::time::Instant::now();
+    let (mut given, mut seen, mut waiting) = (0, 0, 0);
     let (mut from, mut wrapped) = (0, false);
     loop {
         // -- under the lock: which rows, by their hot fields; what names each, off its body --
@@ -1657,13 +1673,6 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
             let guard = lock(shared);
             let Some(plex) = guard.plex.clone() else {
                 return given;
-            };
-            let named = |row: &crate::catalog::RowRef<'_>| {
-                let kind = row.get("type").and_then(Field::as_str).unwrap_or_default();
-                matches!(kind, "movie" | "show" | "episode")
-                    && row.get("_scanned").is_some_and(truthy)
-                    && row.get("_described").and_then(Field::as_i64) != Some(crate::metadata::DESCRIBED)
-                    && row.get("guid").and_then(Field::as_str).is_some_and(|guid| guid.starts_with(&format!("plex://{kind}/")))
             };
             let mut reached = from;
             let wanted: Vec<(String, Value, Value)> = guard
@@ -1692,6 +1701,8 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
         };
         if wanted.is_empty() {
             if from == 0 || wrapped {
+                let waiting = if waiting > 0 { format!("; {waiting} matched by hand are asked from Plex again at the next start") } else { String::new() };
+                info!("FEED updated {what} of {seen} item(s) in {}s{waiting}", started.elapsed().as_secs());
                 return given;
             }
             (from, wrapped) = (0, true);
@@ -1733,6 +1744,8 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
             .collect();
         // -- under the lock: apply, and mark -------------------------------------------------
         let mut guard = lock(shared);
+        let before = seen;
+        seen += found.len();
         for (key, mark, fields) in found {
             let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) else {
                 continue;
@@ -1763,6 +1776,8 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
             }
             if mark {
                 object.insert("_described".to_string(), json!(crate::metadata::DESCRIBED));
+            } else {
+                waiting += 1;
             }
             if gave {
                 given += 1;
@@ -1775,7 +1790,9 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
         let snapshot = guard.flush_state();
         drop(guard);
         write_or_log(snapshot);
-        info!("FEED described {given} row(s) again from Plex's kept answers");
+        if seen * 10 / total > before * 10 / total {
+            info!("FEED updating {what}: {} of {total} ({}%)", seen.min(total), seen.min(total) * 100 / total);
+        }
         // Let the requests that queued behind this batch in before the next one takes the lock.
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
