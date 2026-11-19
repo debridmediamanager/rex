@@ -39,7 +39,8 @@ def get(base, path, token):
     request = urllib.request.Request(url, headers={"Accept": "application/json", "X-Plex-Client-Identifier": "rex-ratings-check",
                                                    "X-Plex-Product": "Plex Web", "X-Plex-Language": "en"})
     try:
-        return json.load(urllib.request.urlopen(request, timeout=60)).get("MediaContainer") or {}
+        container = json.load(urllib.request.urlopen(request, timeout=60)).get("MediaContainer")
+        return container if isinstance(container, dict) else {}
     except Exception as error:  # a title the agent or a reference does not know is a miss, not a stop
         print("  ! %s: %s" % (path.split("?")[0], error), file=sys.stderr)
         return {}
@@ -76,7 +77,7 @@ def shape(values):
 def broken(values, kind):
     """Why a row breaks the rule on its own, or None."""
     listed = {entry.get("image"): entry.get("value") for entry in values["Rating"] or []}
-    scores = [values["rating"], values["audienceRating"], *listed.values()]
+    scores = [values["rating"], values["audienceRating"], *(entry.get("value") for entry in values["Rating"] or [])]
     if any(isinstance(score, (int, float)) and score != one(score) for score in scores):
         return "a score with more than one decimal"
     for score, image in (("rating", "ratingImage"), ("audienceRating", "audienceRatingImage")):
