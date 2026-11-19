@@ -677,11 +677,16 @@ const AGENT_ARTWORK: [(&str, &str, &str); 5] = [
     ("_squareArt_url", "_squareArt", "squareArt"),
 ];
 
+/// The agent's artwork urls `row` holds, one string: what a failed fetch was read from.
+pub(super) fn agent_urls(row: &Value) -> String {
+    AGENT_ARTWORK.map(|(field, _, _)| row.get(field).map(string_value).unwrap_or_default()).join(" ")
+}
+
 /// Plex's agent replaces a title's artwork, and the url rex kept from it stops answering
 /// (Funny Money's gracenote poster and background 403'd on 2026-11-17 while the agent named
 /// new ones): a row's artwork asked of the agent again by its guid, past `plex_cache.db`, for
-/// a Refresh Metadata (a show's seasons with it) and for its artwork whose fetch failed (`dead`:
-/// once per start for the urls a row holds, so a url the agent still names is not asked for on
+/// a Refresh Metadata (a show's seasons with it) and for its artwork whose fetch failed (`dead`,
+/// the urls `agent_urls` read then: once per start for the urls a row holds, so a url the agent still names is not asked for on
 /// every view). Only artwork the row serves itself, from a url the agent gave or from none, is set:
 /// a season keeps a copy of its show's background (`hierarchy::fill_season`) and serves the
 /// show's, and the agent's answer for a season or episode names a background anyway (a real
@@ -689,12 +694,12 @@ const AGENT_ARTWORK: [(&str, &str, &str); 5] = [
 /// `restamp_artwork` gives a new url new paths. Not measured: a real PMS keeps the images it
 /// downloaded when it matched, so it never meets a dead url, and what it asks the agent on a
 /// refresh was not recorded (plexscratch has no route to plex.tv).
-pub(super) fn spawn_ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: bool) {
+pub(super) fn spawn_ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
     let shared = Arc::clone(shared);
     let _ = std::thread::Builder::new().name("agent-artwork".to_string()).spawn(move || ask_agent_again(&shared, keys, dead));
 }
 
-fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: bool) {
+fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
     // -- under the lock: which rows, by their guid ---------------------------------------------
     let (plex, asked) = {
         let mut guard = feed::lock(shared);
@@ -715,22 +720,26 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: bool) {
             let Some(id) = row.get("guid").and_then(Value::as_str).and_then(|guid| guid.strip_prefix(&prefix)) else {
                 continue;
             };
-            let (id, language) = (id.to_string(), runtime.row_language(row));
+            let (id, guid, language) = (id.to_string(), format!("{prefix}{id}"), runtime.row_language(row));
             // Once for the urls the row holds: a push that identifies it again can put back older
             // ones, and those are asked about again.
-            let urls = AGENT_ARTWORK.map(|(field, _, _)| row.get(field).map(string_value).unwrap_or_default()).join(" ");
+            let urls = agent_urls(row);
+            // A refresh gave the row other urls since the fetch failed: those are not known dead.
+            if dead.as_ref().is_some_and(|failed| *failed != urls) {
+                continue;
+            }
             let mark = format!("{key} {urls}");
-            if !dead || runtime.agent_artwork_asked.insert(mark.clone()) {
-                asked.push((key, mark, id, language));
+            if dead.is_none() || runtime.agent_artwork_asked.insert(mark.clone()) {
+                asked.push((key, mark, id, guid, language));
             }
         }
         (plex, asked)
     };
     // -- off the lock: the agent, now --------------------------------------------------------
     let (mut found, mut unanswered) = (Vec::new(), Vec::new());
-    for (key, mark, id, language) in asked {
+    for (key, mark, id, guid, language) in asked {
         match plex.title_now(&language, &id) {
-            Some(title) => found.push((key, title)),
+            Some(title) => found.push((key, guid, title)),
             None => unanswered.push(mark),
         }
     }
@@ -741,8 +750,9 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: bool) {
         guard.agent_artwork_asked.remove(&mark);
     }
     let mut given = 0;
-    for (key, title) in found {
-        let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) else {
+    for (key, guid, title) in found {
+        // A Fix Match while the agent was asked: the answer is the old title's.
+        let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut).filter(|row| row.get("guid").and_then(Value::as_str) == Some(guid.as_str())) else {
             continue;
         };
         let said: HashMap<&str, Value> = crate::metadata::agent_fields(&title, "movie")

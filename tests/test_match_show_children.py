@@ -59,6 +59,25 @@ UNPLACED = {"id": UNPLACED_SID, "path": UNPLACED_SID, "file": MOUNT + "/" + UNPL
             "hash": "f5ec83ee163936513f1f8c00523b3ca832576e95", "ids": {}}
 
 
+# What `title_now` last read for Plex's S3E1 and its season, newer than the children listing: a
+# Fix Match takes the artwork the agent names now (PR #28's review).
+NOW = {"5d9c09bc7b5c2e001e66c0af": "https://image.tmdb.org/t/p/original/season-3-now.jpg",
+       "5d9c11122192ba001f3735f4": "https://image.tmdb.org/t/p/original/showdown-now.jpg"}
+
+
+def still_and_season(work, key):
+    """An episode's still and its season's poster, as the state file keeps the row."""
+    deadline = time.time() + 10
+    while True:
+        with sqlite3.connect(os.path.join(work, "rex.db")) as db:
+            found = db.execute("SELECT body FROM row WHERE coll = 'state:items' AND key = ?", (key,)).fetchone()
+        row = json.loads(found[0]) if found else {}
+        seen = (row.get("_art_url"), row.get("_season_poster"))
+        if seen == (NOW["5d9c11122192ba001f3735f4"], NOW["5d9c09bc7b5c2e001e66c0af"]) or time.time() > deadline:
+            return seen
+        time.sleep(0.2)
+
+
 def parts(row):
     return [part.get("file") for media in row.get("Media") or [] for part in media.get("Part") or []]
 
@@ -67,7 +86,8 @@ def main():
     work = tempfile.mkdtemp(prefix="rex-showmatch-")
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000fc", "friendlyName": "rex-showmatch",
                "sections": LEGACY["sections"], "items": FIXTURE["rows"]}, open(os.path.join(work, "catalog.json"), "w"))
-    json.dump({} if RECORD else FIXTURE["plex"], open(os.path.join(work, "plex_cache.json"), "w"))
+    kept = {"GET /library/metadata/%s " % id: {"MediaContainer": {"Metadata": [{"thumb": thumb}]}} for id, thumb in NOW.items()}
+    json.dump({} if RECORD else dict(FIXTURE["plex"], **kept), open(os.path.join(work, "plex_cache.json"), "w"))
     server = Server(work, serve(Bytes().handler()), keys={"PLEX_TOKEN": os.environ["PLEX_TOKEN"], "REX_PLEXTV_URL": os.environ["REX_RECORD_PLEXTV_URL"]} if RECORD else None)
     try:
         watched = {row["ratingKey"] for row in FIXTURE["rows"] if row.get("viewCount")}
@@ -107,6 +127,9 @@ def main():
               (moved.get("parentIndex"), moved.get("index"), moved.get("title"), moved.get("grandparentGuid")))
         season_3 = next((row for row in server.rows("/library/metadata/%s/children" % SHOW) if row.get("index") == 3), {})
         check("its season 3 is Plex's", str(season_3.get("guid", "")).startswith("plex://season/"), season_3.get("guid"))
+        seen = still_and_season(work, SHOWDOWN)
+        check("with the still and season poster the agent's item answers name now, not the children listing's",
+              seen == (NOW["5d9c11122192ba001f3735f4"], NOW["5d9c09bc7b5c2e001e66c0af"]), seen)
         same = [row["ratingKey"] for row in episodes if row["ratingKey"] != SHOWDOWN
                 and (row.get("guid"), row.get("parentIndex"), row.get("index")) ==
                 (before[row["ratingKey"]]["guid"], before[row["ratingKey"]]["parentIndex"], before[row["ratingKey"]]["index"])]

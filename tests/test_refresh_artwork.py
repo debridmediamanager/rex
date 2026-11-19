@@ -139,6 +139,10 @@ def main():
               down and stored(instance, key, "posters") == DEAD % "poster-b", (asked(stub) - before, stored(instance, key, "posters")))
         stub.item_down, before = False, asked(stub)
         status = call(instance, "GET", photo, token=SERVER_TOKEN)[0]
+        # The failed ask can still hold its mark when the stub counts it, so that view finds the
+        # row asked about: view again if it asked nothing.
+        if not wait_for(lambda: asked(stub) > before, 2):
+            call(instance, "GET", photo, token=SERVER_TOKEN)
         poster = wait_for(lambda: stored(instance, key, "posters") == DEAD % "poster-c" and DEAD % "poster-c", 10)
         check("(b) the next failed fetch, the agent back, is the 404 it was and asks again for the one it names now",
               status == 404 and poster and asked(stub) == before + 1, (status, stored(instance, key, "posters"), asked(stub) - before))
