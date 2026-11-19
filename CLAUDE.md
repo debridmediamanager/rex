@@ -729,6 +729,9 @@ python3 tests/test_auto_collections.py      # "Minimum automatic collection size
 python3 tests/test_agent_description.py     # what Plex's agent says of a title, as plexlab shows it: theme music, clear logos, square art,
                                             # every credited person, original titles, networks as an axis; rows an older rex described given
                                             # them at a start; the bytes need Plex's hosts, else skip
+python3 tests/test_refresh_artwork.py      # artwork Plex's agent replaced (a film's, a show's and its season's, an episode's still, a theme):
+                                            # asked again past the cache on Refresh Metadata and when its fetch fails (once a row's urls per
+                                            # start); a person's pick and upload kept
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override

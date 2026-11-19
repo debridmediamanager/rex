@@ -219,7 +219,15 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
     let show = plan.kind == "show";
     let source = if placed.is_some() { "placed" } else { "set by hand" };
     let release = first.release.clone();
-    let identity = identify::placed(plex.map(|p| p as &dyn PlexSource), kind, tmdb_id, imdb.as_deref());
+    let mut identity = identify::placed(plex.map(|p| p as &dyn PlexSource), kind, tmdb_id, imdb.as_deref());
+    let newer = |row: &mut Value| {
+        if let Some(agent) = plan.plex.as_deref() {
+            agent.newer_artwork(&plan.language, row);
+        }
+    };
+    if let Some(row) = identity.row.as_mut() {
+        newer(row);
+    }
     let report = json!({"source": source, "imdb": identity.imdb, "tmdb": identity.tmdb, "plex": identity.plex});
     let named = identity.tmdb.map(|id| format!("tmdb:{id}")).or_else(|| identity.imdb.clone()).unwrap_or_default();
     info!("FEED identified {release:?} -> {} {named} ({source})", identity.kind);
@@ -235,10 +243,11 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
         .map(|imdb| json!({"id": format!("imdb://{imdb}")}))
         .chain(identity.tmdb.iter().map(|id| json!({"id": format!("tmdb://{id}")})))
         .collect();
-    let seasons = match (show, plex, identity.plex.as_deref()) {
+    let mut seasons = match (show, plex, identity.plex.as_deref()) {
         (true, Some(p), Some(guid)) => identify::plex_children_rows(p, guid),
         _ => HashMap::new(),
     };
+    seasons.values_mut().for_each(newer);
     let title = identity.title.clone().unwrap_or_else(|| release.clone());
     let mut episodes: HashMap<String, HashMap<String, Value>> = HashMap::new();
     for arrival in arrivals.iter_mut() {
@@ -251,9 +260,12 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
         meta.insert("title".to_string(), json!(title));
         meta.insert("summary".to_string(), json!(""));
         if let Some(described) = &identity.row {
-            let found = plex
+            let mut found = plex
                 .filter(|_| pushed.is_some() || tmdb_episode.is_some())
                 .and_then(|p| identify::plex_episode(p, &seasons, &mut episodes, tmdb_episode, pushed));
+            if let Some((_, episode, _)) = found.as_mut() {
+                newer(episode);
+            }
             // Found by its TMDB id, the file is Plex's episode under Plex's numbers.
             if let Some((_, _, plex_numbers)) = found.as_ref().filter(|_| tmdb_episode.is_some()) {
                 numbers = Some(*plex_numbers);
@@ -1524,6 +1536,21 @@ mod tests {
         assert_eq!(meta["_season_guid"], "plex://season/602e67d31d3358002c411c37");
         assert_eq!(meta["guid"], "plex://episode/5d9c0ab4705e7a001e6d4a2b");
         assert_eq!((meta["_season"].clone(), meta["_episode"].clone()), (json!(5), json!(7)));
+        // What `title_now` last read for a guid outranks the kept match and children answers: a
+        // push that identifies a row again takes the artwork the agent names now.
+        let kept = super::super::diskcache::DiskCache::open(&dir.join("plex_cache.json"));
+        for (id, thumb) in [("5d7768279ab5440020ad6e0e", "poster"), ("602e67d31d3358002c411c37", "season"), ("5d9c0ab4705e7a001e6d4a2b", "still")] {
+            let now = json!({"MediaContainer": {"Metadata": [{"thumb": format!("https://metadata-static.plex.tv/f/{thumb}.jpg")}]}});
+            kept.put(&format!("GET /library/metadata/{id} "), &now);
+        }
+        let mut movie = vec![film()];
+        name_release(&plan("movie"), &mut movie);
+        assert_eq!(movie[0].meta.as_ref().unwrap()["_poster_url"], "https://metadata-static.plex.tv/f/poster.jpg");
+        let mut episode = vec![american_dad()];
+        name_release(&plan("show"), &mut episode);
+        let meta = episode[0].meta.clone().unwrap();
+        assert_eq!((meta["_season_poster"].clone(), meta["_art_url"].clone()),
+                   (json!("https://metadata-static.plex.tv/f/season.jpg"), json!("https://metadata-static.plex.tv/f/still.jpg")));
         // A movie library's release that is a show is not forced into a movie.
         let mut wrong = vec![american_dad()];
         name_release(&plan("movie"), &mut wrong);
