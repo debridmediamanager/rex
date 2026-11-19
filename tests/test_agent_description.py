@@ -54,7 +54,7 @@ def answers():
     for entry in MATCHES:
         if (entry.get("body") or {}).get("guid") == "tmdb://10378":
             out[python_key(entry)] = entry["response"]
-    return out
+    return json.loads(json.dumps(out))  # a copy each leg may change
 
 
 def movie_item(release, tmdb):
@@ -359,6 +359,9 @@ def held_matched(bytes_port):
     rows = json.loads(json.dumps(HELD["rows"]))
     film = next(row for row in rows if row["title"] == "Big Buck Bunny")
     film["_matched"] = True
+    # Matched by hand to a title Plex's agent does not answer for: left for the next start, once.
+    unanswered = next(row for row in rows if row["title"] == "A Serbian Film")
+    unanswered.update(_matched=True, Guid=[{"id": "tmdb://999999999"}])
     episode = next(row for row in rows if row["type"] == "episode")
     plex = answers()
     for answer in plex.values():
@@ -379,6 +382,36 @@ def held_matched(bytes_port):
               (kept.get("guid"), kept.get("title")))
         got = server.rows("/library/metadata/%s?%s" % (episode["ratingKey"], WEB))[0]
         check("held: an episode Plex's agent rates nowhere drops its show's score", not any(ratings(got).values()), ratings(got))
+        logged = [line for line in open(os.path.join(work, "server.log")) if "FEED updat" in line]
+        check("held: the start's log counts each row once, the unanswered hand match too",
+              logged and "updated ratings of 4 item(s)" in logged[-1] and "; 1 matched by hand" in logged[-1], logged)
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def placed_again(bytes_port):
+    """The Train Job pushed again placed on Bushwhacked, which Plex's agent rates nowhere: the row,
+    on its key, keeps none of The Train Job's ratings, its Rating list included."""
+    work = tempfile.mkdtemp(prefix="rex-described-placed-")
+    plex = answers()
+    for answer in plex.values():
+        for row in (answer.get("MediaContainer") or {}).get("Metadata") or []:
+            if row.get("type") == "episode" and row.get("title") == "Bushwhacked":
+                for field in ("audienceRating", "audienceRatingImage", "Rating"):
+                    row.pop(field, None)
+    catalog(work, plex=plex)
+    server = Server(work, bytes_port)
+    try:
+        episode = episode_item()
+        status, body = server.feed("POST", "items", {"items": [episode]})
+        key = server.keys().get(episode["id"])
+        check("placed again: The Train Job carries its own ratings", status == 200 and bool(server.row(key).get("Rating")),
+              ratings(server.row(key)))
+        status, body = server.feed("POST", "items", {"items": [dict(episode, episode=2)]})
+        got = server.row(key)
+        check("placed again: on Bushwhacked, on its key, it keeps none of The Train Job's ratings",
+              status == 200 and got.get("title") == "Bushwhacked" and not any(ratings(got).values()), (got.get("title"), ratings(got)))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
@@ -390,6 +423,7 @@ def main():
     pushed(bytes_port)
     held(bytes_port)
     held_matched(bytes_port)
+    placed_again(bytes_port)
     print("\n%d/%d passed" % (sum(results), len(results)))
     sys.exit(0 if all(results) else 1)
 

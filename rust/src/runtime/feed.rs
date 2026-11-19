@@ -1663,10 +1663,12 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
     }
     let adds = crate::metadata::DESCRIBED_ADDS;
     let what = adds.split(' ').next().unwrap_or(adds);
-    info!("FEED updating {adds} of {total} item(s) from cached Plex metadata, once, in the background");
+    info!("FEED updating {adds} of {total} item(s) from cached Plex metadata, in the background");
     let started = std::time::Instant::now();
     let (mut given, mut seen, mut waiting) = (0, 0, 0);
     let (mut from, mut wrapped) = (0, false);
+    // The round again from the first row is for rows that moved, not for a hand match left unmarked.
+    let mut done: HashSet<String> = HashSet::new();
     loop {
         // -- under the lock: which rows, by their hot fields; what names each, off its body --
         let (wanted, plex, reached) = {
@@ -1681,6 +1683,7 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
                 .lazy()
                 .skip(from)
                 .filter(named)
+                .filter(|row| key_of(row).is_none_or(|key| !done.contains(&key)))
                 .take(batch)
                 .inspect(|row| reached = row.hot.position + 1)
                 .filter_map(|row| {
@@ -1746,6 +1749,7 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
         let mut guard = lock(shared);
         let before = seen;
         seen += found.len();
+        done.extend(found.iter().map(|(key, ..)| key.clone()));
         for (key, guid, mark, fields) in found {
             let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) else {
                 continue;
