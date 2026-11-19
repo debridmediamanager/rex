@@ -20447,14 +20447,17 @@ impl Runtime {
     /// back to the agent's row the person picked and the row is described from that -- not
     /// from a fresh search, which is the thing that got it wrong in the first place. An
     /// episode takes its own row by its season and episode under the picked show.
-    fn identify_guid(&mut self, key: &str, guid: &str, season: Option<Value>, episode: Option<Value>) {
+    fn identify_guid(&mut self, key: &str, guid: &str, mut season: Option<Value>, mut episode: Option<Value>) {
         let (Some(plex), Some((kind, mut picked))) = (self.plex.clone(), self.match_candidates.get(guid).cloned()) else {
             return;
         };
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };
-        plex.newer_artwork(&self.row_language(&row), &mut picked);
+        let language = self.row_language(&row);
+        for title in [Some(&mut picked), season.as_mut(), episode.as_mut()].into_iter().flatten() {
+            plex.newer_artwork(&language, title);
+        }
         let show = kind == "show";
         let numbers = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64)).filter(|_| show);
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {

@@ -45,6 +45,7 @@ def answer(self, record):
     # The title as the agent describes it now (`GET /library/metadata/{id}`).
     if (record["method"], record["host"], record["path"]) == ("GET", AGENT, "/library/metadata/" + ID):
         if getattr(self.server, "item_down", False):
+            self.server.item_refused = getattr(self.server, "item_refused", 0) + 1
             return 503, "text/plain", "stub: the provider is down"
         thumb, art = self.server.artwork
         return 200, "application/json", json.dumps({"MediaContainer": {"size": 1, "Metadata": [
@@ -132,16 +133,19 @@ def main():
         # -- (b) a fetch that fails -----------------------------------------------------------
         stub.artwork = (DEAD % "poster-c", DEAD % "art-c")
         photo = "/photo/:/transcode?width=240&height=360&url=%s" % urllib.parse.quote("/library/metadata/%s/thumb/1" % key, safe="")
-        stub.item_down, before = True, asked(stub)
+        stub.item_down, before, refused = True, asked(stub), getattr(stub, "item_refused", 0)
         call(instance, "GET", photo, token=SERVER_TOKEN)
-        down = wait_for(lambda: asked(stub) > before, 10)
+        # Counted once the stub has answered 503: the request alone is recorded before that.
+        down = wait_for(lambda: getattr(stub, "item_refused", 0) > refused, 10)
         check("(b) with the agent down a failed fetch asks it and changes nothing",
               down and stored(instance, key, "posters") == DEAD % "poster-b", (asked(stub) - before, stored(instance, key, "posters")))
         stub.item_down, before = False, asked(stub)
         status = call(instance, "GET", photo, token=SERVER_TOKEN)[0]
-        # The failed ask can still hold its mark when the stub counts it, so that view finds the
-        # row asked about: view again if it asked nothing.
-        if not wait_for(lambda: asked(stub) > before, 2):
+        # The failed ask can still hold its mark when the stub has answered, so a view finds the
+        # row asked about and asks nothing: view again until one asks, never after.
+        for _ in range(10):
+            if wait_for(lambda: asked(stub) > before, 1):
+                break
             call(instance, "GET", photo, token=SERVER_TOKEN)
         poster = wait_for(lambda: stored(instance, key, "posters") == DEAD % "poster-c" and DEAD % "poster-c", 10)
         check("(b) the next failed fetch, the agent back, is the 404 it was and asks again for the one it names now",
