@@ -667,6 +667,131 @@ fn minted_for_sources(object: &mut serde_json::Map<String, Value>) {
     }
 }
 
+/// The artwork Plex's agent names a row by, each with the path the row serves it at and the lock
+/// a person's pick sets: what `ask_agent_again` replaces.
+const AGENT_ARTWORK: [(&str, &str, &str); 5] = [
+    ("_poster_url", "thumb", "thumb"),
+    ("_art_url", "art", "art"),
+    ("_theme_url", "theme", "theme"),
+    ("_clearLogo_url", "_clearLogo", "clearLogo"),
+    ("_squareArt_url", "_squareArt", "squareArt"),
+];
+
+/// The agent's artwork urls `row` holds, one string: what a failed fetch was read from.
+pub(super) fn agent_urls(row: &Value) -> String {
+    AGENT_ARTWORK.map(|(field, _, _)| row.get(field).map(string_value).unwrap_or_default()).join(" ")
+}
+
+/// Plex's agent replaces a title's artwork, and the url rex kept from it stops answering
+/// (Funny Money's gracenote poster and background 403'd on 2026-11-17 while the agent named
+/// new ones): a row's artwork asked of the agent again by its guid, past `plex_cache.db`, for
+/// a Refresh Metadata (a show's seasons with it) and for its artwork whose fetch failed (`dead`,
+/// the urls `agent_urls` read then: once per start for the urls a row holds, so a url the agent still names is not asked for on
+/// every view). Only artwork the row serves itself, from a url the agent gave or from none, is set:
+/// a season keeps a copy of its show's background (`hierarchy::fill_season`) and serves the
+/// show's, and the agent's answer for a season or episode names a background anyway (a real
+/// library's, 2026-11-19; replacing the copy rewrote 12 Monkeys' four seasons for nothing). What a person picked (locked) or uploaded (`upload://`) stays;
+/// `restamp_artwork` gives a new url new paths. Not measured: a real PMS keeps the images it
+/// downloaded when it matched, so it never meets a dead url, and what it asks the agent on a
+/// refresh was not recorded (plexscratch has no route to plex.tv).
+pub(super) fn spawn_ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
+    let shared = Arc::clone(shared);
+    let _ = std::thread::Builder::new().name("agent-artwork".to_string()).spawn(move || ask_agent_again(&shared, keys, dead));
+}
+
+fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
+    // -- under the lock: which rows, by their guid ---------------------------------------------
+    let (plex, asked) = {
+        let mut guard = feed::lock(shared);
+        let runtime = &mut *guard;
+        let Some(plex) = runtime.plex.clone() else {
+            return;
+        };
+        let mut asked = Vec::new();
+        for key in keys {
+            let Some(row) = runtime.catalog.get(&key) else {
+                continue;
+            };
+            let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
+            if !matches!(kind, "movie" | "show" | "season" | "episode") {
+                continue;
+            }
+            let prefix = format!("plex://{kind}/");
+            let Some(id) = row.get("guid").and_then(Value::as_str).and_then(|guid| guid.strip_prefix(&prefix)) else {
+                continue;
+            };
+            let (id, guid, language) = (id.to_string(), format!("{prefix}{id}"), runtime.row_language(row));
+            // Once for the urls the row holds: a push that identifies it again can put back older
+            // ones, and those are asked about again.
+            let urls = agent_urls(row);
+            // A refresh gave the row other urls since the fetch failed: those are not known dead.
+            if dead.as_ref().is_some_and(|failed| *failed != urls) {
+                continue;
+            }
+            let mark = format!("{key} {urls}");
+            if dead.is_none() || runtime.agent_artwork_asked.insert(mark.clone()) {
+                asked.push((key, mark, id, guid, language));
+            }
+        }
+        (plex, asked)
+    };
+    // -- off the lock: the agent, now --------------------------------------------------------
+    let (mut found, mut unanswered) = (Vec::new(), Vec::new());
+    for (key, mark, id, guid, language) in asked {
+        match plex.title_now(&language, &id) {
+            Some(title) => found.push((key, guid, title)),
+            None => unanswered.push(mark),
+        }
+    }
+    // -- under the lock: apply ---------------------------------------------------------------
+    let mut guard = feed::lock(shared);
+    // No answer (offline, unclaimed): the next failed fetch asks again.
+    for mark in unanswered {
+        guard.agent_artwork_asked.remove(&mark);
+    }
+    let mut given = 0;
+    for (key, guid, title) in found {
+        // A Fix Match while the agent was asked: the answer is the old title's.
+        let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut).filter(|row| row.get("guid").and_then(Value::as_str) == Some(guid.as_str())) else {
+            continue;
+        };
+        let said: HashMap<&str, Value> = crate::metadata::agent_fields(&title, "movie")
+            .into_iter()
+            .filter_map(|(field, value)| Some((field, value?)))
+            .chain([("_poster_url", title.get("thumb").cloned()), ("_art_url", title.get("art").cloned())].into_iter().filter_map(|(field, value)| Some((field, value?))))
+            .collect();
+        let mut gave = false;
+        let own = format!("/library/metadata/{key}/");
+        for (field, path, lock) in AGENT_ARTWORK {
+            let Some(url) = said.get(field).filter(|url| url.as_str().is_some_and(|url| !url.is_empty())) else {
+                continue;
+            };
+            // The agent's url, or none yet (the tile a title with no poster draws): never an upload.
+            let agents = object.get(field).and_then(Value::as_str).is_none_or(|stored| stored.is_empty() || stored.starts_with("http"));
+            // A film or show with no theme, logo or square art yet has no path for one: it takes
+            // its own when the url comes (`artwork_writes`). A borrowed path is another row's.
+            let serves = match object.get(path).and_then(Value::as_str) {
+                Some(served) => served.starts_with(&own),
+                None => !matches!(path, "thumb" | "art") && matches!(object.get("type").and_then(Value::as_str), Some("movie" | "show")),
+            };
+            if agents && serves && !super::edit::field_locked(object, lock) && object.get(field) != Some(url) {
+                object.insert(field.to_string(), url.clone());
+                gave = true;
+            }
+        }
+        if gave {
+            given += 1;
+            info!("ARTWORK {key} -- Plex's agent names new artwork");
+        }
+    }
+    if given > 0 {
+        guard.dirty = true;
+        let snapshot = guard.flush_state();
+        drop(guard);
+        write_or_log(snapshot);
+    }
+}
+
 /// What `restamp_artwork` writes to `key`'s row: each artwork field whose path was not minted
 /// for its artwork, with the artwork and whether its path gets a new version. `kept`: the
 /// library is kept (`--state`). Empty for a row whose artwork is as its paths say.

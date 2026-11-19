@@ -16252,3 +16252,37 @@ Without a token a guid lookup is always the 401 a held one gets, a miss included
 PMS's 404 before the token, but guids are public, so a peer could test which titles a server holds.
 A claimed PMS's tokenless answer for a guid is unmeasured. **Measured and not emulated:** the prefix match (no client sends a partial guid, and it would read
 the library for each). `tests/test_guid_lookup.py` replays the fixture on `catalog_ui.json`'s rows.
+
+## Artwork Plex's agent replaced (2026-11-17)
+
+rex keeps the urls Plex's agent gave for a title's poster and background (`_poster_url`,
+`_art_url`), and the agent's answers in `plex_cache.db` for good. Plex replaces gracenote
+artwork: on a production rex, Funny Money: The Dane Cook Story (`plex://movie/63643985830afdbb044cfbd9`)
+kept `…/9/gracenote/99263c05….jpg` and `…/8/gracenote/8fe97c….jpg`, both 403, and every view
+logged `404 GET /photo/:/transcode -- rex: artwork unavailable`, while `GET
+/library/metadata/63643985830afdbb044cfbd9` at the agent named `…/f/gracenote/f23a6979….jpg` and
+`…/9/gracenote/9eadc248….jpg`, both 200. Refresh Metadata changed nothing: rex's item refresh sent
+its timeline frames and asked nothing.
+
+Now a refresh of a film, show (its seasons with it), season or episode, and a failed fetch of a
+row's own poster, background, theme, clear logo or square art (once per start for the urls a row
+holds), ask the agent for that guid past the cache (`artwork::ask_agent_again`) and replace each url
+the agent gave before, for artwork the row serves itself, with the one it names now. Nothing is
+added, and nothing a row borrows: a season keeps a copy of its show's background and serves the
+show's, while the agent's answer for a season or episode names a background anyway (measured on a
+real library's season and episode, 2026-11-19: `GET /library/metadata/{id}` answers both, its
+`thumb` the poster and still rex held; a first build replaced 12 Monkeys' four seasons' copies). What a person picked (locked) or uploaded
+(`upload://`, which sets no lock) stays. The answer is kept, and a push that identifies a row again,
+or a Fix Match, describes it with that answer's artwork over the kept match's and children's
+(`PlexMeta::newer_artwork`). `tests/test_refresh_artwork.py`; the scan unit test for the description.
+
+A title the agent names no poster for yet draws rex's tile: on a real library, The Adventures of
+Baron Munchausen (`plex://movie/5d77683b6f4521001ea9d3e3`, 2026-11-19) had neither `thumb` nor
+`art` in its match or item answer and an empty `/images`, only a clear logo. Its match was kept
+for good, so the blank tile's retry (eight tries, five days apart by then) read the same answer each
+time. A match whose title has no poster is now kept a day like an empty one (`plexmeta::incomplete`),
+and a refresh sets a poster or background a row serves but has none for.
+
+**Not measured.** A real PMS downloads the images when it matches, so it never meets a dead url,
+and what it asks the agent on an item refresh was not recorded: plexscratch has no route to
+plex.tv. `GET /library/metadata/{id}` is how plexav's PMS reads an item (`music/agent.json`).
