@@ -341,7 +341,42 @@ const PEOPLE: [&str; 4] = ["Role", "Director", "Writer", "Producer"];
 
 /// The `_described` a row described from all of these carries (`agent_fields`); a row without
 /// it was described before they were kept, and `feed::describe_again` reads them back for it.
-pub const DESCRIBED: i64 = 2;
+pub const DESCRIBED: i64 = 3;
+
+/// What a start fetches for rows an older `DESCRIBED` left without it, as its log names it: say
+/// what the new one adds when raising `DESCRIBED`.
+pub const DESCRIBED_ADDS: &str = "ratings (IMDb, Rotten Tomatoes, TMDB)";
+
+/// The rating fields `ratings` sets; `feed::describe_again` drops one the agent no longer gives.
+pub const RATINGS: [&str; 5] = ["rating", "ratingImage", "audienceRating", "audienceRatingImage", "Rating"];
+
+/// A title's ratings as a real PMS shows them from its agent's answer (plexlab's Firefly, The Train
+/// Job and Big Buck Bunny, `agent_description_s1434.json`; 25 films, 12 shows and 12 episodes of a
+/// 1.43.5 PMS against the agent, 2026-11-19): a film's as the agent gives them, Rotten Tomatoes'
+/// critic and audience scores; a show's and an episode's audience score is its TMDB one, with no
+/// critic score, and none when TMDB gives none. Every value to one decimal as PMS prints the
+/// double (the agent's 8.35 is plexlab's 8.3, 8.438 is 8.4).
+// shortcut: a movie library's `ratingsSource` imdb or themoviedb is not measured; the default (Rotten Tomatoes) is answered.
+fn ratings(title: &Value, kind: &str) -> [(&'static str, Option<Value>); 5] {
+    let round = |value: &Value| value.as_f64().and_then(|value| format!("{value:.1}").parse::<f64>().ok()).map(Value::from);
+    let list: Vec<Value> = title.get("Rating").and_then(Value::as_array).into_iter().flatten()
+        .filter_map(|entry| {
+            let mut entry = entry.as_object()?.clone();
+            let value = round(entry.get("value")?)?;
+            entry.insert("value".to_string(), value);
+            Some(Value::Object(entry))
+        })
+        .collect();
+    let (rating, image, audience, audience_image) = if kind == "movie" {
+        (said(title, "rating").and_then(round), said(title, "ratingImage").cloned(),
+         said(title, "audienceRating").and_then(round), said(title, "audienceRatingImage").cloned())
+    } else {
+        let tmdb = list.iter().find(|entry| entry["image"].as_str().is_some_and(|image| image.starts_with("themoviedb://")));
+        (None, None, tmdb.map(|entry| entry["value"].clone()), tmdb.map(|entry| entry["image"].clone()))
+    };
+    let list = Some(Value::Array(list)).filter(|list| list.as_array().is_some_and(|list| !list.is_empty()));
+    [("rating", rating), ("ratingImage", image), ("audienceRating", audience), ("audienceRatingImage", audience_image), ("Rating", list)]
+}
 
 /// What Plex's agent says of a title beside its name, summary and artwork, which rex dropped until
 /// 2026-11-04: a film's and a show's theme music, clear logo and square art (served at the row's
@@ -363,6 +398,7 @@ pub fn agent_fields(title: &Value, kind: &str) -> Vec<(&'static str, Option<Valu
     for field in people {
         fields.push((*field, tags(title, field, usize::MAX).map(Value::from)));
     }
+    fields.extend(ratings(title, kind));
     fields
 }
 
@@ -430,7 +466,7 @@ pub fn describe(
     if let Some(year) = year_of(title) {
         put(row, "year", year);
     }
-    for field in ["originallyAvailableAt", "tagline", "contentRating", "studio", "audienceRating"] {
+    for field in ["originallyAvailableAt", "tagline", "contentRating", "studio"] {
         if let Some(value) = said(title, field) {
             put(row, field, value.clone());
         }
@@ -478,8 +514,10 @@ pub fn describe(
             put(row, hint, value.unwrap_or(Value::Null));
         }
     }
-    for field in PEOPLE {
-        row.shift_remove(field);
+    // An episode's ratings are its own (below), never its show's: rex once showed every episode
+    // its show's score under a TMDB badge.
+    for field in PEOPLE.iter().chain(&RATINGS) {
+        row.shift_remove(*field);
     }
     // A show Fix Matched is described onto its own row, which takes them as a built show does.
     if row.get("type").and_then(Value::as_str) == Some("show") {

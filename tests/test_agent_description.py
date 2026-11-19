@@ -54,7 +54,7 @@ def answers():
     for entry in MATCHES:
         if (entry.get("body") or {}).get("guid") == "tmdb://10378":
             out[python_key(entry)] = entry["response"]
-    return out
+    return json.loads(json.dumps(out))  # a copy each leg may change
 
 
 def movie_item(release, tmdb):
@@ -78,10 +78,10 @@ ITEMS = [movie_item("Big.Buck.Bunny.2008.1080p.BluRay.x264", 10378), movie_item(
          episode_item()]
 
 
-def catalog(work, rows=()):
+def catalog(work, rows=(), plex=None):
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000f3", "friendlyName": "rex-described",
                "sections": LEGACY["sections"], "items": list(rows)}, open(os.path.join(work, "catalog.json"), "w"))
-    json.dump(answers(), open(os.path.join(work, "plex_cache.json"), "w"))
+    json.dump(plex or answers(), open(os.path.join(work, "plex_cache.json"), "w"))
 
 
 def reference(method, path, headers=None):
@@ -111,6 +111,10 @@ def shape(value, keys):
 
 def images(row):
     return [(image["type"], image["url"]) for image in row.get("Image") or []]
+
+
+def ratings(row):
+    return {field: row.get(field) for field in ("rating", "ratingImage", "audienceRating", "audienceRatingImage", "Rating")}
 
 
 def people(row, field):
@@ -188,6 +192,8 @@ def described(label, server, bytes_too=True):
     check("%s: and no network, director, writer or producer, which plexlab's show has none of" % label,
           all(field not in show and field not in want for field in ("Network", "Director", "Writer", "Producer")),
           [field for field in ("Network", "Director", "Writer", "Producer") if field in show])
+    check("%s: the show's ratings are plexlab's: its TMDB score, and every source's in Rating" % label,
+          ratings(show) == ratings(want), (ratings(show), ratings(want)))
     season, want = get("season", WEB), ref_row("/library/metadata/7?" + WEB)
     check("%s: the season's parentTheme is its show's theme" % label,
           ours(rex, season.get("parentTheme")) == ref(want["parentTheme"]), (season.get("parentTheme"), want["parentTheme"]))
@@ -204,6 +210,8 @@ def described(label, server, bytes_too=True):
               people(episode, "Role") == people(want, "Role")
               and all(sorted(people(episode, field)) == sorted(people(want, field)) for field in ("Director", "Writer", "Producer")),
               {field: (people(episode, field)[:3], people(want, field)[:3]) for field in ("Role", "Director", "Writer", "Producer")})
+        check("%s: %s's episode: its own ratings, not its show's" % (label, client),
+              ratings(episode) == ratings(want), (ratings(episode), ratings(want)))
     for query, client in ((WEB, "Plex Web"), (DROID, "Plex for Android")):
         film, want = get("film", query), ref_row("/library/metadata/1?" + query)
         check("%s: %s's film: Images poster, background, clear logo, square art" % (label, client),
@@ -212,6 +220,8 @@ def described(label, server, bytes_too=True):
               all(people(film, field) == people(want, field) for field in ("Producer", "Director", "Writer"))
               and "Role" not in film and "theme" not in film,
               {field: people(film, field) for field in ("Producer", "Director", "Writer", "Role")})
+        check("%s: %s's film: the agent's ratings, Rotten Tomatoes' and every source's in Rating" % (label, client),
+              ratings(film) == ratings(want), (ratings(film), ratings(want)))
     serbian = get("serbian", WEB)
     agent = TILES["plex"][SERBIAN]["MediaContainer"]["Metadata"][0]
     check("%s: a film shows the original title Plex's agent gives it" % label,
@@ -225,10 +235,12 @@ def described(label, server, bytes_too=True):
           ours(rex, row.get("theme")) == ref(want["theme"]) and ours(rex, images(row)) == ref(images(want))
           and [tag.get("tag") for tag in row.get("Role") or []] == [tag["tag"] for tag in want["Role"]],
           (row.get("theme"), images(row), row.get("Role")))
+    check("%s: the show's grid row carries its TMDB score and no Rating list" % label, ratings(row) == ratings(want), (ratings(row), ratings(want)))
     films = {row.get("ratingKey"): row for row in server.rows("/library/sections/1/all?" + GRID)}
     want = next(row for row in reference("GET", "/library/sections/1/all?" + GRID)["body"]["MediaContainer"]["Metadata"] if row["ratingKey"] == "1")
     row = films.get(rex["film"], {})
     check("%s: the film's grid row carries the four Images" % label, ours(rex, images(row)) == ref(images(want)), images(row))
+    check("%s: the film's grid row carries its ratings and no Rating list" % label, ratings(row) == ratings(want), (ratings(row), ratings(want)))
     seasons = server.rows("/library/metadata/%s/children?%s" % (rex["show"], CHILDREN))
     want = ref_row("/library/metadata/6/children?" + CHILDREN)
     row = next((row for row in seasons if row.get("ratingKey") == rex["season"]), {})
@@ -241,6 +253,7 @@ def described(label, server, bytes_too=True):
     check("%s: the episode's children row: grandparentTheme and the five Images" % label,
           ours(rex, row.get("grandparentTheme")) == ref(want["grandparentTheme"])
           and [kind for kind, _ in images(row)] == [kind for kind, _ in images(want)], (row.get("grandparentTheme"), images(row)))
+    check("%s: the episode's children row carries its own score" % label, ratings(row) == ratings(want), (ratings(row), ratings(want)))
     axis = server.request("/library/sections/2/network")[1]["MediaContainer"]
     want = reference("GET", "/library/sections/2/network")["body"]["MediaContainer"]
     check("%s: the show is filed under its network, By Network, as plexlab files Firefly" % label,
@@ -338,11 +351,79 @@ def held(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def held_matched(bytes_port):
+    """The same older rows, the film matched by hand and the episode one Plex's agent rates nowhere
+    (as a real library's Long Way Down S1E1): the film takes its ratings, its match kept, and the
+    episode drops the show's score the older rex gave it."""
+    work = tempfile.mkdtemp(prefix="rex-described-matched-")
+    rows = json.loads(json.dumps(HELD["rows"]))
+    film = next(row for row in rows if row["title"] == "Big Buck Bunny")
+    film["_matched"] = True
+    # Matched by hand to a title Plex's agent does not answer for: left for the next start, once.
+    unanswered = next(row for row in rows if row["title"] == "A Serbian Film")
+    unanswered.update(_matched=True, Guid=[{"id": "tmdb://999999999"}])
+    episode = next(row for row in rows if row["type"] == "episode")
+    plex = answers()
+    for answer in plex.values():
+        for row in (answer.get("MediaContainer") or {}).get("Metadata") or []:
+            if row.get("guid") == episode["guid"]:
+                for field in ("audienceRating", "audienceRatingImage", "Rating"):
+                    row.pop(field, None)
+    catalog(work, rows, plex)
+    server = Server(work, bytes_port)
+    try:
+        deadline = time.time() + 30
+        while time.time() < deadline and "audienceRatingImage" not in server.row(film["ratingKey"]):
+            time.sleep(0.5)
+        got, want = server.rows("/library/metadata/%s?%s" % (film["ratingKey"], WEB))[0], ref_row("/library/metadata/1?" + WEB)
+        check("held, matched by hand: the film takes plexlab's ratings", ratings(got) == ratings(want), (ratings(got), ratings(want)))
+        kept = server.row(film["ratingKey"])
+        check("held, matched by hand: and keeps its match", (kept.get("guid"), kept.get("title")) == (film["guid"], film["title"]),
+              (kept.get("guid"), kept.get("title")))
+        got = server.rows("/library/metadata/%s?%s" % (episode["ratingKey"], WEB))[0]
+        check("held: an episode Plex's agent rates nowhere drops its show's score", not any(ratings(got).values()), ratings(got))
+        logged = [line for line in open(os.path.join(work, "server.log")) if "FEED updat" in line]
+        check("held: the start's log counts each row once, the unanswered hand match too",
+              logged and "updated ratings of 4 item(s)" in logged[-1] and "; 1 matched by hand" in logged[-1], logged)
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def placed_again(bytes_port):
+    """The Train Job pushed again placed on Bushwhacked, which Plex's agent rates nowhere: the row,
+    on its key, keeps none of The Train Job's ratings, its Rating list included."""
+    work = tempfile.mkdtemp(prefix="rex-described-placed-")
+    plex = answers()
+    for answer in plex.values():
+        for row in (answer.get("MediaContainer") or {}).get("Metadata") or []:
+            if row.get("type") == "episode" and row.get("title") == "Bushwhacked":
+                for field in ("audienceRating", "audienceRatingImage", "Rating"):
+                    row.pop(field, None)
+    catalog(work, plex=plex)
+    server = Server(work, bytes_port)
+    try:
+        episode = episode_item()
+        status, body = server.feed("POST", "items", {"items": [episode]})
+        key = server.keys().get(episode["id"])
+        check("placed again: The Train Job carries its own ratings", status == 200 and bool(server.row(key).get("Rating")),
+              ratings(server.row(key)))
+        status, body = server.feed("POST", "items", {"items": [dict(episode, episode=2)]})
+        got = server.row(key)
+        check("placed again: on Bushwhacked, on its key, it keeps none of The Train Job's ratings",
+              status == 200 and got.get("title") == "Bushwhacked" and not any(ratings(got).values()), (got.get("title"), ratings(got)))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     source = Bytes()
     bytes_port = serve(source.handler())
     pushed(bytes_port)
     held(bytes_port)
+    held_matched(bytes_port)
+    placed_again(bytes_port)
     print("\n%d/%d passed" % (sum(results), len(results)))
     sys.exit(0 if all(results) else 1)
 

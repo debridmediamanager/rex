@@ -715,6 +715,9 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
 - **A tag or field axis REFUSES an unparseable `type=`** -- 500, or 400 on `year` alone --
   where a MEDIA axis ignores `type=` completely and answers the same list to `abc`.
   `firstCharacter` is scoped by the type and its counts follow.
+- **A film's `rating` and `audienceRating` are the agent's Rotten Tomatoes scores; a show's and
+  an episode's `audienceRating` is its own TMDB score**, with no `rating`, one decimal as `%.1f`
+  prints the double (findings, "Ratings").
 - **An EPISODE with an `audienceRating` carries `audienceRatingImage` and a `Rating`
   row**, a SEASON never does, and an episode carries its SHOW's `contentRating`. A show's
   `/allLeaves` -- and no other list -- stamps the show's `studio` on every episode row,

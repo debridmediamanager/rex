@@ -20443,16 +20443,6 @@ impl Runtime {
             metadata::describe(object, &picked, season.as_ref(), episode.as_ref(), show, numbers);
         }
         self.pending_auto_collections |= !show;
-        // `rating` is the CRITIC score (the 1.42.2 reference: 743 of 1,538 matched movies carry
-        // one, each beside a critic `ratingImage`); the agent's audience score is not one.
-        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-            if matches!(
-                object.get("type").and_then(Value::as_str),
-                Some("movie" | "show" | "episode")
-            ) {
-                object.shift_remove("rating");
-            }
-        }
         // The agent supplies tag names and no ids; without them the row keeps its detail
         // page and disappears from every secondary filter.
         if let Some(row) = self.catalog.get_mut(key) {
