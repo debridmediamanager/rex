@@ -27,6 +27,20 @@ fn expired(incomplete: bool, answer: &Value) -> bool {
     incomplete && answer.get("_rexCachedAt").and_then(Value::as_i64).is_none_or(|at| now() - at >= INCOMPLETE_FOR)
 }
 
+/// Whether an answer may be filled later, so is kept a day and then asked again: a match or
+/// children list with no rows (the production rex drew Camp CrunchLabs on the blank tile after its
+/// poster was added, 2026-10-12, when every answer was kept for good); one holding fewer rows than
+/// its `totalSize` (before every page was read, a list was kept as its first 50 rows); and a match
+/// whose title has no poster yet (The Adventures of Baron Munchausen on a real library, 2026-11-19:
+/// the agent names neither poster nor background and lists no images, and the blank tile's retry
+/// read the kept answer every time, five days apart).
+fn incomplete(method: &str, answer: &Value) -> bool {
+    let rows = answer.pointer("/MediaContainer/Metadata").and_then(Value::as_array);
+    let total = answer.pointer("/MediaContainer/totalSize").and_then(Value::as_u64).unwrap_or(0) as usize;
+    let posterless = |rows: &Vec<Value>| method == "POST" && rows[0].get("thumb").and_then(Value::as_str).is_none_or(str::is_empty);
+    rows.is_none_or(|rows| rows.is_empty() || rows.len() < total || posterless(rows))
+}
+
 /// Stamp an incomplete answer with when it was kept.
 fn stamped(incomplete: bool, mut answer: Value) -> Value {
     if let (true, Some(object)) = (incomplete, answer.as_object_mut()) {
@@ -146,33 +160,57 @@ pub(crate) struct InLanguage<'a> {
 
 impl crate::identify::PlexSource for InLanguage<'_> {
     fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
-        self.agent.call(self.language, method, path, body)
+        self.agent.call(self.language, method, path, body, false)
+    }
+}
+
+/// Each language its own answer, so a library whose language changes is asked again rather than
+/// shown what another language was told. en-US keeps the key it was kept under while rex sent no
+/// language, so English libraries keep what they hold.
+fn keyed(language: &str, key: String) -> String {
+    match locale(language).0 {
+        "en-US" => key,
+        other => format!("{other} {key}"),
     }
 }
 
 impl PlexMeta {
-    fn call(&self, language: &str, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
-        let key = cache_key(method, path, body);
-        // Each language its own answer, so a library whose language changes is asked again rather
-        // than shown what another language was told. en-US keeps the key it was kept under while
-        // rex sent no language, so English libraries keep what they hold.
-        let key = match locale(language).0 {
-            "en-US" => key,
-            other => format!("{other} {key}"),
+    /// A title described from a kept answer (a match, a season's children) takes the artwork
+    /// `title_now` last read for its guid: those answers are kept for good, and a push that
+    /// identifies a row again would put back the urls the agent has since replaced.
+    pub(super) fn newer_artwork(&self, language: &str, title: &mut Value) {
+        let id = title.get("guid").and_then(Value::as_str).and_then(|guid| guid.strip_prefix("plex://")?.split_once('/')).map(|(_, id)| id.to_string());
+        let Some(id) = id else {
+            return;
         };
+        let Some(now) = self.cache.get(&keyed(language, cache_key("GET", &format!("/library/metadata/{id}"), None))) else {
+            return;
+        };
+        let (Some(now), Some(title)) = (now.pointer("/MediaContainer/Metadata/0"), title.as_object_mut()) else {
+            return;
+        };
+        for field in ["thumb", "art", "theme", "Image"] {
+            if let Some(value) = now.get(field) {
+                title.insert(field.to_string(), value.clone());
+            }
+        }
+    }
+
+    /// A title as Plex's agent describes it now (`GET /library/metadata/{id}`, as plexav's PMS reads
+    /// an item, `music/agent.json`), asked past `plex_cache.db` and kept there: the agent replaces a
+    /// title's artwork and the urls it gave before stop answering (Funny Money's gracenote poster
+    /// 403'd, 2026-11-17, while the agent named another).
+    pub(super) fn title_now(&self, language: &str, id: &str) -> Option<Value> {
+        let answer = self.call(language, "GET", &format!("/library/metadata/{id}"), None, true)?;
+        answer.pointer("/MediaContainer/Metadata/0").cloned()
+    }
+
+    fn call(&self, language: &str, method: &str, path: &str, body: Option<&Value>, fresh: bool) -> Option<Value> {
+        let key = keyed(language, cache_key(method, path, body));
         let (asked, localised_headers) = localised(method, path, language);
-        // A match or children list with no rows may be filled later: kept a day, then asked
-        // again (the production rex drew Camp CrunchLabs on the blank tile after its poster was
-        // added, 2026-10-12, when every answer was kept for good).
-        // So is one holding fewer rows than its `totalSize`: before every page was read, a list
-        // was kept as its first 50 rows.
-        let incomplete = |answer: &Value| {
-            let rows = answer.pointer("/MediaContainer/Metadata").and_then(Value::as_array);
-            let total = answer.pointer("/MediaContainer/totalSize").and_then(Value::as_u64).unwrap_or(0) as usize;
-            rows.is_none_or(|rows| rows.is_empty() || rows.len() < total)
-        };
+        let incomplete = |answer: &Value| incomplete(method, answer);
         let cached = self.cache.get(&key);
-        if let Some(hit) = cached.as_ref().filter(|hit| !expired(incomplete(hit), hit)) {
+        if let Some(hit) = cached.as_ref().filter(|hit| !fresh && !expired(incomplete(hit), hit)) {
             return Some(hit.clone());
         }
         // Read token and identity together on every network call: the shared claim's daily
@@ -180,7 +218,7 @@ impl PlexMeta {
         let headers = {
             let claim = self.claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             let Some(token) = claim.token.as_ref().filter(|token| !token.is_empty()) else {
-                return cached;
+                return cached.filter(|_| !fresh);
             };
             let mut headers = claim.pms_headers("PlexMediaServer", false);
             for (name, value) in &mut headers {
@@ -242,7 +280,7 @@ impl PlexMeta {
         }
         // The provider unreachable: the answer it gave before, however empty.
         let Some(answer) = fetched else {
-            return cached;
+            return cached.filter(|_| !fresh);
         };
         let answer = stamped(incomplete(&answer), answer);
         self.cache.put(&key, &answer);
@@ -282,6 +320,16 @@ pub(crate) fn relink(items: &mut [Value], catalog: &Path, client: String, name: 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_match_without_a_poster_is_asked_again() {
+        let answer = |row: Value| json!({"MediaContainer": {"Metadata": [row]}});
+        assert!(incomplete("POST", &answer(json!({"guid": "plex://movie/5d77683b6f4521001ea9d3e3"}))));
+        assert!(!incomplete("POST", &answer(json!({"guid": "plex://movie/x", "thumb": "https://metadata-static.plex.tv/p.jpg"}))));
+        // A season's episodes without a still are as complete as the agent makes them.
+        assert!(!incomplete("GET", &answer(json!({"guid": "plex://episode/x"}))));
+        assert!(incomplete("POST", &json!({"MediaContainer": {"Metadata": []}})));
+    }
 
     #[test]
     fn cache_keys_are_the_python_modules() {
