@@ -321,6 +321,9 @@ pub const SHOW_HINTS: &[(&str, &str)] = &[
     ("_clearLogo_url", "_show_clearLogo"),
     ("_squareArt_url", "_show_squareArt"),
     ("_described", "_show_described"),
+    ("audienceRating", "_show_audienceRating"),
+    ("audienceRatingImage", "_show_audienceRatingImage"),
+    ("Rating", "_show_Rating"),
 ];
 
 pub fn person_tag_key(name: &str) -> String {
@@ -602,7 +605,8 @@ pub fn normalize_rows(rows: &mut [Value]) {
         if kind == "movie" {
             row.shift_remove("Location");
         }
-        if matches!(kind.as_str(), "movie" | "show" | "episode") {
+        // A catalog's own `rating` (TMDB's) goes; the agent's critic score keeps its image.
+        if matches!(kind.as_str(), "movie" | "show" | "episode") && !row.contains_key("ratingImage") {
             row.shift_remove("rating");
         }
         if kind == "episode" && str_value(row, "contentRating").is_none() {
@@ -716,7 +720,7 @@ fn fill_real(rows: &mut [Value]) {
         if kind == "show" || kind == "movie" {
             let title = str_value(row, "title").unwrap_or_default();
             row.entry("slug").or_insert(json!(slug(&title)));
-            if let Some(rating) = row.get("rating").cloned().filter(|v| !v.is_null()) {
+            if let Some(rating) = row.get("rating").cloned().filter(|v| !v.is_null() && !row.contains_key("ratingImage")) {
                 row.entry("Rating").or_insert(
                     json!([{"image":"themoviedb://image.rating","value":rating,"type":"audience"}]),
                 );
@@ -886,8 +890,6 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
                 "Genre",
                 "Country",
                 "Role",
-                "rating",
-                "audienceRating",
                 "tagline",
             ] {
                 if let Some(v) = leaf.get(key).filter(|v| !v.is_null()) {

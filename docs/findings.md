@@ -16348,3 +16348,32 @@ found by its failed fetch, a missing poster by the day-old match. A real PMS dow
 when it matches, so it never meets a dead url, and nothing it does answers that; the failed fetch's
 ask is rex's own. Not measured: what a PMS refresh does with an unlocked poster when the agent's
 first poster has changed.
+
+## Ratings: IMDb, Rotten Tomatoes and TMDB, as a real PMS shows them (2026-11-19)
+
+rex kept the agent's `audienceRating` alone, with no image and no `Rating` list, so the apps drew a
+bare number where a PMS draws the IMDb, Rotten Tomatoes and TMDB badges; and an episode carried its
+SHOW's score under a TMDB badge (`hierarchy`'s episode default over the show's number the leaf
+took). A real 1.43.5 PMS (a shared library, read as an invited user; its `ratingsSource` is not
+readable from there) and rex answered Plex Web's detail request for the same guid, 25 films, 12
+shows, 12 seasons and 12 episodes, beside Plex's agent's own answer:
+
+| | PMS | the agent |
+|---|---|---|
+| film `rating`/`ratingImage` | RT critic, `rottentomatoes://image.rating.ripe` (24 of 25) | the same |
+| film `audienceRating`/`audienceRatingImage` | RT audience, `...upright` | the same |
+| show and episode `audienceRating` | its TMDB score, `themoviedb://image.rating`; none without one | an RT or IMDb score |
+| show and episode `rating` | none | a show: RT critic |
+| `Rating` | the agent's list, every value to one decimal | the list, 8.438 |
+| season | nothing | |
+| grid rows | the attributes, no `Rating` list | |
+
+plexlab's Firefly, The Train Job and Big Buck Bunny (`agent_description_s1434.json`) answer the
+same, and fix the rounding: the agent's TMDB 8.35 is plexlab's 8.3, which is `%.1f` of the double
+(8.3499...), not half up. rex now describes each row with them (`metadata::ratings`), a show's
+through its leaf's hints, and a start describes rows an older rex described (`DESCRIBED` 3) again
+from the answers it kept, dropping an episode's copy of its show's score; a row a person
+matched takes its ratings alone, a film or show asking the agent by its own ids (a title picked
+from a search left no answer kept by them), and is marked only once it has them. A catalog's own `rating`
+(TMDB's, without a `ratingImage`) still goes, as before. **Not measured:** a film library whose
+`ratingsSource` is `imdb` or `themoviedb`; rex answers the default's. `tests/test_agent_description.py`.
