@@ -768,7 +768,12 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
             };
             // The agent's url, or none yet (the tile a title with no poster draws): never an upload.
             let agents = object.get(field).and_then(Value::as_str).is_none_or(|stored| stored.is_empty() || stored.starts_with("http"));
-            let serves = object.get(path).and_then(Value::as_str).is_some_and(|served| served.starts_with(&own));
+            // A film or show with no theme, logo or square art yet has no path for one: it takes
+            // its own when the url comes (`artwork_writes`). A borrowed path is another row's.
+            let serves = match object.get(path).and_then(Value::as_str) {
+                Some(served) => served.starts_with(&own),
+                None => !matches!(path, "thumb" | "art") && matches!(object.get("type").and_then(Value::as_str), Some("movie" | "show")),
+            };
             if agents && serves && !super::edit::field_locked(object, lock) && object.get(field) != Some(url) {
                 object.insert(field.to_string(), url.clone());
                 gave = true;

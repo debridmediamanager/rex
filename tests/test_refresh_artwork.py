@@ -48,8 +48,10 @@ def answer(self, record):
             self.server.item_refused = getattr(self.server, "item_refused", 0) + 1
             return 503, "text/plain", "stub: the provider is down"
         thumb, art = self.server.artwork
-        return 200, "application/json", json.dumps({"MediaContainer": {"size": 1, "Metadata": [
-            {"guid": MOVIE[3], "type": "movie", "title": "Big Buck Bunny", "thumb": thumb, "art": art}]}})
+        title = {"guid": MOVIE[3], "type": "movie", "title": "Big Buck Bunny", "thumb": thumb, "art": art}
+        if getattr(self.server, "theme", None):
+            title["theme"] = self.server.theme
+        return 200, "application/json", json.dumps({"MediaContainer": {"size": 1, "Metadata": [title]}})
     item = record["path"].rsplit("/", 1)[1]
     if (record["method"], record["host"]) == ("GET", AGENT) and item in getattr(self.server, "items", {}):
         return 200, "application/json", json.dumps({"MediaContainer": {"size": 1, "Metadata": [self.server.items[item]]}})
@@ -236,11 +238,15 @@ def main():
         key = row.get("ratingKey")
         check("(e) a film the agent names no poster for draws the tile", row.get("guid") == MOVIE[3] and stored(instance, key, "posters") is None,
               (row.get("guid"), stored(instance, key, "posters")))
-        stub.artwork = (DEAD % "late-poster", DEAD % "late-art")
+        theme = detail(instance, key).get("theme")
+        stub.artwork, stub.theme = (DEAD % "late-poster", DEAD % "late-art"), DEAD % "late-theme"
         call(instance, "PUT", "/library/metadata/%s/refresh" % key, token=SERVER_TOKEN)
         poster = wait_for(lambda: stored(instance, key, "posters") == DEAD % "late-poster" and DEAD % "late-poster", 10)
         check("(e) and takes the poster and background the agent names later on Refresh Metadata",
               poster and stored(instance, key, "arts") == DEAD % "late-art", (stored(instance, key, "posters"), stored(instance, key, "arts")))
+        late = detail(instance, key).get("theme")
+        check("(e) and a theme it had none of, at a path of its own", theme is None and str(late).startswith("/library/metadata/%s/theme" % key),
+              (theme, late))
     finally:
         instance.stop()
         stub.shutdown()

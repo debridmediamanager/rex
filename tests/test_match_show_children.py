@@ -130,9 +130,10 @@ def main():
               (moved.get("parentIndex"), moved.get("index"), moved.get("title"), moved.get("grandparentGuid")))
         season_3 = next((row for row in server.rows("/library/metadata/%s/children" % SHOW) if row.get("index") == 3), {})
         check("its season 3 is Plex's", str(season_3.get("guid", "")).startswith("plex://season/"), season_3.get("guid"))
-        seen = still_and_season(work, SHOWDOWN, "5d9c11122192ba001f3735f4", "5d9c09bc7b5c2e001e66c0af")
-        check("with the still and season poster the agent's item answers name now, not the children listing's",
-              seen == (NOW["5d9c11122192ba001f3735f4"], NOW["5d9c09bc7b5c2e001e66c0af"]), seen)
+        if not RECORD:  # recording seeds none of NOW's invented answers
+            seen = still_and_season(work, SHOWDOWN, "5d9c11122192ba001f3735f4", "5d9c09bc7b5c2e001e66c0af")
+            check("with the still and season poster the agent's item answers name now, not the children listing's",
+                  seen == (NOW["5d9c11122192ba001f3735f4"], NOW["5d9c09bc7b5c2e001e66c0af"]), seen)
         same = [row["ratingKey"] for row in episodes if row["ratingKey"] != SHOWDOWN
                 and (row.get("guid"), row.get("parentIndex"), row.get("index")) ==
                 (before[row["ratingKey"]]["guid"], before[row["ratingKey"]]["parentIndex"], before[row["ratingKey"]]["index"])]
@@ -178,9 +179,10 @@ def main():
         server.request("/library/metadata/%s/matches?manual=1&title=%s&year=2012" % (part_1["ratingKey"], urllib.parse.quote("Ben 10: Omniverse")))
         status, _ = server.request("/library/metadata/%s/match?guid=%s&name=%s&year=2012"
                                    % (part_1["ratingKey"], urllib.parse.quote(PICKED, safe=""), urllib.parse.quote("Ben 10: Omniverse")), "PUT")
-        seen = still_and_season(work, part_1["ratingKey"], "5d9c11122192ba001f3735eb", "5d9c09bc7b5c2e001e66c09d")
-        check("an episode Fix Matched alone takes the still and season poster the item answers name now",
-              status == 200 and seen == (NOW["5d9c11122192ba001f3735eb"], NOW["5d9c09bc7b5c2e001e66c09d"]), (status, seen))
+        if not RECORD:
+            seen = still_and_season(work, part_1["ratingKey"], "5d9c11122192ba001f3735eb", "5d9c09bc7b5c2e001e66c09d")
+            check("an episode Fix Matched alone takes the still and season poster the item answers name now",
+                  status == 200 and seen == (NOW["5d9c11122192ba001f3735eb"], NOW["5d9c09bc7b5c2e001e66c09d"]), (status, seen))
     finally:
         server.stop()
         if RECORD:
