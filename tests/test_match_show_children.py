@@ -62,18 +62,21 @@ UNPLACED = {"id": UNPLACED_SID, "path": UNPLACED_SID, "file": MOUNT + "/" + UNPL
 # What `title_now` last read for Plex's S3E1 and its season, newer than the children listing: a
 # Fix Match takes the artwork the agent names now (PR #28's review).
 NOW = {"5d9c09bc7b5c2e001e66c0af": "https://image.tmdb.org/t/p/original/season-3-now.jpg",
-       "5d9c11122192ba001f3735f4": "https://image.tmdb.org/t/p/original/showdown-now.jpg"}
+       "5d9c11122192ba001f3735f4": "https://image.tmdb.org/t/p/original/showdown-now.jpg",
+       "5d9c09bc7b5c2e001e66c09d": "https://image.tmdb.org/t/p/original/season-2-now.jpg",
+       "5d9c11122192ba001f3735eb": "https://image.tmdb.org/t/p/original/s2e2-now.jpg"}
 
 
-def still_and_season(work, key):
-    """An episode's still and its season's poster, as the state file keeps the row."""
+def still_and_season(work, key, episode, season):
+    """An episode's still and its season's poster, as the state file keeps the row, once they are
+    the item answers' for `episode` and `season` (or after 10 s)."""
     deadline = time.time() + 10
     while True:
         with sqlite3.connect(os.path.join(work, "rex.db")) as db:
             found = db.execute("SELECT body FROM row WHERE coll = 'state:items' AND key = ?", (key,)).fetchone()
         row = json.loads(found[0]) if found else {}
         seen = (row.get("_art_url"), row.get("_season_poster"))
-        if seen == (NOW["5d9c11122192ba001f3735f4"], NOW["5d9c09bc7b5c2e001e66c0af"]) or time.time() > deadline:
+        if seen == (NOW[episode], NOW[season]) or time.time() > deadline:
             return seen
         time.sleep(0.2)
 
@@ -127,7 +130,7 @@ def main():
               (moved.get("parentIndex"), moved.get("index"), moved.get("title"), moved.get("grandparentGuid")))
         season_3 = next((row for row in server.rows("/library/metadata/%s/children" % SHOW) if row.get("index") == 3), {})
         check("its season 3 is Plex's", str(season_3.get("guid", "")).startswith("plex://season/"), season_3.get("guid"))
-        seen = still_and_season(work, SHOWDOWN)
+        seen = still_and_season(work, SHOWDOWN, "5d9c11122192ba001f3735f4", "5d9c09bc7b5c2e001e66c0af")
         check("with the still and season poster the agent's item answers name now, not the children listing's",
               seen == (NOW["5d9c11122192ba001f3735f4"], NOW["5d9c09bc7b5c2e001e66c0af"]), seen)
         same = [row["ratingKey"] for row in episodes if row["ratingKey"] != SHOWDOWN
@@ -169,6 +172,15 @@ def main():
         status, _ = server.request("/library/metadata/%s/unmatch" % SHOW, "PUT")
         listed = matches(server)
         check("Unmatch of the show takes both releases out of the listing", status == 200 and listed == {}, (status, listed))
+
+        # An episode Fix Matched on its own takes its season's and its own row from the children
+        # listing: the item answers' artwork wins there too.
+        server.request("/library/metadata/%s/matches?manual=1&title=%s&year=2012" % (part_1["ratingKey"], urllib.parse.quote("Ben 10: Omniverse")))
+        status, _ = server.request("/library/metadata/%s/match?guid=%s&name=%s&year=2012"
+                                   % (part_1["ratingKey"], urllib.parse.quote(PICKED, safe=""), urllib.parse.quote("Ben 10: Omniverse")), "PUT")
+        seen = still_and_season(work, part_1["ratingKey"], "5d9c11122192ba001f3735eb", "5d9c09bc7b5c2e001e66c09d")
+        check("an episode Fix Matched alone takes the still and season poster the item answers name now",
+              status == 200 and seen == (NOW["5d9c11122192ba001f3735eb"], NOW["5d9c09bc7b5c2e001e66c09d"]), (status, seen))
     finally:
         server.stop()
         if RECORD:
