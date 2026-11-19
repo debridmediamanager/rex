@@ -343,6 +343,10 @@ const PEOPLE: [&str; 4] = ["Role", "Director", "Writer", "Producer"];
 /// it was described before they were kept, and `feed::describe_again` reads them back for it.
 pub const DESCRIBED: i64 = 3;
 
+/// What a start fetches for rows an older `DESCRIBED` left without it, as its log names it: say
+/// what the new one adds when raising `DESCRIBED`.
+pub const DESCRIBED_ADDS: &str = "ratings (IMDb, Rotten Tomatoes, TMDB)";
+
 /// The rating fields `ratings` sets; `feed::describe_again` drops one the agent no longer gives.
 pub const RATINGS: [&str; 5] = ["rating", "ratingImage", "audienceRating", "audienceRatingImage", "Rating"];
 
