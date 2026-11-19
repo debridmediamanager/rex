@@ -1712,7 +1712,7 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
         // -- off the lock: each one's agent fields, from the kept answers alone ---------------
         let kept = super::plexmeta::Kept(&plex);
         let mut episodes: HashMap<String, HashMap<String, Value>> = HashMap::new();
-        let found: Vec<(String, bool, Vec<(&'static str, Option<Value>)>)> = wanted
+        let found: Vec<(String, String, bool, Vec<(&'static str, Option<Value>)>)> = wanted
             .into_iter()
             .map(|(key, row, names)| {
                 let kind = row["kind"].as_str().unwrap_or_default();
@@ -1739,17 +1739,21 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
                     true => fields.into_iter().filter(|(field, _)| crate::metadata::RATINGS.contains(field)).collect(),
                     false => fields,
                 });
-                (key, !matched || fields.is_some(), fields.unwrap_or_default())
+                (key, guid.to_string(), !matched || fields.is_some(), fields.unwrap_or_default())
             })
             .collect();
         // -- under the lock: apply, and mark -------------------------------------------------
         let mut guard = lock(shared);
         let before = seen;
         seen += found.len();
-        for (key, mark, fields) in found {
+        for (key, guid, mark, fields) in found {
             let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) else {
                 continue;
             };
+            // Identified again off the lock: its fields are the old title's, and the next start describes it.
+            if object.get("guid").and_then(Value::as_str) != Some(guid.as_str()) {
+                continue;
+            }
             let mut gave = false;
             for (field, value) in fields {
                 let Some(value) = value else {
@@ -2228,7 +2232,7 @@ fn release_files(row: &Value) -> Vec<(String, String)> {
 /// collections) and loses these, so nothing of the old identity lingers.
 const IDENTITY_FIELDS: &[&str] = &[
     "title", "titleSort", "originalTitle", "summary", "year", "originallyAvailableAt", "tagline",
-    "rating", "audienceRating", "ratingImage", "audienceRatingImage", "contentRating", "studio",
+    "rating", "audienceRating", "ratingImage", "audienceRatingImage", "Rating", "contentRating", "studio",
     "Genre", "Country", "Role", "Director", "Writer", "Producer", "Similar", "guid", "Guid", "slug",
     "index", "thumb", "art", "duration", "Media", "_show_external_guids", "_poster_url", "_art_url",
     "_identity", "_identify", "_tmdb_id", "_kind", "_season", "_episode", "_show_title",
@@ -3730,7 +3734,7 @@ impl Runtime {
         if let Some(row) = self.catalog.get_mut(show).and_then(Value::as_object_mut) {
             for field in [
                 "title", "summary", "year", "guid", "Guid", "contentRating", "studio", "Genre", "Country",
-                "Role", "rating", "audienceRating", "tagline", "_poster_url", "_art_url", "_titleGuid",
+                "Role", "rating", "audienceRating", "audienceRatingImage", "Rating", "tagline", "_poster_url", "_art_url", "_titleGuid",
                 "Network", "originalTitle", "_theme_url", "_clearLogo_url", "_squareArt_url", "_described",
             ] {
                 match fresh.get(field).filter(|value| field == "_titleGuid" || !value.is_null()) {

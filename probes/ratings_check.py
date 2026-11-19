@@ -39,7 +39,7 @@ def get(base, path, token):
     request = urllib.request.Request(url, headers={"Accept": "application/json", "X-Plex-Client-Identifier": "rex-ratings-check",
                                                    "X-Plex-Product": "Plex Web", "X-Plex-Language": "en"})
     try:
-        return json.load(urllib.request.urlopen(request, timeout=60)).get("MediaContainer", {})
+        return json.load(urllib.request.urlopen(request, timeout=60)).get("MediaContainer") or {}
     except Exception as error:  # a title the agent or a reference does not know is a miss, not a stop
         print("  ! %s: %s" % (path.split("?")[0], error), file=sys.stderr)
         return {}
@@ -76,6 +76,9 @@ def shape(values):
 def broken(values, kind):
     """Why a row breaks the rule on its own, or None."""
     listed = {entry.get("image"): entry.get("value") for entry in values["Rating"] or []}
+    scores = [values["rating"], values["audienceRating"], *listed.values()]
+    if any(isinstance(score, (int, float)) and score != one(score) for score in scores):
+        return "a score with more than one decimal"
     for score, image in (("rating", "ratingImage"), ("audienceRating", "audienceRatingImage")):
         if (values[score] is None) != (values[image] is None):
             return "%s without %s" % ((score, image) if values[score] is not None else (image, score))
@@ -130,15 +133,15 @@ def main():
         row = (get(args.rex, "/library/metadata/%s?%s" % (key, DETAIL), args.token).get("Metadata") or [{}])[0]
         kind, guid = row.get("type"), row.get("guid", "")
         agent = (get(AGENT, "/library/metadata/%s" % guid.rsplit("/", 1)[-1], args.token).get("Metadata") or [None])[0]
-        if not agent:
-            print("SKIP   %-8s %s: the agent has no row for %s" % (kind, title, guid))
-            continue
         checked += 1
-        ours, want = ratings(row), expected(agent, kind)
+        ours = ratings(row)
         why = broken(ours, kind)
+        want = expected(agent, kind) if agent else None
         if why:
             failed += 1
             print("FAIL   %-8s %s: %s\n         rex   %s\n         agent %s" % (kind, title, why, ours, want))
+        elif not agent:
+            print("OK     %-8s %s: the agent has no row for %s to compare with" % (kind, title, guid))
         elif shape(ours) != shape(want) or numbers(ours) != numbers(want):
             stale += 1
             print("STALE  %-8s %s: rex %s\n         the agent now %s" % (kind, title, ours, want))
