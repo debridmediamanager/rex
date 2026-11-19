@@ -710,9 +710,10 @@ pub struct Runtime {
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
-    /// The film or show whose own artwork `pending_image` is: asked of Plex's agent again
-    /// when the fetch fails (`artwork::ask_agent_again`).
-    pending_image_row: Option<String>,
+    /// The film or show whose own artwork `pending_image` is, with the agent urls it held then
+    /// (`artwork::agent_urls`): asked of Plex's agent again when the fetch fails
+    /// (`artwork::ask_agent_again`).
+    pending_image_row: Option<(String, String)>,
     /// Films and shows a Refresh Metadata asks Plex's agent for their artwork again.
     pending_agent_artwork: Vec<String>,
     /// Rows asked again for a failed fetch since the start, with the urls they held: once each.
@@ -19988,7 +19989,7 @@ impl Runtime {
                     // version and bare, ranged and HEAD alike, marked a local asset.
                     None if stored.starts_with("https://") || stored.starts_with("http://") => {
                         self.pending_image = Some(stored.to_string());
-                        self.pending_image_row = Some(key.to_string());
+                        self.pending_image_row = Some((key.to_string(), artwork::agent_urls(row)));
                         let mut response = Response::bytes(200, if tail[0] == "theme" { "audio/mpeg3" } else { "image/jpeg" });
                         for (name, value) in [("X-Plex-Local-Asset", "1"), ("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes"), (TYPED_MARK, "1")] {
                             response.headers.push((name.to_string(), value.to_string()));
@@ -20534,9 +20535,24 @@ impl Runtime {
     /// numbers four seasons of twenty where Plex lists eight of ten: by number its S2E1 would be
     /// Plex's S2E1, another episode, so those rows stay as they were until their source sends ids.
     fn identify_show_children(&mut self, key: &str, guid: &str, tree: &Value) {
-        let (Some(tree), Some((_, picked))) = (tree.as_object(), self.match_candidates.get(guid).cloned()) else {
+        let (Some(mut tree), Some((_, mut picked))) = (tree.as_object().cloned(), self.match_candidates.get(guid).cloned()) else {
             return;
         };
+        // The artwork the agent names now, as `identify_guid` gives the show: the children listing
+        // can be older than an item answer `title_now` kept.
+        if let (Some(plex), Some(show)) = (self.plex.clone(), self.catalog.get(key)) {
+            let language = self.row_language(show);
+            plex.newer_artwork(&language, &mut picked);
+            for entry in tree.values_mut() {
+                if let Some(season) = entry.get_mut("season") {
+                    plex.newer_artwork(&language, season);
+                }
+                if let Some(rows) = entry.get_mut("episodes").and_then(Value::as_object_mut) {
+                    rows.values_mut().for_each(|row| plex.newer_artwork(&language, row));
+                }
+            }
+        }
+        let tree = &tree;
         let leaves = self.leaves(key);
         let tmdb_episode = |leaf: &Value| {
             scan::placed_tmdb_episode(leaf.get("_placed").or_else(|| leaf.pointer("/Media/0/_placed")))
@@ -21110,7 +21126,7 @@ impl Runtime {
             }
             None => {
                 self.pending_image = Some(url);
-                self.pending_image_row = Some(key.to_string());
+                self.pending_image_row = Some((key.to_string(), artwork::agent_urls(row)));
                 Response::bytes(200, "image/jpeg")
             }
         };
@@ -24721,7 +24737,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             let image_row = guard.pending_image_row.take();
             let refreshed = std::mem::take(&mut guard.pending_agent_artwork);
             if !refreshed.is_empty() {
-                artwork::spawn_ask_agent_again(&runtime, refreshed, false);
+                artwork::spawn_ask_agent_again(&runtime, refreshed, None);
             }
             if std::mem::take(&mut guard.pending_auto_collections) {
                 let shared = Arc::clone(&runtime);
@@ -24799,8 +24815,8 @@ fn handle_connection<S: Read + Write + PollRead>(
                 (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
                 (Some((url, from_source)), _) if response.status == 200 && response.body.is_empty() && response.doc.is_none() => {
                     let served = serve_remote_image(response, &url, from_source.as_deref());
-                    if let Some(key) = image_row.filter(|_| served.status == 404) {
-                        artwork::spawn_ask_agent_again(&runtime, vec![key], true);
+                    if let Some((key, urls)) = image_row.filter(|_| served.status == 404) {
+                        artwork::spawn_ask_agent_again(&runtime, vec![key], Some(urls));
                     }
                     served
                 }
