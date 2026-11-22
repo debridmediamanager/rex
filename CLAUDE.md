@@ -283,7 +283,7 @@ missing (`plextv::settle_after_provider`; findings, "The provider's address, tak
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
 once per machineIdentifier -- makes rex register the way a real PMS does (findings, "The
 experiment, run"): `POST /servers.xml` writes plex.tv's server record (422 is its normal
-answer), and the pubsub stream it then holds open is what clients read as `presence`. The
+answer; sent again every 24 h as a real PMS does, or plex.tv stops handing clients an `accessToken`), and the pubsub stream it then holds open is what clients read as `presence`. The
 claim is kept in `claim_state.json`, so a restart re-registers without claiming again. A
 claimed server gates every request as a real PMS does: its own token, the tokens
 `plex.tv/api/v2/server/access_tokens` lists for it (re-read for an unknown token, and kept in

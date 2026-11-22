@@ -614,7 +614,7 @@ LIVE = []
 
 
 class Instance:
-    def __init__(self, directory, port, stub_port, extra=(), announce=ANNOUNCE_URL, plex_token=ACCOUNT_TOKEN):
+    def __init__(self, directory, port, stub_port, extra=(), announce=ANNOUNCE_URL, plex_token=ACCOUNT_TOKEN, env_extra=None):
         """`announce=None` starts it without --announce-url, `plex_token=None` without PLEX_TOKEN."""
         LIVE.append(self)
         self.port = port
@@ -631,6 +631,7 @@ class Instance:
             env.pop(name, None)
         if not plex_token:
             env.pop("PLEX_TOKEN")
+        env.update(env_extra or {})
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env,
                                      stdout=self.log, stderr=subprocess.STDOUT)
@@ -2261,6 +2262,25 @@ def main():
         check("the owner refresh and the cursor persist across the restart",
               read_json(claim_file).get("view_state_cursor") == "opaque-cursor-2", "cursor")
         second.stop()
+
+        # -- the server record is sent again every day ---------------------------------
+        # plexlab's PMS POSTs /servers.xml every 24.0 h (capture/outbound.jsonl). A rex that
+        # sent it only at its start was listed with `accessToken: null` eleven days in, and
+        # Plex for iOS 2026.22.0 then sent `X-Plex-Token: null` (rex-fun, 2026-11-22).
+        mark = precise_time()
+        daily = Instance(directory, ports[1], ports[2], announce=ANNOUNCE_URLS,
+                         env_extra={"REX_SERVERS_REPUBLISH_S": "2"})
+        again = wait_for(lambda: len([r for r in stub.taken("plex.tv", "/servers.xml", "POST")
+                                      if r["at"] > mark]) >= 3 or None, 12)
+        posts = [r for r in stub.taken("plex.tv", "/servers.xml", "POST") if r["at"] > mark]
+        check("a claimed server POSTs /servers.xml again on its daily timer, libraries included",
+              again and all(r["query"] == [("auth_token", SERVER_TOKEN)] for r in posts)
+              and all(re.findall(r'<Directory [^>]*title="[^"]*"', r["body"].decode())
+                      == re.findall(r'<Directory [^>]*title="[^"]*"', posts[0]["body"].decode())
+                      for r in posts) and "<Directory " in posts[0]["body"].decode(),
+              [(r["at"] - mark, len(r["body"])) for r in posts])
+        daily.stop()
+
         second_log = second.output()
         check("a claimed startup logs the loaded claim",
               logged(second_log, "INFO", r"loaded claim for %s \(owner %s\)" % (MACHINE, OWNER))

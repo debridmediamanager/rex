@@ -57,6 +57,7 @@ const ACCESS_REFRESH_WINDOW: Duration = Duration::from_secs(6);
 /// `claim.PUBSUB_TIMEOUT` / `PUBSUB_RETRY` (the probe PMS, measured).
 const PUBSUB_TIMEOUT: u64 = 20;
 const PUBSUB_RETRY: u64 = 15;
+const SERVERS_REPUBLISH: u64 = 24 * 3600;
 /// The least time between two of `suspect`'s checks, doubled up to `SUSPECT_GAP_MAX` while they
 /// fail without a 401 and back to this once one is answered: a pubsub refused every PUBSUB_RETRY
 /// seconds has plex.tv asked once a minute at most.
@@ -1567,7 +1568,7 @@ fn command(payload: &str, claim: &SharedClaim, access: Option<&Arc<Access>>) {
 
 /// `Claim.start_registration`: the SERVER record (`publish`), the device PUT after a claim
 /// when there is a URL to announce, and the pubsub stream, resubscribed `PUBSUB_RETRY`
-/// seconds after it drops. Nothing else is periodic (the probe, measured for an hour).
+/// seconds after it drops. `republish_daily` sends the record again every 24 h.
 /// `access`: a claimed START reads the access-token list first, the recording's first call
 /// there; the claim itself did not.
 pub(crate) fn start_registration(
@@ -1644,6 +1645,33 @@ fn register(claim: &SharedClaim, local_address: &str, sections: &[Value], beat: 
             error!("registration failed: {message}");
         }
     }
+}
+
+/// A claimed server's `POST /servers.xml` every 24 h, as plexlab's PMS sends it (94 POSTs in
+/// `capture/outbound.jsonl`, 24.0 h apart between its starts; the hour-long probe was too
+/// short to see one). plex.tv stops publishing the server's `accessToken` in
+/// `/api/v2/resources` when the record goes stale: a rex up since 2026-11-08 was listed with
+/// `accessToken: null` by 2026-11-19, Plex for iOS and Apple TV 2026.22.0 then sent
+/// `X-Plex-Token: null`, and one more POST brought the token back within seconds
+/// (2026-11-22). The libraries are read at each POST, so a later one never sends an older list.
+/// `REX_SERVERS_REPUBLISH_S` shortens the day for the suite.
+pub(crate) fn republish_daily(claim: SharedClaim, runtime: SharedRuntime) {
+    let every = std::env::var("REX_SERVERS_REPUBLISH_S")
+        .ok()
+        .and_then(|seconds| seconds.parse().ok())
+        .filter(|seconds| *seconds > 0)
+        .unwrap_or(SERVERS_REPUBLISH);
+    let _ = thread::Builder::new().name("rex-republish-daily".to_string()).spawn(move || loop {
+        thread::sleep(Duration::from_secs(every));
+        let (local_address, sections) = {
+            let guard = runtime.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            (guard.private_address.clone(), guard.published_sections())
+        };
+        match publish(&claim, &local_address, &sections) {
+            Ok(status) => info!("servers.xml POST (daily) -> {status}"),
+            Err(message) => error!("the daily servers.xml POST failed: {message}"),
+        }
+    });
 }
 
 /// A claimed server's `POST /servers.xml` again, off the request path, after its
@@ -2520,6 +2548,7 @@ impl PlexTv {
     /// The account threads `main()` starts for a claimed server, and a claim starts.
     pub(crate) fn start_account(&self, runtime: &SharedRuntime) {
         self.refresh.start(Arc::clone(&self.claim), Arc::clone(runtime));
+        republish_daily(Arc::clone(&self.claim), Arc::clone(runtime));
         if let Some(sync) = &self.sync {
             sync.start(Arc::clone(&self.claim), Arc::clone(runtime));
         }

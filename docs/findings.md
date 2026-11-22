@@ -12077,6 +12077,21 @@ Two differences from the probe, not chased: the first stream (right after the cl
 carried a `notifyConnectivity` verdict, the restart's did (`reachability 0`, 1 s after its
 PUT); and the record's `localAddresses` is empty where the probe's held its address.
 
+**The server record is sent every 24 h, and `accessToken` lapses without it (2026-11-22).** The
+hour-long probe saw one `POST /servers.xml`; plexlab's `capture/outbound.jsonl` holds 94, one at
+each start and then every 24.0 h (2026-09-14 to 2026-11-16), each answered 422. rex sent it at a
+claimed start only. A production rex up since 2026-11-08 09:26 UTC was listed by
+`/api/v2/resources` with `accessToken: null` for every owner device by 2026-11-19 (presence
+true, connections listed, `/api/servers/{machine}` 200 with `updatedAt` the start's second; v1
+`/api/resources` still carried the device's own token). Plex for Apple TV flipped from 200 to
+401 mid-session at its next resources read, and Plex for iOS 2026.22.0 sent the literal
+`X-Plex-Token: null` (4 characters, read by a relay in front of rex), which the app shows as
+"Server is Offline". Clients that fall back to their own token (Plex Web, Android, the older iOS
+build) kept working. One restart's POST brought `accessToken` back within 30 s. How long
+plex.tv keeps publishing it after the last POST is between one and eleven days, not measured
+closer. rex now sends the record every 24 h with the libraries read at that moment
+(`plextv::republish_daily`).
+
 app.plex.tv on the Windows CDP browser browsed it and direct-played a movie over that
 connection (`location=wan`, ranged 206 part reads, 1920x1080, 36 s). What the client did on
 the way, read from Plex Web 4.162 and its console:
