@@ -13161,6 +13161,17 @@ The same server's log masks every token: 112 of 112 `X-Plex-Token =>` values wer
 `x`. rex's request line and `requests.log` (Download Logs) now mask `X-Plex-Token` values the
 same way, plain or URL-encoded.
 
+That masked the request line only (2026-11-25, card 850): on 588d736d at INFO, with no
+`--verbose`, `ARTWORK fetch <url>` (a `/photo/:/transcode?url=` naming a url with its token, a
+poster POSTed by url, every remote artwork read) and `ARTWORK 1007 posters -> <url>` (a poster
+picked by url) wrote the token into stderr and Download Logs' `Plex Media Server.log`, and under
+`--verbose` `artwork fetch failed for <url>` wrote 80 characters of it, so a long token in part.
+Every line is now masked where it is logged (`logging::log`, the stderr, Download Logs and
+`filters=log` sink), with `unrouted.log` and `requests.log` masked again as the zip is made:
+`X-Plex-Token`, `token`, `access_token` and `auth_token` plain or percent-encoded once or more, the
+`X-Plex-Token` and `Authorization` headers and token-named JSON or XML values
+(`tests/test_log_redaction.py`). A log written before that keeps what it holds.
+
 ## Every install its own identity (2026-10-13)
 
 plexlab's outbound capture (1.43.4, 2026-09-12) shows what a real PMS sends as

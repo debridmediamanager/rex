@@ -601,6 +601,8 @@ python3 tests/test_closed_output.py         # SIGTERM still stops rex when nothi
 python3 tests/test_cli.py                   # main()'s argparse: --help anywhere, refusals, --flag=value, prefixes, --web-root
                                             # default, a missing catalog seeded on start
 python3 tests/test_server_log.py            # every route's log line and level, Download Logs, filters=log, SSE/websocket channels
+python3 tests/test_log_redaction.py         # no token reaches stderr or Download Logs, at INFO or --verbose: artwork fetches, posters by url,
+                                            # failed fetches, play queues, client log lines; masked by the log sink itself (card 850)
 python3 tests/test_parity_listings.py       # section listings, /library roots, Add Library, section prefs: the oracle's values
 python3 tests/test_parity_metadata.py       # item detail, children, tags, top leaves, alternates: the oracle's values
 python3 tests/test_parity_hubs.py           # hubs, search, voice search, autocomplete, matches: the oracle's values

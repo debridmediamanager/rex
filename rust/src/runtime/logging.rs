@@ -28,15 +28,38 @@ struct Sink {
     rows: Vec<Value>,
 }
 
-/// A request target with every `X-Plex-Token` and `token` (a claim code) value masked, plain or URL-encoded (the
-/// `url=` of `/photo/:/transcode` carries one): the request line and `requests.log` are what
-/// people hand over for support. A real PMS's own log masks every token as a run of `x`.
-pub(crate) fn redact_tokens(target: &str) -> String {
+/// Text with every token masked: `X-Plex-Token=`, `token=` (a claim code), `access_token=` and
+/// `auth_token=` (rex's own plex.tv calls),
+/// plain or percent-encoded once or more (the `url=` of `/photo/:/transcode` carries one, and a url
+/// naming another transcode carries it twice); the `X-Plex-Token` and `Authorization` headers;
+/// and a token-named value quoted as JSON or an XML attribute (plex.tv's `authToken="..."`).
+/// The spellings `harness/scripts/redact.py` scrubs from real client traffic and rex-android's
+/// `redact()` hides. `log` applies it to every line, so a message that formats a url cannot
+/// leak one (card 850: artwork lines carried the token at INFO after card 295 masked only
+/// the request line); a value cut short is masked too, since its name comes first. A real
+/// PMS's own log masks every token as a run of `x`.
+pub(crate) fn redact_tokens(text: &str) -> String {
+    redact(text).into_owned()
+}
+
+fn redact(text: &str) -> std::borrow::Cow<'_, str> {
     static TOKEN: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     TOKEN
-        .get_or_init(|| regex::Regex::new(r"(?i)(\b(?:x-plex-)?token(?:=|%3d))[A-Za-z0-9_.~-]+").unwrap())
-        .replace_all(target, "${1}xxxxxxxxxxxxxxxxxxxx")
-        .into_owned()
+        .get_or_init(|| {
+            // A name starts the text, follows a non-word character or a percent escape: in a
+            // url's encoded query `?token=` is `%3Ftoken%3D`, which no `\b` precedes. ASCII
+            // classes and boundaries keep the lazy DFA on every line.
+            regex::Regex::new(concat!(
+                r#"(?i-u)((?:%(?:25)*[0-9a-f]{2}|\b)(?:(?:x-plex-token|token|access_token|auth_token)(?:=|%(?:25)*3d)"#,
+                r#"|x-plex-token(?::|%(?:25)*3a)(?:\s|%(?:25)*20|\+)*)"#,
+                r#"|"[a-z_-]*token"\s*:\s*"|\b[a-z_-]*token=")[A-Za-z0-9_.~-]+"#,
+                // Base64 for these two: `+`, `/` and `=` are part of the value, never of a path.
+                r#"|((?:%(?:25)*[0-9a-f]{2}|\b)authorization(?::|%(?:25)*3a)(?:\s|%(?:25)*20|\+)*(?:bearer|basic)(?:\s|%(?:25)*20|\+)+)[A-Za-z0-9_.~+/=-]+"#,
+                r#"|((?:%(?:25)*[0-9a-f]{2}|\b)bearer(?:\s|%(?:25)*20|\+)+)[A-Za-z0-9_.~+/=-]{8,}"#,
+            ))
+            .unwrap()
+        })
+        .replace_all(text, "${1}${2}${3}xxxxxxxxxxxxxxxxxxxx")
 }
 
 static SINK: Mutex<Sink> = Mutex::new(Sink {
@@ -141,6 +164,8 @@ pub(crate) fn log(level: Level, message: &str) {
     if level == Level::Debug && !verbose() {
         return;
     }
+    let redacted = redact(message);
+    let message = redacted.as_ref();
     // One message is one line: request text (a percent-decoded path, a client's `/log`
     // message) carried line breaks that wrote lines of its choosing into Download Logs.
     let escaped;
@@ -346,10 +371,11 @@ impl super::Runtime {
     pub(super) fn log_archive(&self) -> Vec<u8> {
         let joined = |lines: &[String]| format!("{}\n", lines.join("\n"));
         let requests = &self.requests[self.requests.len().saturating_sub(2000)..];
+        // `log` masked the first already; the other two are kept beside it, not logged.
         zip(&[
             ("Plex Media Server.log", joined(&lines())),
-            ("requests.log", joined(requests)),
-            ("unrouted.log", joined(&self.unknown)),
+            ("requests.log", redact_tokens(&joined(requests))),
+            ("unrouted.log", redact_tokens(&joined(&self.unknown))),
         ])
     }
 }
@@ -368,5 +394,35 @@ mod tests {
         assert_eq!(redact_tokens("/library?X-Plex-Token=abc123"), "/library?X-Plex-Token=xxxxxxxxxxxxxxxxxxxx");
         assert_eq!(redact_tokens("/myplex/claim?token=claim-SECRETabc123"), "/myplex/claim?token=xxxxxxxxxxxxxxxxxxxx");
         assert_eq!(redact_tokens("/rex/sources?accessToken=keep"), "/rex/sources?accessToken=keep");
+    }
+
+    /// Card 850: what `info!` formats reaches stderr, Download Logs and `filters=log` masked,
+    /// whatever line it is in and however the token is spelt, cut short by the line included.
+    #[test]
+    fn every_logged_line_has_its_tokens_masked() {
+        start_capture();
+        let url = "http://127.0.0.1:19920/library/metadata/1007/thumb/1?X-Plex-Token=SINK850abcdefghijklmnop";
+        let logged = [
+            format!("ARTWORK fetch {}", url.chars().take(110).collect::<String>()),
+            format!("ARTWORK 1007 posters -> {}", url.chars().take(80).collect::<String>()),
+            "artwork fetch failed for http://h/photo/:/transcode?url=http%3A%2F%2Fh%2Fx%3FX-Plex-Token%3DSINK850a%26w%3D1".into(),
+            "PLAYQUEUE 1 -> 1 item(s) from uri=server://m/x?X-Plex-Token%253DSINK850b".into(),
+            "unsupported url \"ftp://h/x?token=SINK850c\"".into(),
+            "CLIENT LOG [3] web: X-Plex-Token: SINK850d Authorization: Bearer SINK850e".into(),
+            "plex.tv answered {\"authToken\":\"SINK850f\"} <user authToken=\"SINK850g\"/>".into(),
+            "\"GET /photo/:/transcode?url=http%3A%2F%2Fh%2Fposter.jpg%3Ftoken%3DSINK850h%26w%3D1 HTTP/1.1\" 404".into(),
+            "\"POST /log?message=headers%20X-Plex-Token%3A%20SINK850i%20Authorization%3A%20Bearer%20SINK850j\" 200".into(),
+            "url=http%253A%252F%252Fh%252Fx%253Ftoken%253DSINK850k%2526access_token%253DSINK850l".into(),
+            "plex.tv servers.xml?auth_token=SINK850m failed".into(),
+        ];
+        for line in &logged {
+            log(Level::Info, line);
+        }
+        let kept: Vec<String> = lines().into_iter().filter(|line| line.contains("SINK850") || line.contains("ARTWORK 1007")).collect();
+        assert!(kept.iter().all(|line| !line.contains("SINK850")), "{kept:#?}");
+        assert!(
+            kept.iter().any(|line| line.ends_with("ARTWORK 1007 posters -> http://127.0.0.1:19920/library/metadata/1007/thumb/1?X-Plex-Token=xxxxxxxxxxxxxxxxxxxx")),
+            "{kept:#?}"
+        );
     }
 }

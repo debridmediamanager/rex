@@ -187,11 +187,11 @@ jobs:
             test_dlna'
 
       # A restart over a saved state, and the memory it takes: one after the other, outside the
-      # parallel ranges, which the list above fills (test_perf_memory reads /proc). Probe digests
-      # and audiobooks too: the list has no range left.
+      # parallel ranges, which the list above fills (test_perf_memory reads /proc). Probe digests,
+      # audiobooks and log redaction too: the list has no range left.
       - name: State restore suites
         run: |
-          .github/ci/in-image.sh 'python3 tests/test_persist.py && python3 tests/test_perf_memory.py && python3 tests/test_feed_probe_digest.py && python3 tests/test_music_audiobooks.py'
+          .github/ci/in-image.sh 'python3 tests/test_persist.py && python3 tests/test_perf_memory.py && python3 tests/test_feed_probe_digest.py && python3 tests/test_music_audiobooks.py && python3 tests/test_log_redaction.py'
 
       # No GPU in the container: this is the CPU (x264) path, with the hardware probe on auto.
       # The pinned FFmpeg is kept beside the cargo cache, so it downloads once per pin.
@@ -373,7 +373,7 @@ jobs:
           for suite in test_cli test_server_command test_native_runtime_smoke test_build_catalog \
                        test_pms_identity test_tls test_part_bytes test_sources test_feed test_feed_versions \
                        test_feed_season_art test_feed_blank_tiles test_feed_source_names test_feed_source_decides test_plextv test_unclaimed_gate test_photo_ssrf test_accounts test_watch_import \
-                       test_body_framing test_catalog_features test_parity_split_guid test_guid_lookup test_merge_unpaired test_parity_cycle88_b; do
+                       test_body_framing test_catalog_features test_parity_split_guid test_guid_lookup test_merge_unpaired test_parity_cycle88_b test_log_redaction; do
             echo "::group::$suite"
             python "tests/$suite.py"
             echo "::endgroup::"
