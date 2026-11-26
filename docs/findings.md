@@ -16379,7 +16379,8 @@ from a search left no answer kept by them), and is marked only once it has them.
 
 **Rounding (re-measured 2026-11-26).** The agent's item answers to plexlab's own passes gave
 Firefly's TMDB score as 8.344 (2026-09-12), 8.346, 8.348 (2026-10-13) and 8.351 (2026-11-12), and
-plexlab showed 8.3 (the 10-12 recording) and 8.4 (read 2026-11-26): one decimal, nearest. The
+plexlab showed 8.3 after the 10-13 pass (`agent_description_s1434.json`, recorded 2026-11-04) and
+8.4 after the 11-12 one (read 2026-11-26): one decimal, nearest. The
 agent's 8.35 in `feed/specials.json` is a match answer of 2026-10-16 on zen, not an answer plexlab
 was given, so "8.35 is 8.3" was never measured. No title plexlab holds has had a score exactly
 halfway (the only one in its capture, Out of Gas's TMDB 8.25, is an episode plexlab does not
@@ -16390,10 +16391,12 @@ agent's answers to two of its passes over every title, 2026-10-13 and 2026-11-12
 `GET /library/metadata/<guid>?...&updating=1` a refresh sends (a show's with `includeChildren=1`;
 no season or episode asked). Between them Big Buck Bunny's Rotten Tomatoes audience score went 5.4
 to 5.3, Firefly's TMDB 8.348 to 8.351 and Tears of Steel gained a TMDB entry (5.715), and plexlab
-shows 5.3, 8.4 and the new entry (5.7) where its 10-12 answers showed 5.4 and 8.3: the pass rewrote
+shows 5.3, 8.4 and the new entry (5.7) where its 2026-11-04 answers showed 5.4 and 8.3: the pass rewrote
 the ratings, the `Rating` list whole. That the butler's `RefreshPeriodicMetadata` made the passes
 is inferred, as above; no refresh was sent to plexlab for this. The Train Job's scores did not
-change, so whether a refresh rewrites an episode's is unmeasured. The agent also gives Tears of
+change, so whether a refresh rewrites an episode's is unmeasured; the agent's answer to rex's bare
+`GET` for The Train Job (read 2026-11-26 with an account token) carries its own `Rating` (IMDb 8.3,
+TMDB 7.641), plexlab's 8.3 and 7.6. The agent also gives Tears of
 Steel `rating` 6 with no `ratingImage`, and plexlab shows no `rating` for it, detail or grid.
 
 So a Refresh Metadata of a film, show or episode now sets the ratings of the agent's answer it asks
