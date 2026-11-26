@@ -14,13 +14,15 @@ Here, against test_plextv's stub with Big Buck Bunny placed as zurg pushes it:
       background they uploaded stays theirs too (an upload sets no lock);
   (d) with The Mentalist's first episode: a show's refresh takes its poster, background and theme
       and its seasons' posters, never a background a season only borrows; an episode's its still;
-  (e) a film that came with no poster, the agent naming none, takes the one it names later.
+  (e) a film that came with no poster, the agent naming none, takes the one it names later;
+  (f) a title its source dressed itself (`display`) is asked nothing and keeps the source's artwork.
 
 Not measured: a real PMS downloads the images when it matches, so it never meets a dead url, and
 what it asks the agent on a refresh was not recorded (plexscratch has no route to plex.tv).
 
     python3 tests/test_refresh_artwork.py
 """
+import hashlib
 import http.client
 import json
 import shutil
@@ -32,7 +34,7 @@ import urllib.parse
 import test_feed_named_on_claim as named_on_claim
 import test_plextv as plextv
 from test_feed_named_on_claim import EPISODE, MOVIE, call, fresh, push, rows
-from test_plextv import AGENT, SERVER_TOKEN, Instance, Stub, check, wait_for
+from test_plextv import AGENT, MEDIA_INFO, SERVER_TOKEN, Instance, Stub, check, wait_for
 from test_ports import free_port
 
 ID = MOVIE[3].rsplit("/", 1)[1]
@@ -259,6 +261,23 @@ def main():
         late = detail(instance, key).get("theme")
         check("(e) and a theme it had none of, at a path of its own", theme is None and str(late).startswith("/library/metadata/%s/theme" % key),
               (theme, late))
+
+        # -- (f) artwork a source pushed itself -----------------------------------------------
+        # A title nothing identifies, dressed by its source (`display`): its row is `local://`, so a
+        # refresh has no guid to ask Plex's agent by and its artwork stays the source's.
+        path = "movies/Home.Video.2019/Home.Video.2019.mkv"
+        item = {"id": path, "path": path, "file": "/zurg/" + path, "name": "Home.Video.2019.mkv", "release": "Home.Video.2019",
+                "size": 12345, "hash": hashlib.sha1(path.encode()).hexdigest(), "media_info": MEDIA_INFO,
+                "display": {"title": "Home Video", "thumb": "https://image.tmdb.org/t/p/original/source-poster.jpg"}}
+        call(instance, "POST", "/rex/feed/zurg/items", {"items": [item]})
+        own = wait_for(lambda: next((i["ratingKey"] for i in call(instance, "GET", "/rex/feed/zurg/items")[1].get("items", [])
+                                     if i["id"] == path), None), 10)
+        thumb, before = detail(instance, own).get("thumb"), len(stub.taken(AGENT))
+        status = call(instance, "PUT", "/library/metadata/%s/refresh" % own, token=SERVER_TOKEN)[0]
+        time.sleep(2)
+        check("(f) a refresh of a title its source dressed itself asks Plex's agent nothing and keeps its poster",
+              status == 200 and thumb and detail(instance, own).get("thumb") == thumb and len(stub.taken(AGENT)) == before,
+              (status, thumb, detail(instance, own).get("thumb"), len(stub.taken(AGENT)) - before))
     finally:
         instance.stop()
         stub.shutdown()
