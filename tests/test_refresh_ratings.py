@@ -12,7 +12,8 @@ plexlab shows no `rating`. Here, Plex's agent answering from those recordings:
 
   (a) Tears of Steel, Fix Matched from the agent's own search answer: no `rating`, as plexlab;
   (b) Refresh Metadata of the film, of Tears of Steel and of the show takes the agent's scores of
-      that pass: each detail and grid row is plexlab's now, and the episode keeps its own;
+      that pass: each detail and grid row is plexlab's now, and the episode keeps its own; an
+      episode's refresh takes its own from the agent's answer to rex's bare GET (read 2026-11-26);
   (c) a Fix Match again keeps the newer scores (the search answer is kept for good), and so does a start;
   (d) a score a person locked stays theirs through a refresh, (e) and through the start that gives
       rows an older rex described their ratings.
@@ -45,6 +46,7 @@ class Agent(http.server.ThreadingHTTPServer):
     `pass_day`'s pass, nothing before one is set, and its title search for Tears of Steel."""
     daemon_threads = True
     pass_day = None
+    asked = []
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -59,7 +61,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path.startswith("/metadata.provider.plex.tv/library/metadata/"):
             item = path.rsplit("/", 1)[1]
             day = self.server.pass_day
-            if self.command == "GET" and day and item in FIXTURE["agent"]:
+            self.server.asked.append((self.command, item))
+            if self.command == "GET" and day and day in FIXTURE["agent"].get(item, {}):
                 found = FIXTURE["agent"][item][day]
             elif self.command == "POST" and item == "matches" and body.get("title") == "Tears of Steel":
                 found = FIXTURE["search"]["response"]
@@ -149,6 +152,15 @@ def main():
         want = ratings(described.ref_row("/library/metadata/8?" + WEB))
         check("(b) the episode keeps its own score, plexlab's (unchanged there since)", ratings(detail(server, episode)) == want,
               (ratings(detail(server, episode)), want))
+        # No pass of plexlab's asked an episode alone: the agent's answer to rex's own bare GET, read 2026-11-26.
+        agent.pass_day = "2026-11-26 bare"
+        asked = len(agent.asked)
+        server.request("/library/metadata/%s/refresh" % episode, "PUT")
+        wait(lambda: len(agent.asked) > asked)
+        time.sleep(1)
+        check("(b) an episode's refresh takes its own scores from the agent's answer for it, plexlab's",
+              ratings(detail(server, episode)) == want, (ratings(detail(server, episode)), want))
+        agent.pass_day = "2026-11-12"
 
         # -- (c) --------------------------------------------------------------------------
         want = ratings(plexlab("/library/metadata/4?" + WEB, "4"))
