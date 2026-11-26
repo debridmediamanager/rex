@@ -350,6 +350,16 @@ pub const DESCRIBED_ADDS: &str = "ratings (IMDb, Rotten Tomatoes, TMDB)";
 /// The rating fields `ratings` sets; `feed::describe_again` drops one the agent no longer gives.
 pub const RATINGS: [&str; 5] = ["rating", "ratingImage", "audienceRating", "audienceRatingImage", "Rating"];
 
+/// The lock a person's edit of a rating field sets (`audienceRating.locked=1` locks
+/// `audienceRating`), an image going with its score; the `Rating` list has none.
+pub fn rating_lock(field: &str) -> Option<&'static str> {
+    match field {
+        "rating" | "ratingImage" => Some("rating"),
+        "audienceRating" | "audienceRatingImage" => Some("audienceRating"),
+        _ => None,
+    }
+}
+
 /// A title's ratings as a real PMS shows them from its agent's answer (plexlab's Firefly, The Train
 /// Job and Big Buck Bunny, `agent_description_s1434.json`; 25 films, 12 shows and 12 episodes of a
 /// 1.43.5 PMS against the agent, 2026-11-19): a film's as the agent gives them, Rotten Tomatoes'

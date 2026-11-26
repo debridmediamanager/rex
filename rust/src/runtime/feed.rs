@@ -1762,7 +1762,9 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
             for (field, value) in fields {
                 let Some(value) = value else {
                     // A rating the agent does not give is none: an episode held its show's.
-                    if crate::metadata::RATINGS.contains(&field) && !super::edit::field_locked(object, &field.to_ascii_lowercase()) {
+                    if crate::metadata::RATINGS.contains(&field)
+                        && !crate::metadata::rating_lock(field).is_some_and(|lock| super::edit::field_locked(object, lock))
+                    {
                         gave |= object.shift_remove(field).is_some();
                     }
                     continue;
@@ -1772,6 +1774,8 @@ pub(super) fn describe_again(shared: &SharedRuntime, batch: usize) -> usize {
                     "Role" => "actor",
                     "originalTitle" => "originalTitle",
                     "Network" => "network",
+                    // `audienceRating.locked=1` locks `audienceRating`, not its lower case.
+                    field if crate::metadata::RATINGS.contains(&field) => crate::metadata::rating_lock(field).unwrap_or_default(),
                     field if field.starts_with('_') => field,
                     field => &field.to_ascii_lowercase(),
                 };
