@@ -841,10 +841,12 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
     let (mut found, mut unanswered) = (Vec::new(), Vec::new());
     for (key, mark, kind, id, language) in asked {
         match plex.title_now(&language, &id, refresh_query(&kind)) {
-            Some((title, changed)) => found.push((key, format!("plex://{kind}/{id}"), title, changed)),
+            Some(Some((title, changed))) => found.push((key, format!("plex://{kind}/{id}"), title, changed)),
+            // A season the agent names nothing for: a show's next is asked still.
+            Some(None) if refresh => {}
             // A refresh asks nothing more of an agent that gave no answer (a show's next season).
             None if refresh => break,
-            None => unanswered.push(mark),
+            _ => unanswered.push(mark),
         }
     }
     // -- under the lock: apply ---------------------------------------------------------------

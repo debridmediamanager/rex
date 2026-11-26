@@ -217,11 +217,14 @@ impl PlexMeta {
     /// the one kept before are returned with it: plexlab's
     /// refresh saves, and stamps, a title only then (2026-11-26: Big Buck Bunny's answer the same
     /// as the last, nothing moved; Season 1 and its episodes, last asked 2026-09-12, saved, and
-    /// asked again 52 s later inside the show's refresh, the same answer, not).
-    pub(super) fn title_now(&self, language: &str, id: &str, query: &str) -> Option<(Value, HashSet<String>)> {
+    /// asked again 52 s later inside the show's refresh, the same answer, not). `None` when the
+    /// agent gave no answer, `Some(None)` when it answered naming no such title.
+    pub(super) fn title_now(&self, language: &str, id: &str, query: &str) -> Option<Option<(Value, HashSet<String>)>> {
         let path = if query.is_empty() { format!("/library/metadata/{id}") } else { format!("/library/metadata/{id}?{query}") };
         let answer = self.call(language, "GET", &path, None, true, false)?;
-        let title = answer.pointer("/MediaContainer/Metadata/0")?.clone();
+        let Some(title) = answer.pointer("/MediaContainer/Metadata/0").cloned() else {
+            return Some(None);
+        };
         let mut own = title.clone();
         let held = own.as_object_mut().and_then(|own| own.shift_remove("Children"));
         let held = held.as_ref().and_then(|children| children.get("Metadata")).and_then(Value::as_array).cloned().unwrap_or_default();
@@ -241,7 +244,7 @@ impl PlexMeta {
                 changed.insert(guid);
             }
         }
-        Some((title, changed))
+        Some(Some((title, changed)))
     }
 
     /// `keep`: the answer is kept under its request's key (`title_now` keeps each title it holds itself).
