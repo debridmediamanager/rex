@@ -691,9 +691,11 @@ pub(super) fn agent_urls(row: &Value) -> String {
 /// a season keeps a copy of its show's background (`hierarchy::fill_season`) and serves the
 /// show's, and the agent's answer for a season or episode names a background anyway (a real
 /// library's, 2026-11-19; replacing the copy rewrote 12 Monkeys' four seasons for nothing). What a person picked (locked) or uploaded (`upload://`) stays;
-/// `restamp_artwork` gives a new url new paths. Not measured: a real PMS keeps the images it
-/// downloaded when it matched, so it never meets a dead url, and what it asks the agent on a
-/// refresh was not recorded (plexscratch has no route to plex.tv).
+/// `restamp_artwork` gives a new url new paths. plexlab's refresh of a film asks the agent's item
+/// with `updating=1` and its `/extras` and moves `updatedAt` every time (its passes over a show asked
+/// the show with `includeChildren`); rex asks the item alone and moves only a changed url's path (findings,
+/// "Artwork Plex's agent replaced"). A real PMS keeps the images it downloaded when it matched, so
+/// it never meets a dead url: the failed fetch's ask is rex's own.
 pub(super) fn spawn_ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
     let shared = Arc::clone(shared);
     let _ = std::thread::Builder::new().name("agent-artwork".to_string()).spawn(move || ask_agent_again(&shared, keys, dead));

@@ -6180,13 +6180,18 @@ times; the write still answers 200 with an empty body and zero frames, and every
 `updatedAt` and `scannedAt` stay put. It is the container half of cycle 20's "an edit does
 not move `updatedAt`, an artwork write does" — clients cache a library keyed on that stamp.
 
-**A `PUT /library/metadata/{id}/refresh` does NOT move the row's `updatedAt`.** Four runs
-on a movie and four on a show, and the reference really ran the refresh, because it pushed
-its seven-frame sequence each time. Cycle 20 established that an artwork URL's version IS
-the row's `updatedAt`, so the two move together and neither does: rex stamped both, and
-every Refresh Metadata therefore told every client that an unchanged row's poster and
-background had changed. plexscratch is isolated from plex.tv, so what is established is
-that running the refresh sequence does not by itself stamp the row.
+**A `PUT /library/metadata/{id}/refresh` moves the row's `updatedAt` only when PMS reaches Plex's
+agent.** On plexscratch, isolated from plex.tv, four runs on a movie and four on a show left it
+where it was, and the reference really ran the refresh, because it pushed its seven-frame sequence
+each time: running the refresh sequence does not by itself stamp the row. On plexlab, claimed and
+online, a refresh asks the agent and moves `updatedAt` and both artwork versions to the second it
+ran, every time: Big Buck Bunny 1794449833 → 1795649634 on 2026-11-25 and → 1795663160 on
+2026-11-26 with nothing the agent named changed and its `thumb` locked, Sintel likewise (findings,
+"Artwork Plex's agent replaced"). Cycle 20 established that an artwork URL's version IS the row's
+`updatedAt`, so the two move together. This entry first read "does NOT move", from plexscratch
+alone. rex stamped both on every refresh until then, and stamps neither now; since 2026-11-26 a
+refresh asks the agent and moves only the path of artwork whose url changed: measured, not
+emulated, so a refresh does not tell every client that an unchanged poster changed.
 
 **A TEXT library preference is percent-decoded a SECOND time.** A wire `%2541` is `%41`
 after HTTP and stores `A`; a wire `%2525` stores `%25`, which is how the storage escaping
@@ -16293,8 +16298,9 @@ its timeline frames and asked nothing.
 Now a refresh of a film, show (its seasons with it), season or episode, and a failed fetch of a
 row's own poster, background, theme, clear logo or square art (once per start for the urls a row
 holds), ask the agent for that guid past the cache (`artwork::ask_agent_again`) and replace each url
-the agent gave before, for artwork the row serves itself, with the one it names now. Nothing is
-added, and nothing a row borrows: a season keeps a copy of its show's background and serves the
+the agent gave before, for artwork the row serves itself, with the one it names now. A poster or
+background a row serves but has none for is set, and a film or show takes a theme, clear logo or
+square art it had none of at a path of its own; nothing a row borrows is: a season keeps a copy of its show's background and serves the
 show's, while the agent's answer for a season or episode names a background anyway (measured on a
 real library's season and episode, 2026-11-19: `GET /library/metadata/{id}` answers both, its
 `thumb` the poster and still rex held; a first build replaced 12 Monkeys' four seasons' copies). What a person picked (locked) or uploaded
@@ -16309,6 +16315,36 @@ for good, so the blank tile's retry (eight tries, five days apart by then) read 
 time. A match whose title has no poster is now kept a day like an empty one (`plexmeta::incomplete`),
 and a refresh sets a poster or background a row serves but has none for.
 
-**Not measured.** A real PMS downloads the images when it matches, so it never meets a dead url,
-and what it asks the agent on an item refresh was not recorded: plexscratch has no route to
-plex.tv. `GET /library/metadata/{id}` is how plexav's PMS reads an item (`music/agent.json`).
+A failed fetch the agent gave no answer for (offline, unclaimed, a 503) asks again ten minutes on,
+not on the next view. Dropping the mark, as the first build did, made every view of a dead tile ask:
+five rows whose artwork was dead, viewed three times while the stub agent answered 503, sent 15
+requests; now 5, once each (2026-11-26). An outage fails every fetch, so that was every tile seen.
+What a refresh, a start and a push send (test_plextv's stub, Big Buck Bunny and The Mentalist pushed,
+2026-11-26): a film's or season's or episode's refresh one `GET /library/metadata/{id}`, every time;
+a show's one for the show and one per season; a start and a push of the same ids none, the new urls
+kept; five films the agent names no poster for, none at a start within the day, one each once the
+day is over and the blank-tile retry is due, then none until its next try; a title its source dressed
+(`display`, `local://`) none, its artwork kept.
+
+**What plexlab's PMS does (1.43.4, claimed, 2026-11-25/26).** One `PUT /library/metadata/1/refresh`
+of Big Buck Bunny sent Plex's agent, at once, `GET /library/metadata/<guid>?excludeElements=Collection&includeReviews=1&updating=1`
+and `GET /library/metadata/<guid>/extras?updating=1`, with `X-Plex-Country`, `X-Plex-Language` and
+`X-Plex-Text-Format` as query parameters; the item answer carries `thumb`, `art` and an `Image`
+list (background, backgroundSquare, clearLogo, coverPoster and more), the fields rex reads from its
+own `GET`. The `/images` read beside it was the poster picker's (`/posters`), not the refresh. The
+capture also holds two passes over every title, 2026-10-13 and 2026-11-12 (the butler's
+`RefreshPeriodicMetadata` is on; that it made them is inferred, not established), asking the same
+for each film and, for Firefly, `GET /library/metadata/<show>?includeChildren=1&episodeOrder=tmdbAiring&updating=1`
+and the show's `/extras`: that answer lists both seasons with their posters, and no season or episode
+was asked on its own. A `PUT .../refresh` of a show was not measured. A poster a person picked (`PUT /library/metadata/3/poster?url=<a TMDB poster>`, which locks
+`thumb`) stayed selected and locked through a refresh, as rex keeps a locked or uploaded pick. Each
+refresh moved `updatedAt` and both artwork versions to the second it ran, though nothing the agent
+named had changed (see "A `PUT /library/metadata/{id}/refresh`" for when it does not).
+
+**Not emulated.** rex asks one `GET` per row and a show's seasons each on their own (a show of 30
+seasons is 31 requests where that pass asked two), sends no `updating=1` and no `/extras`, moves an
+artwork path only when its url changed and never `updatedAt`, and has no periodic refresh: a dead url is
+found by its failed fetch, a missing poster by the day-old match. A real PMS downloads its images
+when it matches, so it never meets a dead url, and nothing it does answers that; the failed fetch's
+ask is rex's own. Not measured: what a PMS refresh does with an unlocked poster when the agent's
+first poster has changed.

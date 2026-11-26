@@ -17,8 +17,9 @@ Here, against test_plextv's stub with Big Buck Bunny placed as zurg pushes it:
   (e) a film that came with no poster, the agent naming none, takes the one it names later;
   (f) a title its source dressed itself (`display`) is asked nothing and keeps the source's artwork.
 
-Not measured: a real PMS downloads the images when it matches, so it never meets a dead url, and
-what it asks the agent on a refresh was not recorded (plexscratch has no route to plex.tv).
+plexlab's refresh asks the agent's item (`updating=1`) and its extras, and keeps a poster a person
+picked (findings, "Artwork Plex's agent replaced"). A real PMS downloads the images when it
+matches, so it never meets a dead url: the failed fetch's ask is rex's own.
 
     python3 tests/test_refresh_artwork.py
 """
