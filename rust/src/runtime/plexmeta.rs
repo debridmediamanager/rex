@@ -213,8 +213,12 @@ impl PlexMeta {
     /// answering (Funny Money's gracenote poster 403'd, 2026-11-17, while the agent named another).
     /// The title and the episodes a season's answer holds (`includeChildren=1`: no request of a
     /// refresh asks an episode on its own; a show's seasons are asked each) are kept under each
-    /// title's own item key, which `newer_description` reads.
-    pub(super) fn title_now(&self, language: &str, id: &str, query: &str) -> Option<Value> {
+    /// title's own item key, which `newer_description` reads, and the guids whose answer is not
+    /// the one kept before are returned with it: plexlab's
+    /// refresh saves, and stamps, a title only then (2026-11-26: Big Buck Bunny's answer the same
+    /// as the last, nothing moved; Season 1 and its episodes, last asked 2026-09-12, saved, and
+    /// asked again 52 s later inside the show's refresh, the same answer, not).
+    pub(super) fn title_now(&self, language: &str, id: &str, query: &str) -> Option<(Value, HashSet<String>)> {
         let path = if query.is_empty() { format!("/library/metadata/{id}") } else { format!("/library/metadata/{id}?{query}") };
         let answer = self.call(language, "GET", &path, None, true, false)?;
         let title = answer.pointer("/MediaContainer/Metadata/0")?.clone();
@@ -222,13 +226,22 @@ impl PlexMeta {
         let held = own.as_object_mut().and_then(|own| own.shift_remove("Children"));
         let held = held.as_ref().and_then(|children| children.get("Metadata")).and_then(Value::as_array).cloned().unwrap_or_default();
         let held = held.into_iter().filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"));
+        let mut changed = HashSet::new();
         for row in std::iter::once(own).chain(held) {
-            let Some(id) = row.get("guid").and_then(Value::as_str).and_then(|guid| guid.strip_prefix("plex://")?.split_once('/')).map(|(_, id)| id.to_string()) else {
+            let Some(guid) = row.get("guid").and_then(Value::as_str).map(str::to_string) else {
                 continue;
             };
-            self.cache.put(&keyed(language, cache_key("GET", &format!("/library/metadata/{id}"), None)), &json!({"MediaContainer": {"size": 1, "Metadata": [row]}}));
+            let Some(id) = guid.strip_prefix("plex://").and_then(|rest| rest.split_once('/')).map(|(_, id)| id.to_string()) else {
+                continue;
+            };
+            let key = keyed(language, cache_key("GET", &format!("/library/metadata/{id}"), None));
+            let kept = self.cache.get(&key);
+            if kept.as_ref().and_then(|kept| kept.pointer("/MediaContainer/Metadata/0")) != Some(&row) {
+                self.cache.put(&key, &json!({"MediaContainer": {"size": 1, "Metadata": [row]}}));
+                changed.insert(guid);
+            }
         }
-        Some(title)
+        Some((title, changed))
     }
 
     /// `keep`: the answer is kept under its request's key (`title_now` keeps each title it holds itself).

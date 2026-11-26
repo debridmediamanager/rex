@@ -714,7 +714,8 @@ pub struct Runtime {
     /// (`artwork::agent_urls`): asked of Plex's agent again when the fetch fails
     /// (`artwork::ask_agent_again`).
     pending_image_row: Option<(String, String)>,
-    /// Rows a Refresh Metadata asks Plex's agent about again (a show's seasons with it).
+    /// Rows a Refresh Metadata asks Plex's agent about again (a show's seasons with it), whose
+    /// frames wait for the answers (`artwork::ask_agent_again`).
     pending_agent_artwork: Vec<String>,
     /// Rows asked again for a failed fetch since the start, with the urls they held, and when a
     /// failed fetch may ask again: never once the agent answered, ten minutes on when it did not.
@@ -5188,6 +5189,15 @@ impl Runtime {
         activity.insert("progress".to_string(), json!(-1));
         self.notify_activity(&activity, "started");
         activity
+    }
+
+    /// A refresh's frames, a show's and a season's cascading (cycle 15).
+    fn notify_refresh(&mut self, key: &str) {
+        match self.catalog.get(key).and_then(|row| row.get("type")).and_then(Value::as_str) {
+            Some("show") => self.notify_show_cascade(key),
+            Some("season") => self.notify_season_cascade(key),
+            _ => self.notify_refreshed(key),
+        }
     }
 
     /// The seven-frame sequence a real PMS pushes for a metadata refresh,
@@ -20153,13 +20163,12 @@ impl Runtime {
                         // episodes inside its own activity, a show nests each
                         // season's block; a leaf is the seven-frame form.
                         let title = row.get("title").map_or_else(|| "None".to_string(), string_value);
-                        match kind.as_str() {
-                            "show" => self.notify_show_cascade(key),
-                            "season" => self.notify_season_cascade(key),
-                            _ => self.notify_refreshed(key),
+                        // Asked of Plex's agent, the frames wait for its answers (`ask_agent_again`).
+                        if self.plex.is_some() && artwork::agent_id(row).is_some() {
+                            self.pending_agent_artwork.push(key.to_string());
+                        } else {
+                            self.notify_refresh(key);
                         }
-                        // A show's seasons are asked after it (`ask_agent_again`).
-                        self.pending_agent_artwork.push(key.to_string());
                         if matches!(kind.as_str(), "show" | "season") {
                             info!("REFRESH {key} ({title}) -- cascaded");
                         } else {

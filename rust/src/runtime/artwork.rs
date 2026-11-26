@@ -769,14 +769,39 @@ fn take_answer(object: &mut Map<String, Value>, key: &str, title: &Value) -> boo
     gave
 }
 
+/// A title plexlab's refresh saved: its `updatedAt` the second the refresh was sent, and every
+/// artwork path it serves itself that version, changed or not (Firefly's poster, background,
+/// theme, clear logo and square art all took 1795735386 with its cast alone changed, its locked
+/// Big Buck Bunny poster too on 2026-11-25). Its seasons and episodes show its new paths where
+/// they borrow them (`cascade_artwork_from`) and keep their own `updatedAt`.
+fn stamp_refreshed(object: &mut Map<String, Value>, key: &str, at: i64) {
+    let own = format!("/library/metadata/{key}/");
+    for field in ["thumb", "art", "theme", "_clearLogo", "_squareArt"] {
+        let Some((leaf, version)) = object.get(field).and_then(Value::as_str).filter(|path| path.starts_with(&own)).and_then(|path| path.rsplit_once('/')) else {
+            continue;
+        };
+        // Never the version it had: a pick the same second.
+        let version = at.max(version.parse::<i64>().unwrap_or(0) + 1);
+        let path = format!("{leaf}/{version}");
+        object.insert(field.to_string(), json!(path));
+    }
+    object.insert("updatedAt".to_string(), json!(at));
+    // The paths are the artwork's now: `restamp_artwork` mints none again.
+    minted_for_sources(object);
+}
+
 fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
+    // plexlab stamps what a refresh saved with the second it was sent (Season 1 1795735334, Firefly
+    // 1795735386: each its PUT's), however long the agent takes to answer.
+    let at = now();
     let refresh = dead.is_none();
     // -- under the lock: which rows, by their guid ---------------------------------------------
     let (plex, asked) = {
         let mut guard = feed::lock(shared);
         let runtime = &mut *guard;
         let Some(plex) = runtime.plex.clone() else {
-            return;
+            drop(guard);
+            return notify_refreshed(shared, &keys, refresh);
         };
         let mut asked = Vec::new();
         for key in &keys {
@@ -816,7 +841,7 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
     let (mut found, mut unanswered) = (Vec::new(), Vec::new());
     for (key, mark, kind, id, language) in asked {
         match plex.title_now(&language, &id, refresh_query(&kind)) {
-            Some(title) => found.push((key, format!("plex://{kind}/{id}"), title)),
+            Some((title, changed)) => found.push((key, format!("plex://{kind}/{id}"), title, changed)),
             // A refresh asks nothing more of an agent that gave no answer (a show's next season).
             None if refresh => break,
             None => unanswered.push(mark),
@@ -831,8 +856,8 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
     for mark in unanswered {
         guard.agent_artwork_asked.insert(mark, again);
     }
-    let mut given = false;
-    for (key, guid, title) in found {
+    let (mut given, mut stamped) = (false, Vec::new());
+    for (key, guid, title, changed) in found {
         // The row, and a season's episodes from the answer's own (`includeChildren=1`).
         let mut rows = vec![(key.clone(), guid, title.clone())];
         if guid_kind(&rows[0].1) == "season" {
@@ -849,9 +874,28 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
                 continue;
             };
             given |= take_answer(object, &key, &title);
+            // plexlab's refresh saved a title whose answer was not the last one it was given, and
+            // moved nothing for one whose was (Big Buck Bunny, 2026-11-26 23:19).
+            if refresh && changed.contains(&guid) {
+                stamp_refreshed(object, &key, at);
+                stamped.push(key);
+            }
         }
     }
-    if given {
+    for key in &stamped {
+        guard.cascade_artwork_from(key);
+    }
+    if !stamped.is_empty() {
+        info!("REFRESH {} -- saved at {at}", stamped.join(", "));
+    }
+    // The refresh's frames once its answers are in: plexlab's last, the row's 5, comes after the
+    // agent answered and the row was saved, and Plex Web reads the row again on it.
+    if refresh {
+        for key in &keys {
+            guard.notify_refresh(key);
+        }
+    }
+    if given || !stamped.is_empty() {
         guard.dirty = true;
         let snapshot = guard.flush_state();
         drop(guard);
@@ -861,6 +905,16 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
 
 fn guid_kind(guid: &str) -> &str {
     guid.strip_prefix("plex://").and_then(|rest| rest.split_once('/')).map_or("", |(kind, _)| kind)
+}
+
+/// A refresh's frames when no agent is there to ask.
+fn notify_refreshed(shared: &SharedRuntime, keys: &[String], refresh: bool) {
+    if refresh {
+        let mut guard = feed::lock(shared);
+        for key in keys {
+            guard.notify_refresh(key);
+        }
+    }
 }
 
 /// What `restamp_artwork` writes to `key`'s row: each artwork field whose path was not minted
