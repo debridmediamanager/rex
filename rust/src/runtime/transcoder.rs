@@ -631,6 +631,12 @@ impl Drop for ScaleSlot {
     }
 }
 
+/// Whether a PNG carries alpha: an alpha colour type (4, 6) or a `tRNS` chunk before its data.
+fn png_has_alpha(png: &[u8]) -> bool {
+    let header = png.windows(4).position(|chunk| chunk == b"IDAT").map_or(png, |at| &png[..at]);
+    matches!(png.get(25), Some(4 | 6)) || header.windows(4).any(|chunk| chunk == b"tRNS")
+}
+
 /// One picture through FFmpeg on pipes, read as `demuxer` with nothing but the pipe to open (a
 /// remote body FFmpeg guessed the format of could be a playlist naming other urls), `filter`
 /// applied, written as PNG or as a 4:4:4 JPEG at `qscale`. Killed past `SCALE_TIME`.
@@ -644,6 +650,13 @@ fn scale_image(ffmpeg: &std::path::Path, image: &[u8], demuxer: &str, filter: &s
     command.args(["-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-threads", "1", "-f", "image2pipe"]);
     if png {
         command.args(["-c:v", "png"]);
+        // Plex's clear logos are mostly palette PNGs (colour type 3, alpha in `tRNS`): scaled
+        // and left to FFmpeg's choice, they came out with no alpha, transparency black: a palette
+        // PNG without `tRNS` (jellyfin-ffmpeg in the image, FFmpeg 9.1), RGB (FFmpeg 5.1). Only
+        // a picture with alpha is made RGBA: plexlab answers a JPEG asked as PNG in RGB.
+        if demuxer == "png_pipe" && png_has_alpha(image) {
+            command.args(["-pix_fmt", "rgba"]);
+        }
     } else {
         command.args(["-c:v", "mjpeg", "-pix_fmt", "yuvj444p", "-q:v", &qscale.to_string()]);
     }
@@ -882,6 +895,20 @@ mod image_cache_tests {
         let logo = make("color=red@0.5:s=786x132,format=rgba", &["-c:v", "png"]);
         let kept = fit(&logo, &[("width", "400"), ("height", "200")]);
         assert_eq!((kept.content_type.as_str(), &kept.body[..4]), ("image/jpeg", &b"\x89PNG"[..]));
+        // A palette PNG with its transparency in `tRNS`, as Plex's clear logos are, keeps it scaled.
+        let palette = make(
+            "color=red@0:s=2400x400:d=0.04,format=rgba,drawbox=x=800:y=100:w=800:h=200:color=red@1:t=fill",
+            &["-vf", "split[a][b];[a]palettegen=reserve_transparent=1[p];[b][p]paletteuse", "-c:v", "png"],
+        );
+        assert_eq!(palette[25], 3, "the source is a palette PNG");
+        let scaled = fit(&palette, &[("width", "1920"), ("height", "1080")]).body;
+        let mut decoder = png::Decoder::new(std::io::Cursor::new(&scaled));
+        decoder.set_transformations(png::Transformations::normalize_to_color8());
+        let mut reader = decoder.read_info().unwrap();
+        let mut pixels = vec![0; reader.output_buffer_size().unwrap()];
+        let frame = reader.next_frame(&mut pixels).unwrap();
+        assert_eq!((frame.width, frame.color_type), (1920, png::ColorType::Rgba));
+        assert_eq!(pixels[3], 0, "the corner stays transparent");
         // What is not JPEG, PNG or WebP is never handed to FFmpeg.
         let text = b"#EXTM3U\n#EXTINF:1,\nhttp://127.0.0.1:9/x.ts\n".to_vec();
         let query = [("width", "240"), ("height", "360")].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
