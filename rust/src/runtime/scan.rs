@@ -222,7 +222,7 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
     let mut identity = identify::placed(plex.map(|p| p as &dyn PlexSource), kind, tmdb_id, imdb.as_deref());
     let newer = |row: &mut Value| {
         if let Some(agent) = plan.plex.as_deref() {
-            agent.newer_artwork(&plan.language, row);
+            agent.newer_description(&plan.language, row);
         }
     };
     if let Some(row) = identity.row.as_mut() {

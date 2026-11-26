@@ -20457,7 +20457,7 @@ impl Runtime {
         };
         let language = self.row_language(&row);
         for title in [Some(&mut picked), season.as_mut(), episode.as_mut()].into_iter().flatten() {
-            plex.newer_artwork(&language, title);
+            plex.newer_description(&language, title);
         }
         let show = kind == "show";
         let numbers = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64)).filter(|_| show);
@@ -20536,13 +20536,13 @@ impl Runtime {
         // can be older than an item answer `title_now` kept.
         if let (Some(plex), Some(show)) = (self.plex.clone(), self.catalog.get(key)) {
             let language = self.row_language(show);
-            plex.newer_artwork(&language, &mut picked);
+            plex.newer_description(&language, &mut picked);
             for entry in tree.values_mut() {
                 if let Some(season) = entry.get_mut("season") {
-                    plex.newer_artwork(&language, season);
+                    plex.newer_description(&language, season);
                 }
                 if let Some(rows) = entry.get_mut("episodes").and_then(Value::as_object_mut) {
-                    rows.values_mut().for_each(|row| plex.newer_artwork(&language, row));
+                    rows.values_mut().for_each(|row| plex.newer_description(&language, row));
                 }
             }
         }

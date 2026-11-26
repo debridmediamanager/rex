@@ -175,10 +175,11 @@ fn keyed(language: &str, key: String) -> String {
 }
 
 impl PlexMeta {
-    /// A title described from a kept answer (a match, a season's children) takes the artwork
-    /// `title_now` last read for its guid: those answers are kept for good, and a push that
-    /// identifies a row again would put back the urls the agent has since replaced.
-    pub(super) fn newer_artwork(&self, language: &str, title: &mut Value) {
+    /// A title described from a kept answer (a match, a season's children) takes the artwork and
+    /// ratings `title_now` last read for its guid: those answers are kept for good, and a push that
+    /// identifies a row again, or a Fix Match, would put back the urls the agent has since replaced
+    /// and the scores a refresh replaced.
+    pub(super) fn newer_description(&self, language: &str, title: &mut Value) {
         let id = title.get("guid").and_then(Value::as_str).and_then(|guid| guid.strip_prefix("plex://")?.split_once('/')).map(|(_, id)| id.to_string());
         let Some(id) = id else {
             return;
@@ -193,6 +194,13 @@ impl PlexMeta {
             if let Some(value) = now.get(field) {
                 title.insert(field.to_string(), value.clone());
             }
+        }
+        // The scores as the newer answer gives them, none where it gives none.
+        for field in crate::metadata::RATINGS {
+            match now.get(field) {
+                Some(value) => title.insert(field.to_string(), value.clone()),
+                None => title.shift_remove(field),
+            };
         }
     }
 
