@@ -633,8 +633,19 @@ impl Drop for ScaleSlot {
 
 /// Whether a PNG carries alpha: an alpha colour type (4, 6) or a `tRNS` chunk before its data.
 fn png_has_alpha(png: &[u8]) -> bool {
-    let header = png.windows(4).position(|chunk| chunk == b"IDAT").map_or(png, |at| &png[..at]);
-    matches!(png.get(25), Some(4 | 6)) || header.windows(4).any(|chunk| chunk == b"tRNS")
+    if matches!(png.get(25), Some(4 | 6)) {
+        return true;
+    }
+    // Chunk by chunk, by each one's length: a text chunk may hold the bytes `IDAT`.
+    let mut at = 8;
+    while let Some(chunk) = png.get(at..at + 8) {
+        match &chunk[4..] {
+            b"tRNS" => return true,
+            b"IDAT" => return false,
+            _ => at = at.saturating_add(12).saturating_add(u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as usize),
+        }
+    }
+    false
 }
 
 /// One picture through FFmpeg on pipes, read as `demuxer` with nothing but the pipe to open (a
@@ -789,6 +800,29 @@ mod image_cache_tests {
         assert_eq!(exif_orientation(&tiff(false, 8)), 8);
         assert_eq!(exif_orientation(&tiff(false, 99)), 1);
         assert_eq!(exif_orientation(b"II*\0"), 1);
+    }
+
+    #[test]
+    fn a_png_has_alpha_by_its_colour_type_or_a_trns_chunk_before_its_data() {
+        // Signature, then chunks of length, type and data (CRCs, unread, zero).
+        let png = |colour: u8, chunks: &[(&[u8; 4], &[u8])]| {
+            let ihdr = [0, 0, 0, 1, 0, 0, 0, 1, 8, colour, 0, 0, 0];
+            let mut bytes = b"\x89PNG\r\n\x1a\n".to_vec();
+            for (kind, data) in [(b"IHDR", &ihdr[..])].into_iter().chain(chunks.iter().copied()) {
+                bytes.extend((data.len() as u32).to_be_bytes());
+                bytes.extend(*kind);
+                bytes.extend(data);
+                bytes.extend([0; 4]);
+            }
+            bytes
+        };
+        assert!(png_has_alpha(&png(6, &[(b"IDAT", b"")])));
+        assert!(png_has_alpha(&png(4, &[(b"IDAT", b"")])));
+        assert!(png_has_alpha(&png(3, &[(b"PLTE", b"\0\0\0"), (b"tRNS", b"\0"), (b"IDAT", b"")])));
+        assert!(png_has_alpha(&png(3, &[(b"tEXt", b"Comment\0IDAT"), (b"PLTE", b"\0\0\0"), (b"tRNS", b"\0"), (b"IDAT", b"")])));
+        assert!(!png_has_alpha(&png(3, &[(b"PLTE", b"\0\0\0"), (b"IDAT", b"tRNS")])));
+        assert!(!png_has_alpha(&png(2, &[(b"IDAT", b"")])));
+        assert!(!png_has_alpha(&png(3, &[(b"PLTE", b"\0\0\0")])[..40]));
     }
 
     #[test]
