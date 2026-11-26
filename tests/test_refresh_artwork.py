@@ -8,7 +8,8 @@ rex: artwork unavailable`) while the agent named new ones, and Refresh Metadata 
 Here, against test_plextv's stub with Big Buck Bunny placed as zurg pushes it:
 
   (a) Refresh Metadata takes the poster and background the agent names now, past the cache;
-  (b) a poster whose fetch fails asks the agent again by itself, once per start for the urls a row holds;
+  (b) a poster whose fetch fails asks the agent again by itself, once per start for the urls a row holds,
+      and an agent that gave no answer only after a while (RETRY seconds here, ten minutes in a real rex);
   (c) a poster a person picked stays theirs, the background they did not pick still follows, and a
       background they uploaded stays theirs too (an upload sets no lock);
   (d) with The Mentalist's first episode: a show's refresh takes its poster, background and theme
@@ -35,6 +36,8 @@ from test_plextv import AGENT, SERVER_TOKEN, Instance, Stub, check, wait_for
 from test_ports import free_port
 
 ID = MOVIE[3].rsplit("/", 1)[1]
+# How long a failed fetch waits to ask an agent that gave no answer again (REX_AGENT_ARTWORK_RETRY_S).
+RETRY = 3
 # Urls rex cannot fetch (a private address), as a 403'd gracenote url answers it.
 DEAD = "http://127.0.0.1:9/%s.jpg"
 
@@ -113,7 +116,8 @@ def main():
     stub.artwork = ("", "")
     threading.Thread(target=stub.serve_forever, daemon=True).start()
     directory = fresh(True)
-    instance = Instance(directory, free_port(), stub.server_address[1], plex_token=None, announce=None)
+    instance = Instance(directory, free_port(), stub.server_address[1], plex_token=None, announce=None,
+                        env_extra={"REX_AGENT_ARTWORK_RETRY_S": str(RETRY)})
     try:
         check("Big Buck Bunny is pushed", push(instance) == 200)
         row = (wait_for(lambda: named_on_claim.named(instance), 20) or rows(instance))[MOVIE[0]]
@@ -141,6 +145,13 @@ def main():
         down = wait_for(lambda: getattr(stub, "item_refused", 0) > refused, 10)
         check("(b) with the agent down a failed fetch asks it and changes nothing",
               down and stored(instance, key, "posters") == DEAD % "poster-b", (asked(stub) - before, stored(instance, key, "posters")))
+        # Every view of a dead tile asked again while the agent answered 503 (2026-11-26): an outage
+        # fails every fetch. The suite's rex waits RETRY seconds, a real one ten minutes.
+        time.sleep(0.5)
+        before = asked(stub)
+        call(instance, "GET", photo, token=SERVER_TOKEN)
+        check("(b) and the next failed fetch, the agent still down, does not ask again at once",
+              not wait_for(lambda: asked(stub) > before, 2), asked(stub) - before)
         stub.item_down, before = False, asked(stub)
         status = call(instance, "GET", photo, token=SERVER_TOKEN)[0]
         # The failed ask can still hold its mark when the stub has answered, so a view finds the
@@ -231,7 +242,8 @@ def main():
     # -- (e) a film with no poster yet ----------------------------------------------------
     stub.posterless, stub.artwork = True, ("", "")
     directory = fresh(True)
-    instance = Instance(directory, free_port(), stub.server_address[1], plex_token=None, announce=None)
+    instance = Instance(directory, free_port(), stub.server_address[1], plex_token=None, announce=None,
+                        env_extra={"REX_AGENT_ARTWORK_RETRY_S": str(RETRY)})
     try:
         push(instance)
         row = (wait_for(lambda: named_on_claim.named(instance), 20) or rows(instance))[MOVIE[0]]

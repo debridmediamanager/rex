@@ -716,8 +716,9 @@ pub struct Runtime {
     pending_image_row: Option<(String, String)>,
     /// Films and shows a Refresh Metadata asks Plex's agent for their artwork again.
     pending_agent_artwork: Vec<String>,
-    /// Rows asked again for a failed fetch since the start, with the urls they held: once each.
-    agent_artwork_asked: HashSet<String>,
+    /// Rows asked again for a failed fetch since the start, with the urls they held, and when a
+    /// failed fetch may ask again: never once the agent answered, ten minutes on when it did not.
+    agent_artwork_asked: HashMap<String, i64>,
     /// `/service(s)/ultrablur/colors`: the palette its image falls back to, answered once the
     /// image is read outside the lock.
     pending_ultrablur: Option<Value>,
@@ -1070,7 +1071,7 @@ impl Runtime {
             pending_image: None,
             pending_image_row: None,
             pending_agent_artwork: Vec::new(),
-            agent_artwork_asked: HashSet::new(),
+            agent_artwork_asked: HashMap::new(),
             pending_ultrablur: None,
             pending_claim: None,
             pending_agent: None,

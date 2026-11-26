@@ -687,7 +687,7 @@ pub(super) fn agent_urls(row: &Value) -> String {
 /// new ones): a row's artwork asked of the agent again by its guid, past `plex_cache.db`, for
 /// a Refresh Metadata (a show's seasons with it) and for its artwork whose fetch failed (`dead`,
 /// the urls `agent_urls` read then: once per start for the urls a row holds, so a url the agent still names is not asked for on
-/// every view). Only artwork the row serves itself, from a url the agent gave or from none, is set:
+/// every view, and ten minutes on when the agent gave no answer). Only artwork the row serves itself, from a url the agent gave or from none, is set:
 /// a season keeps a copy of its show's background (`hierarchy::fill_season`) and serves the
 /// show's, and the agent's answer for a season or episode names a background anyway (a real
 /// library's, 2026-11-19; replacing the copy rewrote 12 Monkeys' four seasons for nothing). What a person picked (locked) or uploaded (`upload://`) stays;
@@ -697,6 +697,12 @@ pub(super) fn agent_urls(row: &Value) -> String {
 pub(super) fn spawn_ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
     let shared = Arc::clone(shared);
     let _ = std::thread::Builder::new().name("agent-artwork".to_string()).spawn(move || ask_agent_again(&shared, keys, dead));
+}
+
+/// Seconds a failed fetch waits to ask an agent that gave no answer again: ten minutes, the feed's
+/// blank-tile pass. `REX_AGENT_ARTWORK_RETRY_S` shortens it for the suite.
+fn agent_retry_after() -> i64 {
+    std::env::var("REX_AGENT_ARTWORK_RETRY_S").ok().and_then(|seconds| seconds.parse().ok()).filter(|seconds| *seconds > 0).unwrap_or(600)
 }
 
 fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<String>) {
@@ -729,7 +735,10 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
                 continue;
             }
             let mark = format!("{key} {urls}");
-            if dead.is_none() || runtime.agent_artwork_asked.insert(mark.clone()) {
+            if dead.is_none() {
+                asked.push((key, mark, id, guid, language));
+            } else if runtime.agent_artwork_asked.get(&mark).is_none_or(|again| *again <= now()) {
+                runtime.agent_artwork_asked.insert(mark.clone(), i64::MAX);
                 asked.push((key, mark, id, guid, language));
             }
         }
@@ -745,9 +754,12 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
     }
     // -- under the lock: apply ---------------------------------------------------------------
     let mut guard = feed::lock(shared);
-    // No answer (offline, unclaimed): the next failed fetch asks again.
+    // No answer (offline, unclaimed): a failed fetch asks again ten minutes on, not on the next
+    // view. Dropping the mark made every view of every dead tile ask while the agent answered 503
+    // (five rows, three rounds of views: 15 asks, 2026-11-26), and an outage fails every fetch.
+    let again = now() + agent_retry_after();
     for mark in unanswered {
-        guard.agent_artwork_asked.remove(&mark);
+        guard.agent_artwork_asked.insert(mark, again);
     }
     let mut given = 0;
     for (key, guid, title) in found {
