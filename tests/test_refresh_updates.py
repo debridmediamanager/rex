@@ -17,7 +17,8 @@ the bare item, a show's seasons alike, took a season's episodes from nothing, an
   (b) the same answer again moves nothing (plexlab's Big Buck Bunny);
   (c) a season's refresh asks the season alone, plexlab's query, and takes its episodes' stills and
       scores from that answer, plexlab's for The Train Job; both move, the show does not;
-  (d) a show's refresh asks the show, then its season, nothing else; the show moves, its season
+  (d) a show's refresh asks the show, then each season, nothing else (a season the agent names
+      nothing for does not stop the next, as an agent that gives no answer does); the show moves, its season
       (the same answer as just before) does not, and both show the show's new paths where they
       borrow them; the library's own stamps and Recently Added stay as they were;
   (e) an agent that gives no answer moves nothing, asks once, and the frames still come;
@@ -38,7 +39,7 @@ import time
 import urllib.parse
 
 import test_agent_description as described
-from test_agent_description import ITEMS, catalog
+from test_agent_description import ITEMS, MOUNT, SPECIALS, catalog, episode_item
 from test_feed import Bytes, Server, check, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +51,16 @@ FILM, SHOW, SEASON = "5d7768352e80df001ebde4c9", "5d9c086c7d06d9001ffd27aa", "60
 # 2026-10-16); the agent names Firefly's Season 1 602e67e7... now, and answers for either here.
 OLD_SEASON = "5d9c09de08fddd001f2afb4c"
 TRAIN_JOB = "plex://episode/5d9c127e4eefaa001f6449c2"
+
+
+def special():
+    """Firefly's Trash, a season-0 special as its source placed it: a second season the agent
+    answers nothing for here."""
+    pushed = SPECIALS["pushes"]["s01e11_trash"]
+    out = dict(episode_item(), id=pushed["path"], path=pushed["path"], file="%s/%s" % (MOUNT, pushed["path"]),
+               name=pushed["name"], size=pushed["size"], hash=pushed["hash"], ids=pushed["ids"], folder=pushed["folder"])
+    out.update(pushed["placed"])
+    return out
 
 
 def recorded(refresh, item):
@@ -171,7 +182,7 @@ def main():
     catalog(work)
     server = Server(work, serve(Bytes().handler()), keys=keys)
     try:
-        status, body = server.feed("POST", "items", {"items": ITEMS})
+        status, body = server.feed("POST", "items", {"items": ITEMS + [special()]})
         pushed = server.keys()
         film, episode = pushed.get(ITEMS[0]["id"]), pushed.get(ITEMS[2]["id"])
         show, season = row(server, episode).get("grandparentRatingKey"), row(server, episode).get("parentRatingKey")
@@ -250,8 +261,12 @@ def main():
         wait(lambda: len(agent.asked) >= asked + 2, 10)
         time.sleep(1.5)
         sent = [(method, path.replace(OLD_SEASON, SEASON), query) for method, path, query in agent.asked[asked:]]
-        want = [("GET", e["path"], e["query"]) for e in SHOW_R["outbound"] if not e["path"].endswith("/extras")]
-        check("(d) a show's refresh asks the show, then its season, plexlab's queries, nothing else", sent == want, (sent, want))
+        show_ask, season_ask = (("GET", e["path"], e["query"]) for e in SHOW_R["outbound"] if not e["path"].endswith("/extras"))
+        # Each season rex holds, in its order: the special's, which the agent answers nothing for here, and Season 1.
+        want = [show_ask] + [("GET", "/library/metadata/" + r["guid"].rsplit("/", 1)[1].replace(OLD_SEASON, SEASON), season_ask[2])
+                             for r in (server.rows("/library/metadata/%s/children?includeGuids=1" % show) or [])]
+        check("(d) a show's refresh asks the show, then each season, plexlab's queries, nothing else",
+              len(want) == 3 and sent == want, (sent, want))
         rows_after = {key: row(server, key) for key in (show, season, episode)}
         moved = {key: rows_after[key].get("updatedAt") != rows_before[key].get("updatedAt") for key in rows_before}
         check("(d) the show moves, its season and episode (the answer just given) do not, as plexlab's 6, 7 and 8",
