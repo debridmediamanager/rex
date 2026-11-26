@@ -16306,7 +16306,7 @@ real library's season and episode, 2026-11-19: `GET /library/metadata/{id}` answ
 `thumb` the poster and still rex held; a first build replaced 12 Monkeys' four seasons' copies). What a person picked (locked) or uploaded
 (`upload://`, which sets no lock) stays. The answer is kept, and a push that identifies a row again,
 or a Fix Match, describes it with that answer's artwork over the kept match's and children's
-(`PlexMeta::newer_artwork`). `tests/test_refresh_artwork.py`; the scan unit test for the description.
+(`PlexMeta::newer_description`, which carries the ratings a refresh took too). `tests/test_refresh_artwork.py`; the scan unit test for the description.
 
 A title the agent names no poster for yet draws rex's tile: on a real library, The Adventures of
 Baron Munchausen (`plex://movie/5d77683b6f4521001ea9d3e3`, 2026-11-19) had neither `thumb` nor
@@ -16369,11 +16369,47 @@ shows, 12 seasons and 12 episodes, beside Plex's agent's own answer:
 | grid rows | the attributes, no `Rating` list | |
 
 plexlab's Firefly, The Train Job and Big Buck Bunny (`agent_description_s1434.json`) answer the
-same, and fix the rounding: the agent's TMDB 8.35 is plexlab's 8.3, which is `%.1f` of the double
-(8.3499...), not half up. rex now describes each row with them (`metadata::ratings`), a show's
+same. rex now describes each row with them (`metadata::ratings`), a show's
 through its leaf's hints, and a start describes rows an older rex described (`DESCRIBED` 3) again
 from the answers it kept, dropping an episode's copy of its show's score; a row a person
 matched takes its ratings alone, a film or show asking the agent by its own ids (a title picked
 from a search left no answer kept by them), and is marked only once it has them. A catalog's own `rating`
 (TMDB's, without a `ratingImage`) still goes, as before. **Not measured:** a film library whose
 `ratingsSource` is `imdb` or `themoviedb`; rex answers the default's. `tests/test_agent_description.py`.
+
+**Rounding (re-measured 2026-11-26).** The agent's item answers to plexlab's own passes gave
+Firefly's TMDB score as 8.344 (2026-09-12), 8.346, 8.348 (2026-10-13) and 8.351 (2026-11-12), and
+plexlab showed 8.3 (the 10-12 recording) and 8.4 (read 2026-11-26): one decimal, nearest. The
+agent's 8.35 in `feed/specials.json` is a match answer of 2026-10-16 on zen, not an answer plexlab
+was given, so "8.35 is 8.3" was never measured. No title plexlab holds has had a score exactly
+halfway (the only one in its capture, Out of Gas's TMDB 8.25, is an episode plexlab does not
+hold): rex prints `{:.1}` of the double, and a value exactly halfway is unmeasured.
+
+**plexlab takes the agent's new scores on a refresh (2026-11-26, read only).** Its capture holds the
+agent's answers to two of its passes over every title, 2026-10-13 and 2026-11-12, each the
+`GET /library/metadata/<guid>?...&updating=1` a refresh sends (a show's with `includeChildren=1`;
+no season or episode asked). Between them Big Buck Bunny's Rotten Tomatoes audience score went 5.4
+to 5.3, Firefly's TMDB 8.348 to 8.351 and Tears of Steel gained a TMDB entry (5.715), and plexlab
+shows 5.3, 8.4 and the new entry (5.7) where its 10-12 answers showed 5.4 and 8.3: the pass rewrote
+the ratings, the `Rating` list whole. That the butler's `RefreshPeriodicMetadata` made the passes
+is inferred, as above; no refresh was sent to plexlab for this. The Train Job's scores did not
+change, so whether a refresh rewrites an episode's is unmeasured. The agent also gives Tears of
+Steel `rating` 6 with no `ratingImage`, and plexlab shows no `rating` for it, detail or grid.
+
+So a Refresh Metadata of a film, show or episode now sets the ratings of the agent's answer it asks
+for (`artwork::ask_agent_again`, which a failed artwork fetch runs too), dropping one the answer
+does not give, and a Fix Match or a push that identifies a row again takes that answer's ratings
+over the kept match's (`PlexMeta::newer_description`). A film's `rating` is kept only beside its
+`ratingImage`. A score a person locked stays: an edit's `audienceRating.locked=1` locks
+`audienceRating` (and its image with it), which the start pass read as `audiencerating` and wrote
+over. `tests/test_refresh_ratings.py` drives it from `fixtures/ratings_s1434.json`
+(`probes/record_ratings.py`: plexlab's answers now and the agent's answers to those passes).
+
+**What it asks.** A start's pass reads the answers `plex_cache.db` keeps and asks the agent
+nothing for rows their source placed; a row a person matched by hand asks one match by its ids
+when none is kept (the held rows of `test_agent_description.py`, one hand match unanswered: one
+request at the first start, none at the second, the empty answer being kept a day). A refresh asks
+what it asked for artwork ("Artwork Plex's agent replaced"): no request more. **Not
+covered:** the start's pass reads only answers kept in English (`plexmeta::Kept`), so a library in
+another language gets no ratings from it, and its episodes keep their show's score, until each is
+refreshed; the same holds for what `DESCRIBED` 2 added.

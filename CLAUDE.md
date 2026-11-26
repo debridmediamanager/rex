@@ -733,6 +733,9 @@ python3 tests/test_refresh_artwork.py       # artwork Plex's agent replaced (a f
                                             # asked again past the cache on Refresh Metadata and when its fetch fails (once a row's urls per
                                             # start, an agent that gave no answer ten minutes on); a person's pick, an upload and a source's
                                             # own artwork kept
+python3 tests/test_refresh_ratings.py       # ratings as plexlab's follow Plex's agent: a refresh takes its new scores (plexlab's
+                                            # 2026-11-12 pass), a Fix Match and a start keep them, a film's rating only with its
+                                            # image (Tears of Steel), a person's locked score kept
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
