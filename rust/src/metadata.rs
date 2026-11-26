@@ -354,8 +354,10 @@ pub const RATINGS: [&str; 5] = ["rating", "ratingImage", "audienceRating", "audi
 /// Job and Big Buck Bunny, `agent_description_s1434.json`; 25 films, 12 shows and 12 episodes of a
 /// 1.43.5 PMS against the agent, 2026-11-19): a film's as the agent gives them, Rotten Tomatoes'
 /// critic and audience scores; a show's and an episode's audience score is its TMDB one, with no
-/// critic score, and none when TMDB gives none. Every value to one decimal as PMS prints the
-/// double (the agent's 8.35 is plexlab's 8.3, 8.438 is 8.4).
+/// critic score, and none when TMDB gives none. A film's `rating` only beside its `ratingImage`:
+/// the agent gives Tears of Steel `rating` 6 with no image, and plexlab shows none
+/// (`ratings_s1434.json`). Every value to one decimal (Firefly's TMDB 8.348 was plexlab's 8.3,
+/// 8.351 its 8.4; a value exactly halfway is unmeasured).
 // shortcut: a movie library's `ratingsSource` imdb or themoviedb is not measured; the default (Rotten Tomatoes) is answered.
 fn ratings(title: &Value, kind: &str) -> [(&'static str, Option<Value>); 5] {
     let round = |value: &Value| value.as_f64().and_then(|value| format!("{value:.1}").parse::<f64>().ok()).map(Value::from);
@@ -368,7 +370,8 @@ fn ratings(title: &Value, kind: &str) -> [(&'static str, Option<Value>); 5] {
         })
         .collect();
     let (rating, image, audience, audience_image) = if kind == "movie" {
-        (said(title, "rating").and_then(round), said(title, "ratingImage").cloned(),
+        let image = said(title, "ratingImage").cloned();
+        (said(title, "rating").filter(|_| image.is_some()).and_then(round), image,
          said(title, "audienceRating").and_then(round), said(title, "audienceRatingImage").cloned())
     } else {
         let tmdb = list.iter().find(|entry| entry["image"].as_str().is_some_and(|image| image.starts_with("themoviedb://")));
