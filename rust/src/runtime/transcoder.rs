@@ -644,6 +644,10 @@ fn scale_image(ffmpeg: &std::path::Path, image: &[u8], demuxer: &str, filter: &s
     command.args(["-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-threads", "1", "-f", "image2pipe"]);
     if png {
         command.args(["-c:v", "png"]);
+        // A PNG's as RGBA: a palette one scaled kept its palette but lost its transparency. A JPEG's stays RGB, as plexlab's.
+        if demuxer == "png_pipe" {
+            command.args(["-pix_fmt", "rgba"]);
+        }
     } else {
         command.args(["-c:v", "mjpeg", "-pix_fmt", "yuvj444p", "-q:v", &qscale.to_string()]);
     }
@@ -882,6 +886,17 @@ mod image_cache_tests {
         let logo = make("color=red@0.5:s=786x132,format=rgba", &["-c:v", "png"]);
         let kept = fit(&logo, &[("width", "400"), ("height", "200")]);
         assert_eq!((kept.content_type.as_str(), &kept.body[..4]), ("image/jpeg", &b"\x89PNG"[..]));
+        // A palette logo with a transparent background keeps it, as Plex's clearLogos come.
+        let source = "color=black@0:s=786x132:d=0.04,format=rgba,drawbox=x=100:y=30:w=500:h=60:color=white:t=fill,split[a][b];[a]palettegen=reserve_transparent=1[p];[b][p]paletteuse";
+        let palette = make(source, &["-c:v", "png"]);
+        assert_eq!(palette[25], 3, "the source is a palette PNG");
+        let kept = fit(&palette, &[("width", "400"), ("height", "200")]);
+        let mut decoder = png::Decoder::new(std::io::Cursor::new(&kept.body));
+        decoder.set_transformations(png::Transformations::normalize_to_color8());
+        let mut reader = decoder.read_info().unwrap();
+        let mut pixels = vec![0; reader.output_buffer_size().unwrap()];
+        let frame = reader.next_frame(&mut pixels).unwrap();
+        assert_eq!((frame.color_type, pixels[3]), (png::ColorType::Rgba, 0), "the corner stays transparent");
         // What is not JPEG, PNG or WebP is never handed to FFmpeg.
         let text = b"#EXTM3U\n#EXTINF:1,\nhttp://127.0.0.1:9/x.ts\n".to_vec();
         let query = [("width", "240"), ("height", "360")].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
