@@ -736,6 +736,9 @@ python3 tests/test_refresh_artwork.py       # artwork Plex's agent replaced (a f
 python3 tests/test_refresh_ratings.py       # ratings as plexlab's follow Plex's agent: a refresh takes its new scores (plexlab's
                                             # 2026-11-12 pass), a Fix Match and a start keep them, a film's rating only with its
                                             # image (Tears of Steel), a person's locked score kept
+python3 tests/test_refresh_updates.py       # what a refresh asks and moves, as plexlab's of 2026-11-26: plexlab's queries (a show,
+                                            # then each season, a season's episodes inside its answer), updatedAt and every artwork
+                                            # path to the PUT's second only for a title whose answer changed, frames after the answer
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
