@@ -81,7 +81,10 @@ fn localised(method: &str, path: &str, language: &str) -> (String, Vec<(&'static
     }
     let country = country.map(|country| format!("X-Plex-Country={country}&")).unwrap_or_default();
     let joint = if path.contains('?') { '&' } else { '?' };
-    (format!("{path}{joint}{country}X-Plex-Language={language}"), Vec::new())
+    // A refresh's ask (`updating=1`) names its text format last, as plexlab's do (2026-11-26,
+    // `tests/fixtures/refresh_s1434.json`); its matches and children asks name none.
+    let format = if path.contains("updating=1") { "&X-Plex-Text-Format=markdown" } else { "" };
+    (format!("{path}{joint}{country}X-Plex-Language={language}{format}"), Vec::new())
 }
 
 pub(crate) struct PlexMeta {
@@ -160,7 +163,7 @@ pub(crate) struct InLanguage<'a> {
 
 impl crate::identify::PlexSource for InLanguage<'_> {
     fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
-        self.agent.call(self.language, method, path, body, false)
+        self.agent.call(self.language, method, path, body, false, true)
     }
 }
 
@@ -205,15 +208,31 @@ impl PlexMeta {
     }
 
     /// A title as Plex's agent describes it now (`GET /library/metadata/{id}`, as plexav's PMS reads
-    /// an item, `music/agent.json`), asked past `plex_cache.db` and kept there: the agent replaces a
-    /// title's artwork and the urls it gave before stop answering (Funny Money's gracenote poster
-    /// 403'd, 2026-11-17, while the agent named another).
-    pub(super) fn title_now(&self, language: &str, id: &str) -> Option<Value> {
-        let answer = self.call(language, "GET", &format!("/library/metadata/{id}"), None, true)?;
-        answer.pointer("/MediaContainer/Metadata/0").cloned()
+    /// an item, `music/agent.json`; with `query`, as plexlab's refresh asks it), asked past
+    /// `plex_cache.db`: the agent replaces a title's artwork and the urls it gave before stop
+    /// answering (Funny Money's gracenote poster 403'd, 2026-11-17, while the agent named another).
+    /// The title and the episodes a season's answer holds (`includeChildren=1`: no request of a
+    /// refresh asks an episode on its own; a show's seasons are asked each) are kept under each
+    /// title's own item key, which `newer_description` reads.
+    pub(super) fn title_now(&self, language: &str, id: &str, query: &str) -> Option<Value> {
+        let path = if query.is_empty() { format!("/library/metadata/{id}") } else { format!("/library/metadata/{id}?{query}") };
+        let answer = self.call(language, "GET", &path, None, true, false)?;
+        let title = answer.pointer("/MediaContainer/Metadata/0")?.clone();
+        let mut own = title.clone();
+        let held = own.as_object_mut().and_then(|own| own.shift_remove("Children"));
+        let held = held.as_ref().and_then(|children| children.get("Metadata")).and_then(Value::as_array).cloned().unwrap_or_default();
+        let held = held.into_iter().filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"));
+        for row in std::iter::once(own).chain(held) {
+            let Some(id) = row.get("guid").and_then(Value::as_str).and_then(|guid| guid.strip_prefix("plex://")?.split_once('/')).map(|(_, id)| id.to_string()) else {
+                continue;
+            };
+            self.cache.put(&keyed(language, cache_key("GET", &format!("/library/metadata/{id}"), None)), &json!({"MediaContainer": {"size": 1, "Metadata": [row]}}));
+        }
+        Some(title)
     }
 
-    fn call(&self, language: &str, method: &str, path: &str, body: Option<&Value>, fresh: bool) -> Option<Value> {
+    /// `keep`: the answer is kept under its request's key (`title_now` keeps each title it holds itself).
+    fn call(&self, language: &str, method: &str, path: &str, body: Option<&Value>, fresh: bool, keep: bool) -> Option<Value> {
         let key = keyed(language, cache_key(method, path, body));
         let (asked, localised_headers) = localised(method, path, language);
         let incomplete = |answer: &Value| incomplete(method, answer);
@@ -291,7 +310,9 @@ impl PlexMeta {
             return cached.filter(|_| !fresh);
         };
         let answer = stamped(incomplete(&answer), answer);
-        self.cache.put(&key, &answer);
+        if keep {
+            self.cache.put(&key, &answer);
+        }
         Some(answer)
     }
 }

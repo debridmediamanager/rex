@@ -714,7 +714,7 @@ pub struct Runtime {
     /// (`artwork::agent_urls`): asked of Plex's agent again when the fetch fails
     /// (`artwork::ask_agent_again`).
     pending_image_row: Option<(String, String)>,
-    /// Films and shows a Refresh Metadata asks Plex's agent for their artwork again.
+    /// Rows a Refresh Metadata asks Plex's agent about again (a show's seasons with it).
     pending_agent_artwork: Vec<String>,
     /// Rows asked again for a failed fetch since the start, with the urls they held, and when a
     /// failed fetch may ask again: never once the agent answered, ten minutes on when it did not.
@@ -20158,11 +20158,8 @@ impl Runtime {
                             "season" => self.notify_season_cascade(key),
                             _ => self.notify_refreshed(key),
                         }
+                        // A show's seasons are asked after it (`ask_agent_again`).
                         self.pending_agent_artwork.push(key.to_string());
-                        if kind == "show" {
-                            let seasons = self.children(key);
-                            self.pending_agent_artwork.extend(seasons.iter().filter_map(key_of));
-                        }
                         if matches!(kind.as_str(), "show" | "season") {
                             info!("REFRESH {key} ({title}) -- cascaded");
                         } else {
