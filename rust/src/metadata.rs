@@ -360,6 +360,26 @@ pub fn rating_lock(field: &str) -> Option<&'static str> {
     }
 }
 
+/// `ratings` onto a row: each field set or, when the agent gives none, dropped, unless a person
+/// locked it. Whether anything changed.
+pub fn put_ratings(row: &mut Map<String, Value>, ratings: [(&'static str, Option<Value>); 5], locked: impl Fn(&Map<String, Value>, &str) -> bool) -> bool {
+    let mut changed = false;
+    for (field, value) in ratings {
+        if rating_lock(field).is_some_and(|lock| locked(row, lock)) {
+            continue;
+        }
+        changed |= match value {
+            Some(value) if row.get(field) == Some(&value) => false,
+            Some(value) => {
+                row.insert(field.to_string(), value);
+                true
+            }
+            None => row.shift_remove(field).is_some(),
+        };
+    }
+    changed
+}
+
 /// A title's ratings as a real PMS shows them from its agent's answer (plexlab's Firefly, The Train
 /// Job and Big Buck Bunny, `agent_description_s1434.json`; 25 films, 12 shows and 12 episodes of a
 /// 1.43.5 PMS against the agent, 2026-11-19): a film's as the agent gives them, Rotten Tomatoes'
@@ -369,7 +389,7 @@ pub fn rating_lock(field: &str) -> Option<&'static str> {
 /// (`ratings_s1434.json`). Every value to one decimal (Firefly's TMDB 8.348 was plexlab's 8.3,
 /// 8.351 its 8.4; a value exactly halfway is unmeasured).
 // shortcut: a movie library's `ratingsSource` imdb or themoviedb is not measured; the default (Rotten Tomatoes) is answered.
-fn ratings(title: &Value, kind: &str) -> [(&'static str, Option<Value>); 5] {
+pub fn ratings(title: &Value, kind: &str) -> [(&'static str, Option<Value>); 5] {
     let round = |value: &Value| value.as_f64().and_then(|value| format!("{value:.1}").parse::<f64>().ok()).map(Value::from);
     let list: Vec<Value> = title.get("Rating").and_then(Value::as_array).into_iter().flatten()
         .filter_map(|entry| {

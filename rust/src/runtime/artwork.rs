@@ -797,6 +797,16 @@ fn ask_agent_again(shared: &SharedRuntime, keys: Vec<String>, dead: Option<Strin
             given += 1;
             info!("ARTWORK {key} -- Plex's agent names new artwork");
         }
+        // plexlab's passes over its library (the item request a refresh sends) took the agent's new
+        // scores: Big Buck Bunny's Rotten Tomatoes 5.4 became 5.3 and Firefly's TMDB 8.3 8.4 on
+        // 2026-11-12 (findings, "Ratings"). A season shows none.
+        let kind = object.get("type").and_then(Value::as_str).filter(|kind| matches!(*kind, "movie" | "show" | "episode")).map(str::to_string);
+        if let Some(kind) = kind {
+            if crate::metadata::put_ratings(object, crate::metadata::ratings(&title, &kind), super::edit::field_locked) {
+                given += 1;
+                info!("REFRESH {key} -- Plex's agent gives new ratings");
+            }
+        }
     }
     if given > 0 {
         guard.dirty = true;
