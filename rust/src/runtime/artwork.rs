@@ -169,6 +169,51 @@ pub(super) fn sha1_hex(body: &[u8]) -> String {
         .collect()
 }
 
+/// The query parameters a picked url carries a credential in: what the log masks by name.
+const TOKEN_PARAMETERS: [&str; 4] = ["x-plex-token", "token", "access_token", "auth_token"];
+
+/// A picked url without what authenticates it (card 859): its userinfo and token-named query
+/// parameters dropped, and a token still inside it (a nested `url=`) masked as the log masks it.
+pub(super) fn without_credentials(url: &str) -> String {
+    let (base, query) = url.split_once('?').map_or((url, None), |(base, query)| (base, Some(query)));
+    let mut bare = match base.split_once("://") {
+        Some((scheme, rest)) => {
+            let (authority, path) = rest.find('/').map_or((rest, ""), |at| rest.split_at(at));
+            format!("{scheme}://{}{path}", authority.rsplit_once('@').map_or(authority, |(_, host)| host))
+        }
+        None => base.to_string(),
+    };
+    let kept: Vec<&str> = query
+        .unwrap_or_default()
+        .split('&')
+        .filter(|pair| {
+            let name = percent_decode(pair.split('=').next().unwrap_or_default()).to_ascii_lowercase();
+            !pair.is_empty() && !TOKEN_PARAMETERS.contains(&name.as_str())
+        })
+        .collect();
+    if !kept.is_empty() {
+        bare = format!("{bare}?{}", kept.join("&"));
+    }
+    super::logging::redact_tokens(&bare)
+}
+
+/// Whether a stored url carries a credential: whatever the log would mask in it.
+pub(super) fn carries_credentials(url: &str) -> bool {
+    super::logging::redact_tokens(url) != url
+}
+
+/// A row's own picks that may carry a credential stored by a build before card 859: the urls
+/// a person picked (the field locked, `set_artwork`) and their copies.
+pub(super) fn picked_with_credentials(row: &Value) -> Vec<&'static str> {
+    let Some(object) = row.as_object() else { return Vec::new() };
+    [("thumb", ["_poster_url", "_thumbFor", "_poster_agent"]), ("art", ["_art_url", "_artFor", "_art_agent"])]
+        .into_iter()
+        .filter(|(field, _)| super::edit::field_locked(object, field))
+        .flat_map(|(_, names)| names)
+        .filter(|name| object.get(*name).and_then(Value::as_str).is_some_and(carries_credentials))
+        .collect()
+}
+
 impl Runtime {
     fn parent_of(&self, row: &Value, field: &str) -> Option<Value> {
         row.get(field)
@@ -191,7 +236,7 @@ impl Runtime {
     /// one its path was minted for (`_thumbFor`, `_artFor`) gets a new version, handed down
     /// to its children. A row that never recorded one is stamped once where the library is
     /// kept (`--state`): its cached artwork predates this and may be stale.
-    pub(super) fn restamp_artwork(&mut self) {
+    pub(super) fn restamp_artwork(&mut self) -> bool {
         // (`artwork_writes` decides it for each row; a start's restore asks it as it reads.)
         let touched = self.catalog.take_touched();
         let keys: Vec<String> = if touched.all {
@@ -203,7 +248,10 @@ impl Runtime {
         let stamp = now();
         let mut cascade = Vec::new();
         let mut wrote = false;
+        let mut dropped = false;
         for key in keys {
+            dropped |= self.drop_pick_credentials(&key);
+            wrote |= dropped;
             let Some(row) = self.catalog.get(&key) else {
                 continue;
             };
@@ -240,6 +288,7 @@ impl Runtime {
         if wrote {
             self.dirty = true;
         }
+        dropped
     }
 
     /// Re-derive every borrowed artwork field under a row whose artwork changed
@@ -428,6 +477,59 @@ impl Runtime {
         Response::empty(200)
     }
 
+    /// What a pick by url stores (card 859). A url carrying a credential (a token, a password)
+    /// kept it in the state file and in every row a client reads, long after the request. A
+    /// real PMS keeps the picture it fetched for a pick, not the url: plexlab's
+    /// `user_thumb_url` for a TMDB poster picked by `PUT .../poster?url=` is
+    /// `metadata://posters/tv.plex.agents.movie_<sha1>` (read 2026-11-27), as a `POST
+    /// .../posters?url=` keeps `upload://posters/<sha1>`. So such a url is fetched now, while it
+    /// still holds its credential (public addresses only, as the POST), and its bytes kept under
+    /// the url without it, which is what is stored and served. A url with none is kept as it is:
+    /// the picker's `selected` compares it with the agent's candidates.
+    pub(super) fn kept_pick(&mut self, chosen: String) -> String {
+        if !carries_credentials(&chosen) {
+            return chosen;
+        }
+        let bare = without_credentials(&chosen);
+        let remote = ["http://", "https://"].iter().any(|scheme| chosen.get(..scheme.len()).is_some_and(|head| head.eq_ignore_ascii_case(scheme)));
+        if let Some((bytes, kind)) = remote.then(|| super::transcoder::fetch_remote_image(&chosen, None)).flatten() {
+            self.uploads.insert(bare.clone(), bytes, kind);
+        }
+        bare
+    }
+
+    /// Card 859's cleanup of rows a build before it stored: each pick's credential dropped where
+    /// it is kept. The picture is not fetched (a start waits on no host); a pick that needed its
+    /// credential to load is picked again.
+    pub(super) fn drop_pick_credentials(&mut self, key: &str) -> bool {
+        let names = self.catalog.get(key).map(picked_with_credentials).unwrap_or_default();
+        let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut).filter(|_| !names.is_empty()) else {
+            return false;
+        };
+        for name in names {
+            if let Some(url) = object.get(name).and_then(Value::as_str).map(without_credentials) {
+                object.insert(name.to_string(), json!(url));
+            }
+        }
+        true
+    }
+
+    /// The same cleanup for playlists' and collections' picks, kept beside the rows.
+    pub(super) fn drop_list_pick_credentials(&mut self) -> bool {
+        let mut dropped = false;
+        let lists = self.edits.values_mut().chain(self.collections.values_mut().map(|collection| &mut collection.extra));
+        for columns in lists {
+            for (name, value) in columns.iter_mut() {
+                if let Some(url) = value.as_str().filter(|url| name.ends_with("_url") && carries_credentials(url)) {
+                    *value = json!(without_credentials(url));
+                    dropped = true;
+                }
+            }
+        }
+        self.dirty |= dropped;
+        dropped
+    }
+
     /// `PUT /library/metadata/{id}/{poster,art}?url=` -- pick one (cycles 14, 27).  The
     /// response body is the row's new versioned path.
     pub(super) fn set_artwork(
@@ -446,6 +548,7 @@ impl Runtime {
         let Some(mut row) = self.catalog.get(key).cloned() else {
             return Response::error(404, "rex: not found");
         };
+        let chosen = self.kept_pick(chosen);
         let field = if kind == "posters" { "thumb" } else { "art" };
         let private = if kind == "posters" {
             "_poster_url"

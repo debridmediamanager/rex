@@ -2226,6 +2226,10 @@ impl Runtime {
             let Some(url) = query.get("url").map(|url| percent_decode(url)).filter(|url| !url.is_empty()) else {
                 return Response::error(400, "rex: no url");
             };
+            if !self.collections.contains_key(id) {
+                return Response::error(404, "rex: not found");
+            }
+            let url = self.kept_pick(url);
             let stamp = now();
             let path = format!("/library/metadata/{id}/clearLogo/{stamp}");
             let Some(collection) = self.collections.get_mut(id) else {
@@ -2277,6 +2281,10 @@ impl Runtime {
         let stamp = now();
         let path = format!("/library/metadata/{id}/{field}/{stamp}");
         let chosen = query.get("url").map(|value| percent_decode(value)).unwrap_or_default();
+        if !self.collections.contains_key(id) {
+            return Response::error(404, "rex: not found");
+        }
+        let chosen = self.kept_pick(chosen);
         let Some(collection) = self.collections.get_mut(id) else {
             return Response::error(404, "rex: not found");
         };

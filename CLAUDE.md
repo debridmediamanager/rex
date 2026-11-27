@@ -603,6 +603,8 @@ python3 tests/test_cli.py                   # main()'s argparse: --help anywhere
 python3 tests/test_server_log.py            # every route's log line and level, Download Logs, filters=log, SSE/websocket channels
 python3 tests/test_log_redaction.py         # no token reaches stderr or Download Logs, at INFO or --verbose: artwork fetches, posters by url,
                                             # failed fetches, play queues, client log lines; masked by the log sink itself (card 850)
+python3 tests/test_pick_credentials.py      # a picture picked by a url carrying a token or password keeps none in the state file: fetched
+                                            # then and kept under the bare url, and a start cleans what an older build stored (card 859)
 python3 tests/test_parity_listings.py       # section listings, /library roots, Add Library, section prefs: the oracle's values
 python3 tests/test_parity_metadata.py       # item detail, children, tags, top leaves, alternates: the oracle's values
 python3 tests/test_parity_hubs.py           # hubs, search, voice search, autocomplete, matches: the oracle's values

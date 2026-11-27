@@ -1204,7 +1204,7 @@ impl Runtime {
         // last save reached it and those read this request (`rows.rs`). The first request's
         // artwork pass looks at every row (`restamp_artwork`): done here, while they are in
         // memory, it reads none of them back from the file.
-        runtime.restamp_artwork();
+        let dropped = runtime.restamp_artwork() | runtime.drop_list_pick_credentials();
         if let Some(path) = runtime.state_path.clone() {
             let clean = runtime.catalog.unchanged();
             runtime.catalog.attach(&path, key_of, clean);
@@ -1212,6 +1212,15 @@ impl Runtime {
         if runtime.migrate_list_guids() {
             // Commit newly minted UUIDs before any client can observe them.
             runtime.save_state()?;
+        }
+        // Card 859: a pick an older build stored with its credential. Saved at once, and the file
+        // rewritten whole, or the replaced row's bytes stay in a free page and the WAL.
+        if let Some(path) = runtime.state_path.clone().filter(|_| dropped) {
+            runtime.save_state()?;
+            match store::compact(&path) {
+                Ok(()) => info!("ARTWORK picks by url kept from an older build no longer hold their credentials"),
+                Err(error) => warning!("ARTWORK picks by url lost their credentials, but {} still holds the old bytes: {error}", path.display()),
+            }
         }
         Ok(runtime)
     }
@@ -1236,7 +1245,8 @@ impl Runtime {
             before = Some(catalog.begin_restore(&path));
             let mut restore = |stored: &str, row: Value| {
                 if let Some(key) = key_of(&row) {
-                    if !artwork::artwork_writes(&row, &key, kept).is_empty() {
+                    // A pick an older build stored with its credential is cleaned by the same pass.
+                    if !artwork::artwork_writes(&row, &key, kept).is_empty() || !artwork::picked_with_credentials(&row).is_empty() {
                         catalog.mark_touched(&key);
                     }
                 }

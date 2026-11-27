@@ -191,7 +191,7 @@ jobs:
       # audiobooks, log redaction, refreshed artwork and ratings too: the list has no range left.
       - name: State restore suites
         run: |
-          .github/ci/in-image.sh 'python3 tests/test_persist.py && python3 tests/test_perf_memory.py && python3 tests/test_feed_probe_digest.py && python3 tests/test_music_audiobooks.py && python3 tests/test_log_redaction.py && python3 tests/test_refresh_artwork.py && python3 tests/test_refresh_ratings.py && python3 tests/test_refresh_updates.py'
+          .github/ci/in-image.sh 'python3 tests/test_persist.py && python3 tests/test_perf_memory.py && python3 tests/test_feed_probe_digest.py && python3 tests/test_music_audiobooks.py && python3 tests/test_log_redaction.py && python3 tests/test_pick_credentials.py && python3 tests/test_refresh_artwork.py && python3 tests/test_refresh_ratings.py && python3 tests/test_refresh_updates.py'
 
       # No GPU in the container: this is the CPU (x264) path, with the hardware probe on auto.
       # The pinned FFmpeg is kept beside the cargo cache, so it downloads once per pin.

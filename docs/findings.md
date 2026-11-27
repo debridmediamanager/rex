@@ -13186,6 +13186,20 @@ Every line is now masked where it is logged (`logging::log`, the stderr, Downloa
 `X-Plex-Token` and `Authorization` headers and token-named JSON or XML values
 (`tests/test_log_redaction.py`). A log written before that keeps what it holds.
 
+Left over (card 859, 2026-11-27): a url's userinfo (`http://user:password@host`, plain or
+percent-encoded inside `url=`) is masked by the same sink, and rex-android's `redact()` checks the
+same table of spellings (`tests/fixtures/log_redaction_cases.json`, copied byte for byte into the
+app's tests). A provider link never reached the log: `unfollowed redirect to <url>` cannot happen,
+since only `open_here` (`--part-mode redirect`, which logs the host alone) stops at another origin,
+and a failed hop to one says only its address or host. The per-line cost of the mask is about 0.4 µs
+on an M-series Mac and 0.8 µs on the test host. A picture picked by url
+(`PUT .../{poster,art,clearLogo}?url=`) kept its token in the state file, the row's `Thumb` alternates
+(`includeAlternates=1`) and the Change Poster list; plexlab keeps a picked TMDB poster as `metadata://posters/tv.plex.agents.movie_<sha1>`
+(`user_thumb_url`, read 2026-11-27), the picture rather than the url, so a url carrying a credential
+is now fetched at the pick and kept under the url without it, and a start drops the credential from
+an older build's picks and rewrites the file (VACUUM), whose free pages and WAL otherwise kept the
+old bytes (`tests/test_pick_credentials.py`).
+
 ## Every install its own identity (2026-10-13)
 
 plexlab's outbound capture (1.43.4, 2026-09-12) shows what a real PMS sends as

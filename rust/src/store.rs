@@ -389,6 +389,15 @@ pub fn read_state_with(path: &Path, items: Option<&mut dyn FnMut(&str, Value)>) 
     }
 }
 
+/// Rewrite the database whole and empty its WAL: what a save replaced is otherwise still in
+/// the file's free pages and the WAL's frames (card 859, a credential an older build stored).
+pub fn compact(path: &Path) -> Result<(), String> {
+    let connection = open(path)?;
+    connection
+        .execute_batch("VACUUM; PRAGMA wal_checkpoint(TRUNCATE);")
+        .map_err(|e| e.to_string())
+}
+
 /// A state saved over another catalog: copy the whole database aside as `<path>.stale`
 /// (a consistent copy, WAL included) and drop the state from it, keeping the catalog.
 pub fn set_aside(path: &Path, stale: &Path) -> Result<(), String> {

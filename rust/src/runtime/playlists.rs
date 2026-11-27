@@ -742,6 +742,7 @@ impl Runtime {
         if chosen.is_empty() {
             return Response::error(400, "rex: no url");
         }
+        let chosen = self.kept_pick(chosen);
         let field = if poster { "thumb" } else { "art" };
         let private = if poster { "_poster_url" } else { "_art_url" };
         let key = playlist.id.clone();

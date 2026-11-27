@@ -150,11 +150,12 @@ def run(verbose):
     for name, text in sorted(files.items()) + [("stderr", console)]:
         leaks = [line for line in text.splitlines() if LEAK in line]
         check("%s: no token in %s" % (label, name), not leaks, leaks[:6])
-    log = files.get("Plex Media Server.log", "")
+    log = files.get("Plex Media Server.log", "") + "\n"
     kept = [
         "ARTWORK fetch http://127.0.0.1:9/library/metadata/1007/thumb/1?X-Plex-Token=" + MASK,
         "ARTWORK fetch http://127.0.0.1:9/poster.jpg?token=" + MASK,
-        "ARTWORK 1007 posters -> https://127.0.0.1:9/poster.jpg?X-Plex-Token=" + MASK,
+        # The pick keeps no credential (card 859): the url is stored and logged without it.
+        "ARTWORK 1007 posters -> https://127.0.0.1:9/poster.jpg\n",
         "ARTWORK fetch http://%s@127.0.0.1:9/poster.jpg" % MASK,
         "CLIENT LOG [3] web: GET http://10.0.0.5:32400/library?X-Plex-Token=%s failed" % MASK,
         "UNKNOWN GET /nothing/x?X-Plex-Token=%s/here" % MASK,
