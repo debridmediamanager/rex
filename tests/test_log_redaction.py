@@ -8,7 +8,8 @@ line was masked, but every other line that formats a url was not: the artwork fe
 (`ARTWORK 1007 posters -> ...`, 80), the failed fetch under --verbose (80, so a long token
 leaked in part) and the upstream errors that quote the whole url. Each trigger below is a
 real request a client sends; the token rides where clients put it: `X-Plex-Token=` and
-`token=`, plain, once and twice percent-encoded inside `url=`, and the `X-Plex-Token` header.
+`token=`, plain, once and twice percent-encoded inside `url=`, the `X-Plex-Token` header, and a
+url's `user:password@` (card 859).
 The lines stay useful: their paths are kept, only the token is masked.
 
     python3 tests/test_log_redaction.py
@@ -78,6 +79,9 @@ def triggers(port):
     # An upstream error that quotes the whole url (`unsupported url "..."`).
     request(port, "GET", "/photo/:/transcode?width=240&height=360&url="
             + quote("ftp://example.invalid/poster.jpg?X-Plex-Token=" + TOKEN))
+    # A url's password (card 859), plain in the artwork line and percent-encoded in the request line.
+    request(port, "GET", "/photo/:/transcode?width=240&height=360&url="
+            + quote("http://user:%s@127.0.0.1:9/poster.jpg" % TOKEN))
     # A poster POSTed by url, and one picked by url, then read back through the artwork path.
     request(port, "POST", "/library/metadata/1007/posters?url="
             + quote("http://127.0.0.1:9/posters/new.jpg?X-Plex-Token=" + TOKEN))
@@ -151,6 +155,7 @@ def run(verbose):
         "ARTWORK fetch http://127.0.0.1:9/library/metadata/1007/thumb/1?X-Plex-Token=" + MASK,
         "ARTWORK fetch http://127.0.0.1:9/poster.jpg?token=" + MASK,
         "ARTWORK 1007 posters -> https://127.0.0.1:9/poster.jpg?X-Plex-Token=" + MASK,
+        "ARTWORK fetch http://%s@127.0.0.1:9/poster.jpg" % MASK,
         "CLIENT LOG [3] web: GET http://10.0.0.5:32400/library?X-Plex-Token=%s failed" % MASK,
         "UNKNOWN GET /nothing/x?X-Plex-Token=%s/here" % MASK,
     ]

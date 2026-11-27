@@ -32,7 +32,8 @@ struct Sink {
 /// `auth_token=` (rex's own plex.tv calls),
 /// plain or percent-encoded once or more (the `url=` of `/photo/:/transcode` carries one, and a url
 /// naming another transcode carries it twice); the `X-Plex-Token` and `Authorization` headers;
-/// and a token-named value quoted as JSON or an XML attribute (plex.tv's `authToken="..."`).
+/// a token-named value quoted as JSON or an XML attribute (plex.tv's `authToken="..."`); and a
+/// url's userinfo (`http://user:password@host`, card 859).
 /// The spellings `harness/scripts/redact.py` scrubs from real client traffic and rex-android's
 /// `redact()` hides. `log` applies it to every line, so a message that formats a url cannot
 /// leak one (card 850: artwork lines carried the token at INFO after card 295 masked only
@@ -56,10 +57,14 @@ fn redact(text: &str) -> std::borrow::Cow<'_, str> {
                 // Base64 for these two: `+`, `/` and `=` are part of the value, never of a path.
                 r#"|((?:%(?:25)*[0-9a-f]{2}|\b)authorization(?::|%(?:25)*3a)(?:\s|%(?:25)*20|\+)*(?:bearer|basic)(?:\s|%(?:25)*20|\+)+)[A-Za-z0-9_.~+/=-]+"#,
                 r#"|((?:%(?:25)*[0-9a-f]{2}|\b)bearer(?:\s|%(?:25)*20|\+)+)[A-Za-z0-9_.~+/=-]{8,}"#,
+                // A url's `user:password@`, plain or percent-encoded (inside `url=`): its whole
+                // userinfo, as zurg's log masks it. Never past the authority's `/`, `?`, `#`.
+                r#"|(\b[a-z][a-z0-9+.-]*(?::|%(?:25)*3a)(?:/|%(?:25)*2f){2})"#,
+                r#"(?:[A-Za-z0-9._~!$&()*+,;=:-]|%(?:25)*(?:[015-9a-f][0-9a-f]|2[0-24-9a-e]|3[0-9a-e]|4[1-9a-f]))+(@|%(?:25)*40)"#,
             ))
             .unwrap()
         })
-        .replace_all(text, "${1}${2}${3}xxxxxxxxxxxxxxxxxxxx")
+        .replace_all(text, "${1}${2}${3}${4}xxxxxxxxxxxxxxxxxxxx${5}")
 }
 
 static SINK: Mutex<Sink> = Mutex::new(Sink {
@@ -394,6 +399,26 @@ mod tests {
         assert_eq!(redact_tokens("/library?X-Plex-Token=abc123"), "/library?X-Plex-Token=xxxxxxxxxxxxxxxxxxxx");
         assert_eq!(redact_tokens("/myplex/claim?token=claim-SECRETabc123"), "/myplex/claim?token=xxxxxxxxxxxxxxxxxxxx");
         assert_eq!(redact_tokens("/rex/sources?accessToken=keep"), "/rex/sources?accessToken=keep");
+    }
+
+    /// Card 859: every case of the table rex-android's `redact()` checks too (the same file is
+    /// its `app/src/test/resources/redaction/log_redaction_cases.json`): its secrets gone, the
+    /// rest of the line kept.
+    #[test]
+    fn the_shared_redaction_cases_are_masked() {
+        let table: Value = serde_json::from_str(include_str!("../../../tests/fixtures/log_redaction_cases.json")).unwrap();
+        let mut failed = Vec::new();
+        for case in table["cases"].as_array().unwrap() {
+            let line = case["line"].as_str().unwrap();
+            let masked = redact_tokens(line);
+            let strings = |name: &str| case[name].as_array().unwrap().iter().map(|value| value.as_str().unwrap().to_string()).collect::<Vec<_>>();
+            if strings("secrets").iter().any(|secret| masked.contains(secret.as_str()))
+                || !strings("kept").iter().all(|kept| masked.contains(kept.as_str()))
+            {
+                failed.push(format!("{line}\n  -> {masked}"));
+            }
+        }
+        assert!(failed.is_empty(), "{}", failed.join("\n"));
     }
 
     /// Card 850: what `info!` formats reaches stderr, Download Logs and `filters=log` masked,

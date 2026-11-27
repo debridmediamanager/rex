@@ -1,0 +1,20 @@
+{
+  "about": "Every spelling of a credential rex's log masks (rust/src/runtime/logging.rs, redact) and rex-android's Logs.kt redact() hides too. The same file, byte for byte, is rex's tests/fixtures/log_redaction_cases.json and rex-android's app/src/test/resources/redaction/log_redaction_cases.json: change both together. Each case's secrets must be gone from the redacted line and each kept string still in it. The app hides more (public addresses, other keys, opaque path segments), so the lines use none of those.",
+  "cases": [
+    {"line": "ARTWORK fetch http://127.0.0.1:19920/library/metadata/1007/thumb/1?X-Plex-Token=REPLICATE859a", "secrets": ["REPLICATE859a"], "kept": ["ARTWORK fetch http://127.0.0.1:19920/library/metadata/1007/thumb/1?X-Plex-Token="]},
+    {"line": "/myplex/claim?token=claim-REPLICATE859b", "secrets": ["REPLICATE859b"], "kept": ["/myplex/claim?token="]},
+    {"line": "artwork fetch failed for http://h/photo/:/transcode?url=http%3A%2F%2Fh%2Fx%3FX-Plex-Token%3DREPLICATE859c%26w%3D1", "secrets": ["REPLICATE859c"], "kept": ["transcode?url=http%3A%2F%2Fh%2Fx%3FX-Plex-Token%3D"]},
+    {"line": "PLAYQUEUE 1 -> 1 item(s) from uri=server://m/x?X-Plex-Token%253DREPLICATE859d", "secrets": ["REPLICATE859d"], "kept": ["from uri=server://m/x?X-Plex-Token%253D"]},
+    {"line": "\"GET /photo/:/transcode?url=http%3A%2F%2Fh%2Fposter.jpg%3Ftoken%3DREPLICATE859e%26w%3D1 HTTP/1.1\" 404", "secrets": ["REPLICATE859e"], "kept": ["poster.jpg%3Ftoken%3D", " HTTP/1.1\" 404"]},
+    {"line": "url=http%253A%252F%252Fh%252Fx%253Ftoken%253DREPLICATE859f%2526access_token%253DREPLICATE859g", "secrets": ["REPLICATE859f", "REPLICATE859g"], "kept": ["url=http%253A%252F%252Fh%252Fx%253Ftoken%253D"]},
+    {"line": "CLIENT LOG [3] web: X-Plex-Token: REPLICATE859h Authorization: Bearer REPLICATE859i", "secrets": ["REPLICATE859h", "REPLICATE859i"], "kept": ["CLIENT LOG [3] web: X-Plex-Token: ", " Authorization: Bearer "]},
+    {"line": "\"POST /log?message=headers%20X-Plex-Token%3A%20REPLICATE859j%20Authorization%3A%20Bearer%20REPLICATE859k\" 200", "secrets": ["REPLICATE859j", "REPLICATE859k"], "kept": ["/log?message=headers%20X-Plex-Token%3A%20", "Authorization%3A%20Bearer%20"]},
+    {"line": "Authorization: Basic UkVQTElDQVRFODU5bDp4eXo=", "secrets": ["UkVQTElDQVRFODU5bDp4eXo="], "kept": ["Authorization: Basic "]},
+    {"line": "plex.tv answered {\"authToken\":\"REPLICATE859m\"} <user authToken=\"REPLICATE859n\"/>", "secrets": ["REPLICATE859m", "REPLICATE859n"], "kept": ["plex.tv answered {\"authToken\":\"", "<user authToken=\""]},
+    {"line": "plex.tv servers.xml?auth_token=REPLICATE859o failed", "secrets": ["REPLICATE859o"], "kept": ["plex.tv servers.xml?auth_token=", " failed"]},
+    {"line": "ARTWORK fetch http://user:REPLICATE859p@127.0.0.1:9/poster.jpg", "secrets": ["REPLICATE859p"], "kept": ["ARTWORK fetch http://", "@127.0.0.1:9/poster.jpg"]},
+    {"line": "\"GET /photo/:/transcode?width=240&url=http%3A%2F%2Fuser%3AREPLICATE859q%40127.0.0.1%3A9%2Fposter.jpg HTTP/1.1\" 502", "secrets": ["REPLICATE859q"], "kept": ["url=http%3A%2F%2F", "127.0.0.1%3A9%2Fposter.jpg HTTP/1.1\" 502"]},
+    {"line": "uri=server://m/x?url=http%253A%252F%252Fuser%253AREPLICATE859r%2540127.0.0.1%253A9%252Fposter.jpg", "secrets": ["REPLICATE859r"], "kept": ["127.0.0.1%253A9%252Fposter.jpg"]},
+    {"line": "GET http://127.0.0.1:9/x?next=a@b and mail me@example.org", "secrets": [], "kept": ["GET http://127.0.0.1:9/x?next=a@b and mail me@example.org"]}
+  ]
+}
